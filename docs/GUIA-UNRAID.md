@@ -100,6 +100,16 @@ LDAP_BASE_DN=ou=Staff,dc=escola,dc=local
 LDAP_ADMIN_GROUP=CN=TI-Suporte,ou=Groups,dc=escola,dc=local
 ```
 
+Se o container nao conseguir resolver o nome do servidor, usa o IP do controlador de dominio:
+```
+LDAP_SERVER=ldaps://10.114.80.4
+```
+
+Se a password da conta de servico tiver o simbolo `$`, duplica-o no `.env`, porque o Docker Compose interpreta `$` como variavel:
+```
+LDAP_BIND_PASSWORD=abc$$wK8xyz
+```
+
 Se tambem quiseres login por Azure AD / Entra ID, ativa-o apenas depois de criares a aplicacao no portal Microsoft:
 ```
 AZURE_AD_ENABLED=true

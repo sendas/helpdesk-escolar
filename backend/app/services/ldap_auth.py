@@ -1,11 +1,15 @@
 import ssl
+import logging
 from ldap3 import Server, Connection, ALL, Tls, SUBTREE
 from ldap3.core.exceptions import LDAPException
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 def authenticate_ldap(username: str, password: str) -> dict | None:
     if not settings.ldap_enabled or not settings.ldap_server:
+        logger.warning("LDAP login rejected: LDAP is disabled or LDAP_SERVER is empty")
         return None
 
     tls = Tls(validate=ssl.CERT_NONE) if settings.ldap_use_ssl else None
@@ -25,7 +29,8 @@ def authenticate_ldap(username: str, password: str) -> dict | None:
             password=settings.ldap_bind_password,
             auto_bind=True,
         )
-    except LDAPException:
+    except LDAPException as exc:
+        logger.warning("LDAP service bind failed for %s: %s", settings.ldap_bind_dn, exc)
         return None
 
     search_filter = settings.ldap_user_filter.format(username=username)
@@ -43,6 +48,7 @@ def authenticate_ldap(username: str, password: str) -> dict | None:
 
     if not conn.entries:
         conn.unbind()
+        logger.warning("LDAP user search returned no entries for username=%s base=%s filter=%s", username, settings.ldap_base_dn, search_filter)
         return None
 
     entry = conn.entries[0]
@@ -53,7 +59,8 @@ def authenticate_ldap(username: str, password: str) -> dict | None:
     try:
         user_conn = Connection(server, user=user_dn, password=password, auto_bind=True)
         user_conn.unbind()
-    except LDAPException:
+    except LDAPException as exc:
+        logger.warning("LDAP user bind failed for username=%s dn=%s: %s", username, user_dn, exc)
         return None
 
     groups = []
