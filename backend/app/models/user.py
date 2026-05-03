@@ -1,0 +1,34 @@
+import enum
+from datetime import datetime
+from sqlalchemy import String, DateTime, Boolean, Enum as SAEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.database import Base
+
+
+class UserRole(str, enum.Enum):
+    TEACHER = "teacher"
+    TECHNICIAN = "technician"
+    ADMIN = "admin"
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    email: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(200))
+    department: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), default=UserRole.TEACHER)
+    auth_provider: Mapped[str] = mapped_column(String(20), default="ldap")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    created_tickets: Mapped[list["Ticket"]] = relationship(
+        "Ticket", foreign_keys="Ticket.creator_id", back_populates="creator"
+    )
+    assigned_tickets: Mapped[list["Ticket"]] = relationship(
+        "Ticket", foreign_keys="Ticket.assignee_id", back_populates="assignee"
+    )
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="author")

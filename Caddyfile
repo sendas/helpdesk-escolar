@@ -1,0 +1,12 @@
+# Caddyfile — HTTPS automático via Let's Encrypt
+# O Caddy renova o certificado SSL automaticamente.
+# Substitui {$DOMAIN} e {$ACME_EMAIL} pelas variáveis do .env.prod
+
+{
+    email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+    # Todo o tráfego passa pelo frontend (que já faz proxy de /api/ para o backend)
+    reverse_proxy frontend:80
+}

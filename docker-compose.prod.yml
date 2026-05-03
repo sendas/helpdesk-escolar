@@ -1,0 +1,64 @@
+# docker-compose.prod.yml — Produção com HTTPS automático (queiro.pt / Linux)
+# Usa o Caddy como reverse proxy com certificado SSL automático (Let's Encrypt)
+#
+# PRÉ-REQUISITOS:
+#   1. Domínio a apontar para este servidor (ex: helpdesk.queiro.pt → IP do servidor)
+#   2. Portas 80 e 443 abertas no firewall
+#   3. Preencher DOMAIN e ACME_EMAIL no ficheiro .env.prod
+#
+# Arranque:
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
+
+version: "3.9"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    environment:
+      - DOMAIN=${DOMAIN}
+      - ACME_EMAIL=${ACME_EMAIL}
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env.prod
+    volumes:
+      - helpdesk_data:/app/data
+    expose:
+      - "8089"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      - backend
+
+volumes:
+  helpdesk_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local

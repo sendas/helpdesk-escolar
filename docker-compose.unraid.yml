@@ -1,0 +1,33 @@
+# docker-compose.unraid.yml — Unraid NAS
+# Guarda os dados em /mnt/cache/appdata/helpdesk/ (cache drive do Unraid)
+# Arranque via Compose Manager ou terminal:
+#   cd /mnt/cache/appdata/helpdesk && docker compose -f docker-compose.unraid.yml up -d
+
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - /mnt/cache/appdata/helpdesk/data:/app/data
+    ports:
+      - "8089:8089"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "85:80"
+    depends_on:
+      - backend

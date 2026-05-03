@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Ticket Criado</title></head>
+<body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+  <div style="background: #1976D2; color: white; padding: 20px; border-radius: 4px 4px 0 0;">
+    <h2 style="margin:0">Novo Ticket Criado</h2>
+  </div>
+  <div style="padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 4px 4px;">
+    <p>O seu ticket foi criado com sucesso.</p>
+    <table style="width:100%; border-collapse: collapse;">
+      <tr><td style="padding:8px; font-weight:bold; width:30%">Ticket #</td><td style="padding:8px">{{ id }}</td></tr>
+      <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Título</td><td style="padding:8px">{{ title }}</td></tr>
+      <tr><td style="padding:8px; font-weight:bold">Categoria</td><td style="padding:8px">{{ category }}</td></tr>
+      <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Prioridade</td><td style="padding:8px">{{ priority }}</td></tr>
+      <tr><td style="padding:8px; font-weight:bold">Estado</td><td style="padding:8px">Aberto</td></tr>
+    </table>
+    <p style="color:#666; font-size:0.9em; margin-top:20px">Sistema de Tickets — Escola</p>
+  </div>
+</body>
+</html>
