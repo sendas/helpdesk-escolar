@@ -127,7 +127,9 @@ async function onAdLogin() {
   try {
     await auth.loginLdap(username.value.trim(), password.value)
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || 'Erro de autenticação'
+    error.value = e?.code === 'ECONNABORTED'
+      ? 'Tempo de autenticação esgotado. Verifique a ligação ao Active Directory.'
+      : e?.response?.data?.detail || 'Erro de autenticação'
   } finally {
     loading.value = false
   }

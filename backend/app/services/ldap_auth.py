@@ -19,6 +19,7 @@ def authenticate_ldap(username: str, password: str) -> dict | None:
         use_ssl=settings.ldap_use_ssl,
         tls=tls,
         get_info=ALL,
+        connect_timeout=5,
     )
 
     # Step 1: service account bind to search for user DN
@@ -28,23 +29,29 @@ def authenticate_ldap(username: str, password: str) -> dict | None:
             user=settings.ldap_bind_dn,
             password=settings.ldap_bind_password,
             auto_bind=True,
+            receive_timeout=10,
         )
-    except LDAPException as exc:
+    except Exception as exc:
         logger.warning("LDAP service bind failed for %s: %s", settings.ldap_bind_dn, exc)
         return None
 
     search_filter = settings.ldap_user_filter.format(username=username)
-    conn.search(
-        settings.ldap_base_dn,
-        search_filter,
-        search_scope=SUBTREE,
-        attributes=[
-            settings.ldap_attr_email,
-            settings.ldap_attr_display_name,
-            "memberOf",
-            "distinguishedName",
-        ],
-    )
+    try:
+        conn.search(
+            settings.ldap_base_dn,
+            search_filter,
+            search_scope=SUBTREE,
+            attributes=[
+                settings.ldap_attr_email,
+                settings.ldap_attr_display_name,
+                "memberOf",
+                "distinguishedName",
+            ],
+        )
+    except Exception as exc:
+        conn.unbind()
+        logger.warning("LDAP user search failed for username=%s base=%s filter=%s: %s", username, settings.ldap_base_dn, search_filter, exc)
+        return None
 
     if not conn.entries:
         conn.unbind()
@@ -57,9 +64,9 @@ def authenticate_ldap(username: str, password: str) -> dict | None:
 
     # Step 2: verify user credentials by binding with their DN
     try:
-        user_conn = Connection(server, user=user_dn, password=password, auto_bind=True)
+        user_conn = Connection(server, user=user_dn, password=password, auto_bind=True, receive_timeout=10)
         user_conn.unbind()
-    except LDAPException as exc:
+    except Exception as exc:
         logger.warning("LDAP user bind failed for username=%s dn=%s: %s", username, user_dn, exc)
         return None
 
