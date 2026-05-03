@@ -40,8 +40,8 @@ O modo de demonstração (sem AD configurado) está sempre disponível no ecrã 
 mkdir -p /mnt/cache/appdata/helpdesk
 cp -r . /mnt/cache/appdata/helpdesk/
 cd /mnt/cache/appdata/helpdesk
-cp .env.example .env
-# Editar .env
+cp app.env.unraid.example app.env
+# Editar app.env
 docker compose -f docker-compose.unraid.yml up --build -d
 ```
 

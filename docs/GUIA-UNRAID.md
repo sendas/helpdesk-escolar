@@ -52,22 +52,22 @@ Verifica que funcionou:
 ls
 ```
 
-Deves ver: `backend  frontend  docker-compose.yml  docker-compose.unraid.yml  .env.example  README.md`
+Deves ver: `backend  frontend  docker-compose.yml  docker-compose.unraid.yml  app.env.unraid.example  README.md`
 
 ---
 
 ## Parte 3 — Criar o ficheiro de configuração
 
-O ficheiro `.env` contém as definições da aplicação (como palavras-passe e endereços de servidor). Começa por copiar o exemplo:
+O ficheiro `app.env` contém as definições da aplicação (como palavras-passe e endereços de servidor). No Unraid usamos `app.env` em vez de `.env` para evitar problemas com passwords que tenham `$`.
 
 ```bash
-cp .env.example .env
+cp app.env.unraid.example app.env
 ```
 
 Agora edita o ficheiro:
 
 ```bash
-nano .env
+nano app.env
 ```
 
 O nano é um editor de texto simples. Usa as setas do teclado para navegar.
@@ -92,7 +92,7 @@ Se ainda não tens Active Directory configurado, deixa o modo demo ativo (já es
 Se tens LDAP no teu servidor de escola:
 ```
 LDAP_ENABLED=true
-LDAP_SERVER=ldaps://dc.escola.local
+LDAP_SERVER=ldaps://10.114.80.4
 LDAP_PORT=636
 LDAP_BIND_DN=cn=svc_tickets,ou=ServiceAccounts,dc=escola,dc=local
 LDAP_BIND_PASSWORD=password-da-conta-de-servico
@@ -105,10 +105,7 @@ Se o container nao conseguir resolver o nome do servidor, usa o IP do controlado
 LDAP_SERVER=ldaps://10.114.80.4
 ```
 
-Se a password da conta de servico tiver o simbolo `$`, duplica-o no `.env`, porque o Docker Compose interpreta `$` como variavel:
-```
-LDAP_BIND_PASSWORD=abc$$wK8xyz
-```
+Como o Unraid usa `app.env`, podes escrever passwords com `$` normalmente nesse ficheiro. Se ainda tiveres uma configuracao antiga em `.env`, muda-a para `app.env` e remove o `.env` para o Docker Compose deixar de tentar interpretar esses valores.
 
 Se tambem quiseres login por Azure AD / Entra ID, ativa-o apenas depois de criares a aplicacao no portal Microsoft:
 ```
@@ -220,7 +217,15 @@ chmod -R 755 /mnt/cache/appdata/helpdesk
 ```
 
 **A página aparece mas o login não funciona**
-Verifica o `FRONTEND_URL` no `.env` — tem de corresponder exactamente ao endereço que usas no browser (com o IP correcto).
+Verifica o `FRONTEND_URL` no `app.env` — tem de corresponder exactamente ao endereço que usas no browser (com o IP correcto).
+
+**Aviso: The "xxx" variable is not set**
+Existe um `.env` antigo na pasta e alguma password tem `$`. Migra para `app.env`:
+```bash
+mv .env app.env
+docker compose -f docker-compose.unraid.yml down
+docker compose -f docker-compose.unraid.yml up -d
+```
 
 **Ver erros detalhados do backend**
 ```bash
