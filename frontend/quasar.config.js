@@ -10,7 +10,7 @@ export default defineConfig((ctx) => {
       target: { browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'] },
       vueRouterMode: 'history',
       env: {
-        VITE_API_URL: process.env.VITE_API_URL || 'http://localhost:8089',
+        VITE_API_URL: process.env.VITE_API_URL || '',
       },
     },
 

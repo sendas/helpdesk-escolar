@@ -22,7 +22,21 @@
           {{ error }}
         </div>
 
+        <!-- Microsoft Login button -->
+        <button class="hd-btn hd-btn-dark hd-btn-lg" style="width:100%;justify-content:center;gap:10px" :disabled="loading" @click="onMicrosoftLogin">
+          <span class="material-icons" style="font-size:18px">account_circle</span>
+          Entrar com Microsoft
+        </button>
+        <p style="text-align:center;font-size:12px;color:var(--c-muted);margin-top:10px">
+          Autenticação via Microsoft Entra ID
+        </p>
+
         <!-- AD Login form -->
+        <div style="display:flex;align-items:center;gap:12px;margin:24px 0 16px">
+          <div style="height:1px;background:var(--c-border);flex:1"></div>
+          <span style="font-size:12px;color:var(--c-muted)">ou Active Directory local</span>
+          <div style="height:1px;background:var(--c-border);flex:1"></div>
+        </div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <input
             class="hd-input"
@@ -45,7 +59,7 @@
           {{ loading ? 'A autenticar...' : 'Entrar com a conta da escola' }}
         </button>
         <p style="text-align:center;font-size:12px;color:var(--c-muted);margin-top:10px">
-          Autenticação via Active Directory institucional
+          Autenticação via Active Directory/LDAP
         </p>
 
         <!-- Demo mode -->
@@ -117,9 +131,14 @@ const demoProfiles = [
 
 const features = [
   { title: 'Aberto → Atribuído → Em Curso → Resolvido', sub: 'Estados claros e auditáveis' },
-  { title: 'Integração com Active Directory', sub: 'Sem mais uma palavra-passe para memorizar' },
+  { title: 'Integração com Microsoft Entra ID', sub: 'Login institucional com a conta Microsoft' },
   { title: 'Notificações e SLAs configuráveis', sub: 'Cada categoria com o seu prazo' },
 ]
+
+function onMicrosoftLogin() {
+  error.value = ''
+  auth.loginAzure()
+}
 
 async function onAdLogin() {
   loading.value = true

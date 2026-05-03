@@ -76,14 +76,14 @@ O nano é um editor de texto simples. Usa as setas do teclado para navegar.
 
 ```
 APP_SECRET_KEY=muda-isto-para-uma-frase-aleatoria-longa
-FRONTEND_URL=http://192.168.1.XX:85
+FRONTEND_URL=https://sendas.tplinkdns.com
 LDAP_ENABLED=false
-AZURE_AD_ENABLED=false
+AZURE_AD_ENABLED=true
 MAIL_SUPPRESS_SEND=true
 ```
 
-> Substitui `192.168.1.XX` pelo IP real do teu NAS. Podes ver o IP na interface do Unraid em cima à direita.
-> Estes valores deixam a aplicacao pronta para testar em modo demo, sem depender de Active Directory, Azure AD ou SMTP.
+> Substitui `sendas.tplinkdns.com` pelo dominio HTTPS que aponta para o teu NAS/reverse proxy.
+> Para login Microsoft, o Microsoft Entra ID exige HTTPS. URLs `http://192.168...` nao sao aceites como redirect URI.
 
 **Para a autenticação (escolhe uma opção):**
 
@@ -113,7 +113,7 @@ AZURE_AD_ENABLED=true
 AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 AZURE_CLIENT_SECRET=segredo-da-aplicacao
-AZURE_REDIRECT_URI=http://192.168.1.XX:8089/api/v1/auth/azure-callback
+AZURE_REDIRECT_URI=https://sendas.tplinkdns.com/api/v1/auth/azure-callback
 ```
 
 **Para guardar e sair do nano:**
