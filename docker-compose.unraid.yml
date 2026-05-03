@@ -3,8 +3,6 @@
 # Arranque via Compose Manager ou terminal:
 #   cd /mnt/cache/appdata/helpdesk && docker compose -f docker-compose.unraid.yml up -d
 
-version: "3.9"
-
 services:
   backend:
     build:

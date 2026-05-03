@@ -77,9 +77,13 @@ O nano é um editor de texto simples. Usa as setas do teclado para navegar.
 ```
 APP_SECRET_KEY=muda-isto-para-uma-frase-aleatoria-longa
 FRONTEND_URL=http://192.168.1.XX:85
+LDAP_ENABLED=false
+AZURE_AD_ENABLED=false
+MAIL_SUPPRESS_SEND=true
 ```
 
 > Substitui `192.168.1.XX` pelo IP real do teu NAS. Podes ver o IP na interface do Unraid em cima à direita.
+> Estes valores deixam a aplicacao pronta para testar em modo demo, sem depender de Active Directory, Azure AD ou SMTP.
 
 **Para a autenticação (escolhe uma opção):**
 
@@ -94,6 +98,15 @@ LDAP_BIND_DN=cn=svc_tickets,ou=ServiceAccounts,dc=escola,dc=local
 LDAP_BIND_PASSWORD=password-da-conta-de-servico
 LDAP_BASE_DN=ou=Staff,dc=escola,dc=local
 LDAP_ADMIN_GROUP=CN=TI-Suporte,ou=Groups,dc=escola,dc=local
+```
+
+Se tambem quiseres login por Azure AD / Entra ID, ativa-o apenas depois de criares a aplicacao no portal Microsoft:
+```
+AZURE_AD_ENABLED=true
+AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+AZURE_CLIENT_SECRET=segredo-da-aplicacao
+AZURE_REDIRECT_URI=http://192.168.1.XX:8089/api/v1/auth/azure-callback
 ```
 
 **Para guardar e sair do nano:**

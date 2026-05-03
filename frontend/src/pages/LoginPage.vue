@@ -22,8 +22,25 @@
           {{ error }}
         </div>
 
-        <!-- AD Login button -->
-        <button class="hd-btn hd-btn-dark hd-btn-lg" style="width:100%;justify-content:center;gap:10px" :disabled="loading" @click="onAdLogin">
+        <!-- AD Login form -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input
+            class="hd-input"
+            v-model="username"
+            autocomplete="username"
+            placeholder="Utilizador do domínio"
+            @keyup.enter="onAdLogin"
+          />
+          <input
+            class="hd-input"
+            v-model="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Palavra-passe"
+            @keyup.enter="onAdLogin"
+          />
+        </div>
+        <button class="hd-btn hd-btn-dark hd-btn-lg" style="width:100%;justify-content:center;gap:10px;margin-top:12px" :disabled="loading || !username || !password" @click="onAdLogin">
           <span class="material-icons" style="font-size:18px">shield</span>
           {{ loading ? 'A autenticar...' : 'Entrar com a conta da escola' }}
         </button>
@@ -88,6 +105,8 @@ import { useAuthStore } from '../stores/auth'
 const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
+const username = ref('')
+const password = ref('')
 const demoRole = ref('teacher')
 
 const demoProfiles = [
@@ -102,8 +121,16 @@ const features = [
   { title: 'Notificações e SLAs configuráveis', sub: 'Cada categoria com o seu prazo' },
 ]
 
-function onAdLogin() {
-  auth.loginAzure()
+async function onAdLogin() {
+  loading.value = true
+  error.value = ''
+  try {
+    await auth.loginLdap(username.value.trim(), password.value)
+  } catch (e: any) {
+    error.value = e?.response?.data?.detail || 'Erro de autenticação'
+  } finally {
+    loading.value = false
+  }
 }
 
 async function onDemoLogin() {

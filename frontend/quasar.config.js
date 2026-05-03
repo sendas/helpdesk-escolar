@@ -2,7 +2,7 @@ import { defineConfig } from '#q-app/wrappers'
 
 export default defineConfig((ctx) => {
   return {
-    boot: ['axios', 'auth'],
+    boot: ['pinia', 'axios', 'auth'],
     css: ['app.scss'],
     extras: ['roboto-font', 'material-icons'],
 
