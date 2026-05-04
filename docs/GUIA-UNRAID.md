@@ -76,13 +76,13 @@ O nano é um editor de texto simples. Usa as setas do teclado para navegar.
 
 ```
 APP_SECRET_KEY=muda-isto-para-uma-frase-aleatoria-longa
-FRONTEND_URL=https://sendas.tplinkdns.com
+FRONTEND_URL=https://helpdesk.techpro.pt
 LDAP_ENABLED=false
 AZURE_AD_ENABLED=true
-MAIL_SUPPRESS_SEND=true
+MAIL_SUPPRESS_SEND=false
 ```
 
-> Substitui `sendas.tplinkdns.com` pelo dominio HTTPS que aponta para o teu NAS/reverse proxy.
+> Substitui `helpdesk.techpro.pt` pelo dominio HTTPS que aponta para o teu NAS/reverse proxy.
 > Para login Microsoft, o Microsoft Entra ID exige HTTPS. URLs `http://192.168...` nao sao aceites como redirect URI.
 
 **Para a autenticação (escolhe uma opção):**
@@ -113,11 +113,12 @@ AZURE_AD_ENABLED=true
 AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 AZURE_CLIENT_SECRET=segredo-da-aplicacao
-AZURE_REDIRECT_URI=https://sendas.tplinkdns.com/api/v1/auth/azure-callback
+AZURE_REDIRECT_URI=https://helpdesk.techpro.pt/api/v1/auth/azure-callback
 AZURE_ADMIN_EMAILS=admin@escola.pt
 AZURE_ALLOWED_ONPREM_OUS=queiroz.local/AEEQ/_Direcao,queiroz.local/AEEQ/_Docentes,queiroz.local/AEEQ/_Nao Docentes,queiroz.local/AEEQ/_Secretaria,queiroz.local/AEEQ/_Suporte
 AZURE_ADMIN_ONPREM_OUS=queiroz.local/AEEQ/_Direcao
-AZURE_TECHNICIAN_ONPREM_OUS=queiroz.local/AEEQ/_Suporte,queiroz.local/AEEQ/_Secretaria
+AZURE_TECHNICIAN_ONPREM_OUS=queiroz.local/AEEQ/_Suporte
+AZURE_SYNC_INTERVAL_MINUTES=60
 ```
 
 Para importar todos os utilizadores do Microsoft Entra ID na página **Administração → Utilizadores**, dá também à App Registration esta permissão:
@@ -127,6 +128,21 @@ Para importar todos os utilizadores do Microsoft Entra ID na página **Administr
 3. **Application permissions**
 4. Pesquisa e adiciona `User.Read.All`
 5. Clica em **Grant admin consent**
+
+Para enviar emails de notificacao, configura tambem o SMTP no `app.env`:
+
+```
+MAIL_SERVER=smtp.office365.com
+MAIL_PORT=587
+MAIL_STARTTLS=true
+MAIL_SSL_TLS=false
+MAIL_USERNAME=helpdesk@techpro.pt
+MAIL_PASSWORD=password-ou-app-password
+MAIL_FROM=helpdesk@techpro.pt
+MAIL_SUPPRESS_SEND=false
+```
+
+Com SMTP ativo, o sistema envia emails quando um ticket e criado, atualizado, atribuido ou recebe uma resposta publica. Tambem podes definir um email em cada categoria para receber automaticamente os novos tickets dessa categoria.
 
 **Para guardar e sair do nano:**
 - `Ctrl + O` → Enter (guarda)

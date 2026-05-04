@@ -84,7 +84,10 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = null
     user.value = null
+    isDark.value = false
     localStorage.removeItem('token')
+    localStorage.setItem('dark', '0')
+    applyDark()
     window.location.href = '/login'
   }
 

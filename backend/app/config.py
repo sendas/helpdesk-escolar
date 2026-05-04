@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     azure_allowed_onprem_ous: str = ""
     azure_admin_onprem_ous: str = ""
     azure_technician_onprem_ous: str = ""
+    # 0 disables automatic background import. Use e.g. 60 to sync hourly.
+    azure_sync_interval_minutes: int = 0
 
     # JWT
     jwt_algorithm: str = "HS256"

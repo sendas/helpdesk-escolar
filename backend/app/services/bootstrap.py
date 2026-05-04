@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.category import Category
@@ -15,6 +15,7 @@ DEFAULT_CATEGORIES = [
     {
         "name": "Inovar",
         "description": "Pedidos relacionados com a plataforma Inovar",
+        "email_to": "",
         "color": "#3D52D5",
         "icon": "school",
         "sla_hours": 24,
@@ -22,6 +23,7 @@ DEFAULT_CATEGORIES = [
     {
         "name": "Apoio Técnico",
         "description": "Equipamentos, rede, contas e suporte informático",
+        "email_to": "",
         "color": "#0D9488",
         "icon": "build",
         "sla_hours": 24,
@@ -30,6 +32,8 @@ DEFAULT_CATEGORIES = [
 
 
 async def ensure_defaults(db: AsyncSession) -> None:
+    await ensure_schema(db)
+
     for data in DEFAULT_SCHOOLS:
         exists = await db.execute(select(School).where(School.name == data["name"]))
         if not exists.scalar_one_or_none():
@@ -41,3 +45,11 @@ async def ensure_defaults(db: AsyncSession) -> None:
             db.add(Category(**data))
 
     await db.commit()
+
+
+async def ensure_schema(db: AsyncSession) -> None:
+    result = await db.execute(text("PRAGMA table_info(categories)"))
+    category_columns = {row[1] for row in result.fetchall()}
+    if "email_to" not in category_columns:
+        await db.execute(text("ALTER TABLE categories ADD COLUMN email_to VARCHAR(200)"))
+        await db.commit()

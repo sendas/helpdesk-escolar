@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import asyncio
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +20,26 @@ async def lifespan(app: FastAPI):
     from app.services.bootstrap import ensure_defaults
     async with AsyncSessionLocal() as db:
         await ensure_defaults(db)
+    sync_task = None
+    if settings.azure_sync_interval_minutes > 0:
+        sync_task = asyncio.create_task(_sync_azure_periodically())
     yield
+    if sync_task:
+        sync_task.cancel()
+
+
+async def _sync_azure_periodically() -> None:
+    from app.database import AsyncSessionLocal
+    from app.services import azure_import
+
+    interval = max(settings.azure_sync_interval_minutes, 5) * 60
+    while True:
+        await asyncio.sleep(interval)
+        async with AsyncSessionLocal() as db:
+            try:
+                await azure_import.import_azure_users(db)
+            except Exception:
+                pass
 
 
 app = FastAPI(

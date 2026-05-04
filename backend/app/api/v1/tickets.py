@@ -51,6 +51,19 @@ async def create_ticket(
         "created",
         {"id": ticket.id, "title": ticket.title, "category": ticket.category.name, "priority": ticket.priority.value},
     )
+    if ticket.category.email_to:
+        await email_service.send_ticket_notification(
+            ticket.category.email_to,
+            "created",
+            {
+                "id": ticket.id,
+                "title": ticket.title,
+                "category": ticket.category.name,
+                "priority": ticket.priority.value,
+                "requester": current_user.display_name,
+                "school": ticket.school.name if ticket.school else "",
+            },
+        )
     return ticket
 
 
@@ -165,4 +178,27 @@ async def add_comment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and ticket.creator_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    return await ticket_service.add_comment(db, ticket, data, current_user)
+    comment = await ticket_service.add_comment(db, ticket, data, current_user)
+    if not data.is_internal and current_user.id != ticket.creator_id:
+        await email_service.send_ticket_notification(
+            ticket.creator.email,
+            "commented",
+            {
+                "id": ticket.id,
+                "title": ticket.title,
+                "author": current_user.display_name,
+                "comment": data.body,
+            },
+        )
+    elif current_user.id == ticket.creator_id and ticket.assignee and ticket.assignee.email:
+        await email_service.send_ticket_notification(
+            ticket.assignee.email,
+            "commented",
+            {
+                "id": ticket.id,
+                "title": ticket.title,
+                "author": current_user.display_name,
+                "comment": data.body,
+            },
+        )
+    return comment

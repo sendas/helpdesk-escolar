@@ -221,7 +221,7 @@
     </div>
 
     <!-- Categories -->
-    <div v-if="tab === 'categories'" class="hd-card" style="padding:28px;max-width:700px">
+    <div v-if="tab === 'categories'" class="hd-card" style="padding:28px;max-width:980px">
       <div class="hd-row" style="margin-bottom:20px">
         <div style="font-weight:600;font-size:15px">Categorias e SLAs</div>
         <div class="hd-spacer"></div>
@@ -231,7 +231,7 @@
       </div>
       <div v-if="loadingCats" style="color:var(--c-muted)">A carregar...</div>
       <table v-else class="hd-table">
-        <thead><tr><th>ÍCONE</th><th>NOME</th><th>DESCRIÇÃO</th><th>SLA</th><th></th></tr></thead>
+        <thead><tr><th>ÍCONE</th><th>NOME</th><th>DESCRIÇÃO</th><th>EMAIL</th><th>SLA</th><th></th></tr></thead>
         <tbody>
           <tr v-for="cat in categories" :key="cat.id">
             <td>
@@ -242,6 +242,15 @@
             </td>
             <td style="font-weight:500">{{ cat.name }}</td>
             <td style="font-size:12px;color:var(--c-muted)">{{ cat.description }}</td>
+            <td style="min-width:220px">
+              <input
+                class="hd-input"
+                style="padding:5px 8px;font-size:12px"
+                v-model="cat.email_to"
+                placeholder="email@escola.pt"
+                @change="saveCategoryEmail(cat)"
+              />
+            </td>
             <td style="font-weight:600">{{ cat.sla_hours }}h</td>
             <td>
               <button class="hd-icon-btn" @click="deleteCategory(cat.id)" title="Eliminar">
@@ -250,7 +259,7 @@
             </td>
           </tr>
           <tr v-if="!categories.length">
-            <td colspan="5" style="text-align:center;color:var(--c-muted);padding:32px">Sem categorias.</td>
+            <td colspan="6" style="text-align:center;color:var(--c-muted);padding:32px">Sem categorias.</td>
           </tr>
         </tbody>
       </table>
@@ -271,6 +280,10 @@
         <div class="hd-field" style="margin-bottom:12px">
           <label class="hd-label">Descrição</label>
           <input class="hd-input" v-model="newCat.description" placeholder="Breve descrição da categoria" />
+        </div>
+        <div class="hd-field" style="margin-bottom:12px">
+          <label class="hd-label">Email de notificação</label>
+          <input class="hd-input" v-model="newCat.email_to" placeholder="ex: inovar@escola.pt" />
         </div>
         <div class="hd-grid-2" style="margin-bottom:16px">
           <div class="hd-field">
@@ -298,7 +311,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { createCategory, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteSchool as apiDeleteSchool, getCategories, getSchools } from '../../api/tickets'
+import { createCategory, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteSchool as apiDeleteSchool, getCategories, getSchools, updateCategory as apiUpdateCategory } from '../../api/tickets'
 import { getPublicSettings, updateSettings } from '../../api/settings'
 
 const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools'>('general')
@@ -325,7 +338,7 @@ const notifications = ref([
   { key: 'ticket_resolved', label: 'Ticket resolvido', desc: 'Notifica o solicitante quando o ticket é resolvido', enabled: true },
 ])
 
-const newCat = ref({ name: '', description: '', icon: 'help', color: '#3D52D5', sla_hours: 24 })
+const newCat = ref({ name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 24 })
 const newSchool = ref({ name: '', short_name: '', address: '' })
 
 onMounted(async () => {
@@ -372,7 +385,15 @@ async function createCat() {
     const cat = await createCategory({ ...newCat.value })
     categories.value.push(cat)
     showNewCat.value = false
-    newCat.value = { name: '', description: '', icon: 'help', color: '#3D52D5', sla_hours: 24 }
+    newCat.value = { name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 24 }
+  } catch { /* ignore */ }
+}
+
+async function saveCategoryEmail(cat: any) {
+  try {
+    const updated = await apiUpdateCategory(cat.id, { email_to: cat.email_to || '' })
+    const idx = categories.value.findIndex(c => c.id === cat.id)
+    if (idx !== -1) categories.value[idx] = { ...categories.value[idx], ...updated }
   } catch { /* ignore */ }
 }
 

@@ -144,7 +144,7 @@ onMounted(async () => {
   const [cats, schs, users] = await Promise.all([getCategories(), getSchools(), getUsers()])
   categories.value = cats
   schools.value = schs
-  staffUsers.value = users.filter((u: any) => u.role === 'technician' || u.role === 'admin')
+  staffUsers.value = users.filter((u: any) => u.is_active && (u.role === 'technician' || u.role === 'admin'))
   await load()
 })
 
@@ -173,7 +173,7 @@ async function changeStatus(ticket: any, status: string) {
 async function changeAssignee(ticket: any, val: string) {
   const assignee_id = val ? Number(val) : null
   try {
-    const updated = await adminUpdateTicket(ticket.id, { assignee_id: assignee_id ?? undefined })
+    const updated = await adminUpdateTicket(ticket.id, { assignee_id })
     const idx = tickets.value.findIndex(t => t.id === ticket.id)
     if (idx !== -1) tickets.value[idx] = { ...tickets.value[idx], ...updated }
   } catch { await load() }

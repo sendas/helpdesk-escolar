@@ -116,11 +116,21 @@
 
             <div class="hd-detail-row">
               <div class="hd-detail-label">Atribuído a</div>
-              <div v-if="auth.isStaff">
-                <select class="hd-select" style="font-size:12px;padding:4px 8px" v-model="assigneeId" @change="onAssigneeChange">
-                  <option :value="null">— Não atribuído</option>
-                  <option v-for="u in staffUsers" :key="u.id" :value="u.id">{{ u.display_name }}</option>
-                </select>
+              <div v-if="auth.isStaff" class="hd-row" style="gap:6px;align-items:center">
+                <input
+                  class="hd-input"
+                  style="font-size:12px;padding:5px 8px;min-width:220px"
+                  v-model="assigneeSearch"
+                  list="ticket-assignees"
+                  placeholder="Pesquisar técnico ou administrador"
+                  @change="onAssigneeSearchChange"
+                />
+                <datalist id="ticket-assignees">
+                  <option v-for="u in staffUsers" :key="u.id" :value="userOptionLabel(u)" />
+                </datalist>
+                <button class="hd-icon-btn" title="Remover atribuição" @click="clearAssignee">
+                  <span class="material-icons" style="font-size:15px">close</span>
+                </button>
               </div>
               <div v-else style="font-size:13px">
                 {{ ticket.assignee ? ticket.assignee.display_name : '—' }}
@@ -203,6 +213,7 @@ const commenting = ref(false)
 const commentError = ref('')
 const staffUsers = ref<any[]>([])
 const assigneeId = ref<number | null>(null)
+const assigneeSearch = ref('')
 const ticketStatus = ref('')
 
 const statusOpts = [
@@ -229,7 +240,7 @@ onMounted(async () => {
   await load()
   if (auth.isStaff) {
     const users = await getUsers()
-    staffUsers.value = users.filter((u: any) => u.role === 'technician' || u.role === 'admin')
+    staffUsers.value = users.filter((u: any) => u.is_active && (u.role === 'technician' || u.role === 'admin'))
   }
 })
 
@@ -237,6 +248,7 @@ async function load() {
   const t = await getTicket(Number(route.params.id))
   ticket.value = t
   assigneeId.value = t.assignee?.id ?? null
+  assigneeSearch.value = t.assignee ? userOptionLabel(t.assignee) : ''
   ticketStatus.value = t.status
 }
 
@@ -265,9 +277,30 @@ async function onStatusChange() {
 
 async function onAssigneeChange() {
   try {
-    await adminUpdateTicket(ticket.value.id, { assignee_id: assigneeId.value ?? undefined })
+    await adminUpdateTicket(ticket.value.id, { assignee_id: assigneeId.value })
     await load()
   } catch { assigneeId.value = ticket.value.assignee?.id ?? null }
+}
+
+async function onAssigneeSearchChange() {
+  const selected = staffUsers.value.find((u: any) => userOptionLabel(u) === assigneeSearch.value)
+  if (!selected) {
+    assigneeSearch.value = ticket.value.assignee ? userOptionLabel(ticket.value.assignee) : ''
+    return
+  }
+  assigneeId.value = selected.id
+  await onAssigneeChange()
+}
+
+async function clearAssignee() {
+  assigneeId.value = null
+  assigneeSearch.value = ''
+  await onAssigneeChange()
+}
+
+function userOptionLabel(u: any) {
+  const role = u.role === 'admin' ? 'Administrador' : 'Técnico'
+  return `${u.display_name} — ${u.email} (${role})`
 }
 
 function statusLabel(s: string) {

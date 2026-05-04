@@ -70,9 +70,9 @@ async def list_tickets(
 async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) -> Ticket:
     if data.status is not None:
         ticket.status = data.status
-    if data.assignee_id is not None:
+    if "assignee_id" in data.model_fields_set:
         ticket.assignee_id = data.assignee_id
-        if ticket.status == TicketStatus.OPEN:
+        if data.assignee_id is not None and ticket.status == TicketStatus.OPEN:
             ticket.status = TicketStatus.ASSIGNED
     if data.priority is not None:
         ticket.priority = data.priority

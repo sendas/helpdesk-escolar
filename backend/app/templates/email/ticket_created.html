@@ -6,11 +6,13 @@
     <h2 style="margin:0">Novo Ticket Criado</h2>
   </div>
   <div style="padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 4px 4px;">
-    <p>O seu ticket foi criado com sucesso.</p>
+    <p>{% if requester %}Foi criado um novo ticket para a categoria configurada.{% else %}O seu ticket foi criado com sucesso.{% endif %}</p>
     <table style="width:100%; border-collapse: collapse;">
       <tr><td style="padding:8px; font-weight:bold; width:30%">Ticket #</td><td style="padding:8px">{{ id }}</td></tr>
       <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Título</td><td style="padding:8px">{{ title }}</td></tr>
       <tr><td style="padding:8px; font-weight:bold">Categoria</td><td style="padding:8px">{{ category }}</td></tr>
+      {% if requester %}<tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Solicitante</td><td style="padding:8px">{{ requester }}</td></tr>{% endif %}
+      {% if school %}<tr><td style="padding:8px; font-weight:bold">Escola</td><td style="padding:8px">{{ school }}</td></tr>{% endif %}
       <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Prioridade</td><td style="padding:8px">{{ priority }}</td></tr>
       <tr><td style="padding:8px; font-weight:bold">Estado</td><td style="padding:8px">Aberto</td></tr>
     </table>

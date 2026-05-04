@@ -63,7 +63,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
             if department and user.department != department:
                 user.department = department
                 changed = True
-            if user.role == UserRole.TEACHER and imported_role != UserRole.TEACHER:
+            if not azure_access.is_email_admin(user.email) and user.role != imported_role:
                 user.role = imported_role
                 changed = True
             if changed:
