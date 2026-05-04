@@ -17,3 +17,8 @@ export async function updateUser(id: number, payload: { role?: string; is_active
   const { data } = await api.patch<UserFull>(`/api/v1/users/${id}`, payload)
   return data
 }
+
+export async function importAzureUsers() {
+  const { data } = await api.post<{ created: number; updated: number; skipped: number; total: number }>('/api/v1/users/import-azure')
+  return data
+}

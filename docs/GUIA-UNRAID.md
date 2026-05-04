@@ -114,7 +114,16 @@ AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 AZURE_CLIENT_SECRET=segredo-da-aplicacao
 AZURE_REDIRECT_URI=https://sendas.tplinkdns.com/api/v1/auth/azure-callback
+AZURE_ADMIN_EMAILS=admin@escola.pt
 ```
+
+Para importar todos os utilizadores do Microsoft Entra ID na página **Administração → Utilizadores**, dá também à App Registration esta permissão:
+
+1. **API permissions** → **Add a permission**
+2. **Microsoft Graph**
+3. **Application permissions**
+4. Pesquisa e adiciona `User.Read.All`
+5. Clica em **Grant admin consent**
 
 **Para guardar e sair do nano:**
 - `Ctrl + O` → Enter (guarda)

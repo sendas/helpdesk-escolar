@@ -5,9 +5,14 @@
       <div class="hd-spacer"></div>
       <div class="hd-row" style="gap:6px;font-size:12px;color:var(--c-muted);background:var(--c-surface);border:1px solid var(--c-border);border-radius:6px;padding:4px 10px">
         <span class="material-icons" style="font-size:14px;color:#3D52D5">sync</span>
-        Sincronizado com AD ·
-        <span style="color:#3D52D5;font-weight:500;cursor:pointer" @click="syncAD">Sincronizar agora</span>
+        Sincronizado com Entra ID ·
+        <span style="color:#3D52D5;font-weight:500;cursor:pointer" @click="syncEntra">
+          {{ syncing ? 'A sincronizar...' : 'Sincronizar agora' }}
+        </span>
       </div>
+    </div>
+    <div v-if="syncMessage" style="font-size:13px;color:var(--c-muted);margin:-12px 0 16px">
+      {{ syncMessage }}
     </div>
 
     <!-- Tabs -->
@@ -122,7 +127,7 @@
     <!-- Departments tab -->
     <div v-if="tab === 'departments'" class="hd-card" style="padding:28px">
       <div style="font-weight:600;font-size:15px;margin-bottom:4px">Departamentos</div>
-      <div style="font-size:13px;color:var(--c-muted);margin-bottom:20px">Grupos e departamentos importados do Active Directory.</div>
+      <div style="font-size:13px;color:var(--c-muted);margin-bottom:20px">Departamentos importados do Microsoft Entra ID.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
         <div
           v-for="dept in departments"
@@ -147,11 +152,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { getUsers, updateUser } from '../../api/users'
+import { getUsers, importAzureUsers, updateUser } from '../../api/users'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 
 const users = ref<any[]>([])
 const loading = ref(false)
+const syncing = ref(false)
+const syncMessage = ref('')
 const tab = ref<'users' | 'permissions' | 'departments'>('users')
 const search = ref('')
 const filterRole = ref('')
@@ -204,7 +211,20 @@ async function toggleActive(user: any) {
   } catch { /* ignore */ }
 }
 
-function syncAD() { /* placeholder */ }
+async function syncEntra() {
+  if (syncing.value) return
+  syncing.value = true
+  syncMessage.value = ''
+  try {
+    const result = await importAzureUsers()
+    users.value = await getUsers()
+    syncMessage.value = `Importação concluída: ${result.created} criado(s), ${result.updated} atualizado(s), ${result.skipped} ignorado(s).`
+  } catch (e: any) {
+    syncMessage.value = e?.response?.data?.detail || 'Não foi possível importar utilizadores do Entra ID.'
+  } finally {
+    syncing.value = false
+  }
+}
 
 function authLabel(p: string) {
   return ({ ldap: 'LDAP', azure: 'Azure AD', demo: 'Demo' } as Record<string, string>)[p] ?? p

@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, get_current_user, require_admin
 from app.models.user import User
 from app.schemas.user import UserRead, UserUpdate
+from app.services import azure_import
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -20,6 +21,17 @@ async def list_users(
 ):
     result = await db.execute(select(User).order_by(User.display_name))
     return result.scalars().all()
+
+
+@router.post("/import-azure")
+async def import_users_from_azure(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    try:
+        return await azure_import.import_azure_users(db)
+    except azure_import.AzureImportError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.patch("/{user_id}", response_model=UserRead)
