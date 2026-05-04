@@ -33,19 +33,32 @@ async def import_azure_users(db: AsyncSession) -> dict:
     created = 0
     updated = 0
     skipped = 0
+    skipped_guests = 0
+    skipped_disabled = 0
+    skipped_outside_ou = 0
+    skipped_without_email = 0
+    role_changes = 0
+    manual_locked = 0
 
     for item in users:
-        if item.get("userType") == "Guest" or item.get("accountEnabled") is False:
+        if item.get("userType") == "Guest":
+            skipped_guests += 1
+            skipped += 1
+            continue
+        if item.get("accountEnabled") is False:
+            skipped_disabled += 1
             skipped += 1
             continue
 
         onprem_dn = item.get("onPremisesDistinguishedName")
         if not azure_access.is_allowed_onprem_user(onprem_dn):
+            skipped_outside_ou += 1
             skipped += 1
             continue
 
         email = item.get("mail") or item.get("userPrincipalName")
         if not email:
+            skipped_without_email += 1
             skipped += 1
             continue
 
@@ -53,6 +66,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
         display_name = item.get("displayName") or email
         department = item.get("department") or None
         imported_role = azure_access.role_from_onprem_user(onprem_dn)
+        onprem_path = azure_access.dn_to_path(onprem_dn) or None
         user = by_email.get(email.lower())
 
         if user:
@@ -63,8 +77,18 @@ async def import_azure_users(db: AsyncSession) -> dict:
             if department and user.department != department:
                 user.department = department
                 changed = True
-            if user.role == UserRole.TEACHER and imported_role != UserRole.TEACHER:
+            if user.onprem_dn != onprem_dn:
+                user.onprem_dn = onprem_dn
+                changed = True
+            if user.onprem_path != onprem_path:
+                user.onprem_path = onprem_path
+                changed = True
+            if user.role_locked:
+                manual_locked += 1
+            elif user.role != imported_role:
                 user.role = imported_role
+                user.role_source = "entra"
+                role_changes += 1
                 changed = True
             if changed:
                 updated += 1
@@ -77,6 +101,10 @@ async def import_azure_users(db: AsyncSession) -> dict:
             display_name=display_name,
             department=department,
             role=imported_role,
+            role_source="entra",
+            role_locked=False,
+            onprem_dn=onprem_dn,
+            onprem_path=onprem_path,
             auth_provider="azure",
             is_active=True,
         )
@@ -85,7 +113,18 @@ async def import_azure_users(db: AsyncSession) -> dict:
         created += 1
 
     await db.commit()
-    return {"created": created, "updated": updated, "skipped": skipped, "total": len(users)}
+    return {
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "total": len(users),
+        "role_changes": role_changes,
+        "manual_locked": manual_locked,
+        "skipped_guests": skipped_guests,
+        "skipped_disabled": skipped_disabled,
+        "skipped_outside_ou": skipped_outside_ou,
+        "skipped_without_email": skipped_without_email,
+    }
 
 
 def _get_graph_token() -> str:

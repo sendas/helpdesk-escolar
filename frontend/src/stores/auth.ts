@@ -9,7 +9,7 @@ interface User {
   email: string
   display_name: string
   department?: string
-  role: 'teacher' | 'technician' | 'admin'
+  role: 'teacher' | 'non_teaching' | 'secretary' | 'technician' | 'admin'
   auth_provider: string
 }
 

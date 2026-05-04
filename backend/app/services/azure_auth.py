@@ -56,6 +56,8 @@ async def exchange_code_for_user(code: str) -> dict | None:
         "display_name": profile.get("displayName", ""),
         "is_admin": is_admin,
         "role": role,
+        "onprem_dn": onprem_dn,
+        "onprem_path": azure_access.dn_to_path(onprem_dn) or None,
         "auth_provider": "azure",
     }
 

@@ -1,7 +1,7 @@
 <template>
-  <div style="display:flex;min-height:100vh;background:var(--c-bg)">
+  <div class="app-shell">
     <!-- Sidebar -->
-    <aside class="hd-sidebar" style="position:fixed;top:0;left:0;height:100vh;z-index:20">
+    <aside class="hd-sidebar app-sidebar">
       <div class="hd-sidebar-logo">
         <img v-if="settings.logo_url" class="hd-sidebar-logo-img" :src="settings.logo_url" alt="" />
         <div v-else class="hd-sidebar-logo-icon"></div>
@@ -58,7 +58,7 @@
     </aside>
 
     <!-- Main -->
-    <div style="margin-left:260px;flex:1;display:flex;flex-direction:column;min-width:0">
+    <div class="app-main">
       <!-- Header -->
       <header class="hd-header">
         <div class="hd-header-title">{{ pageTitle }}</div>
@@ -70,10 +70,28 @@
           <button class="hd-icon-btn" @click="auth.toggleDark()" :title="auth.isDark ? 'Modo claro' : 'Modo escuro'">
             <span class="material-icons">{{ auth.isDark ? 'light_mode' : 'dark_mode' }}</span>
           </button>
-          <button class="hd-icon-btn">
-            <span class="material-icons">notifications</span>
-            <span class="hd-notif-dot"></span>
-          </button>
+          <div class="notif-wrap" @click.stop>
+            <button class="hd-icon-btn" @click="showNotifications = !showNotifications" title="Notificações" type="button">
+              <span class="material-icons">notifications</span>
+              <span v-if="notificationCount" class="hd-notif-dot"></span>
+            </button>
+            <div v-if="showNotifications" class="notif-panel">
+              <div class="notif-title">Notificações</div>
+              <router-link class="notif-item" to="/tickets" @click="showNotifications = false">
+                <span class="material-icons">inbox</span>
+                <div>
+                  <strong>{{ openCount }}</strong> ticket{{ openCount !== 1 ? 's' : '' }} aberto{{ openCount !== 1 ? 's' : '' }} nos meus pedidos
+                </div>
+              </router-link>
+              <router-link v-if="auth.isStaff" class="notif-item" to="/admin/tickets" @click="showNotifications = false">
+                <span class="material-icons">manage_search</span>
+                <div>
+                  <strong>{{ adminOpenCount }}</strong> ticket{{ adminOpenCount !== 1 ? 's' : '' }} aberto{{ adminOpenCount !== 1 ? 's' : '' }} na gestão
+                </div>
+              </router-link>
+              <div v-if="!notificationCount" class="notif-empty">Sem notificações novas.</div>
+            </div>
+          </div>
           <AvatarCircle :name="auth.user?.display_name || '?'" size="36" style="cursor:pointer" />
         </div>
       </header>
@@ -87,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getTickets } from '../api/tickets'
@@ -100,12 +118,21 @@ const router = useRouter()
 const search = ref('')
 const openCount = ref(0)
 const adminOpenCount = ref(0)
+const showNotifications = ref(false)
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '' })
 
 const roleLabel = computed(() => {
-  const map: Record<string, string> = { teacher: 'Docente', technician: 'Técnico', admin: 'Administrador' }
+  const map: Record<string, string> = {
+    teacher: 'Docente',
+    non_teaching: 'Não docente',
+    secretary: 'Secretaria',
+    technician: 'Técnico',
+    admin: 'Administrador',
+  }
   return map[auth.user?.role ?? ''] ?? ''
 })
+
+const notificationCount = computed(() => openCount.value + (auth.isStaff ? adminOpenCount.value : 0))
 
 const titleMap: Record<string, string> = {
   '/dashboard': 'Painel inicial',
@@ -128,7 +155,12 @@ function doSearch() {
   if (search.value.trim()) router.push({ path: '/tickets', query: { q: search.value } })
 }
 
+function closeNotifications() {
+  showNotifications.value = false
+}
+
 onMounted(async () => {
+  document.addEventListener('click', closeNotifications)
   try {
     settings.value = await getPublicSettings()
     const d = await getTickets({ page: 1, size: 1, status: 'open' })
@@ -139,4 +171,124 @@ onMounted(async () => {
     }
   } catch { /* ignore */ }
 })
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeNotifications)
+})
 </script>
+
+<style scoped>
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--c-bg);
+}
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 20;
+}
+.app-main {
+  margin-left: 260px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.notif-wrap {
+  position: relative;
+}
+.notif-panel {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  width: min(340px, calc(100vw - 24px));
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: var(--c-surface);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+  z-index: 50;
+  overflow: hidden;
+}
+.notif-title {
+  padding: 14px 16px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--c-border);
+}
+.notif-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 13px 16px;
+  color: var(--c-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 13px;
+}
+.notif-item:hover {
+  background: var(--c-bg);
+}
+.notif-item .material-icons {
+  color: var(--c-primary);
+  font-size: 18px;
+}
+.notif-empty {
+  padding: 18px 16px;
+  color: var(--c-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 820px) {
+  .app-shell {
+    display: block;
+  }
+  .app-sidebar {
+    position: sticky;
+    height: auto;
+    width: 100%;
+  }
+  .app-main {
+    margin-left: 0;
+  }
+  :deep(.hd-sidebar) {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--c-border);
+  }
+  :deep(.hd-nav) {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+  :deep(.hd-nav-section) {
+    display: none;
+  }
+  :deep(.hd-nav-item) {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  :deep(.hd-sidebar-user) {
+    display: none;
+  }
+  :deep(.hd-header) {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  :deep(.hd-header-title) {
+    display: none;
+  }
+  :deep(.hd-search) {
+    flex: 1;
+    min-width: 0;
+  }
+  :deep(.hd-header-actions) {
+    gap: 6px;
+  }
+}
+</style>

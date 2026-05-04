@@ -28,10 +28,18 @@ async def get_or_create_user(db: AsyncSession, info: dict) -> User:
 
     if user:
         user.last_login = datetime.utcnow()
-        if info.get("is_admin") and user.role != UserRole.ADMIN:
+        if info.get("onprem_dn") is not None:
+            user.onprem_dn = info.get("onprem_dn")
+        if info.get("onprem_path") is not None:
+            user.onprem_path = info.get("onprem_path")
+        if user.role_locked:
+            pass
+        elif info.get("is_admin") and user.role != UserRole.ADMIN:
             user.role = UserRole.ADMIN
-        elif user.role == UserRole.TEACHER and info.get("role") and info["role"] != UserRole.TEACHER:
+            user.role_source = "entra"
+        elif info.get("role") and user.role != info["role"]:
             user.role = info["role"]
+            user.role_source = "entra"
         await db.commit()
         return user
 
@@ -41,6 +49,10 @@ async def get_or_create_user(db: AsyncSession, info: dict) -> User:
         email=info["email"],
         display_name=info["display_name"],
         role=UserRole.ADMIN if info.get("is_admin") else role,
+        role_source="entra" if info["auth_provider"] == "azure" else info["auth_provider"],
+        role_locked=False,
+        onprem_dn=info.get("onprem_dn"),
+        onprem_path=info.get("onprem_path"),
         auth_provider=info["auth_provider"],
         last_login=datetime.utcnow(),
     )

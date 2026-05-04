@@ -23,6 +23,10 @@ def role_from_onprem_user(onprem_dn: str | None, fallback: UserRole = UserRole.T
         return UserRole.ADMIN
     if _matches_any_path(onprem_dn, _csv(settings.azure_technician_onprem_ous)):
         return UserRole.TECHNICIAN
+    if _matches_any_path(onprem_dn, _csv(settings.azure_secretary_onprem_ous)):
+        return UserRole.SECRETARY
+    if _matches_any_path(onprem_dn, _csv(settings.azure_non_teaching_onprem_ous)):
+        return UserRole.NON_TEACHING
     return fallback
 
 
@@ -33,13 +37,15 @@ def _csv(value: str) -> set[str]:
 def _matches_any_path(onprem_dn: str | None, allowed_paths: set[str]) -> bool:
     if not onprem_dn or not allowed_paths:
         return False
-    user_path = _dn_to_path(onprem_dn)
+    user_path = dn_to_path(onprem_dn)
     if not user_path:
         return False
     return any(user_path == path or user_path.startswith(f"{path}/") for path in allowed_paths)
 
 
-def _dn_to_path(dn: str) -> str:
+def dn_to_path(dn: str | None) -> str:
+    if not dn:
+        return ""
     dc_parts: list[str] = []
     ou_parts: list[str] = []
 

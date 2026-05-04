@@ -52,7 +52,7 @@ async def list_tickets(
         selectinload(Ticket.category),
         selectinload(Ticket.school),
     )
-    if user.role == UserRole.TEACHER:
+    if user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
         query = query.where(Ticket.creator_id == user.id)
     if status:
         query = query.where(Ticket.status == status)

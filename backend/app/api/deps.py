@@ -28,7 +28,7 @@ async def get_current_user(
 
 async def require_staff(user: User = Depends(get_current_user)) -> User:
     """Technician or Admin."""
-    if user.role == UserRole.TEACHER:
+    if user.role not in {UserRole.TECHNICIAN, UserRole.ADMIN}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff access required")
     return user
 

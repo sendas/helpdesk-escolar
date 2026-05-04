@@ -99,8 +99,9 @@ async def admin_stats(
     # counts
     user_count = (await db.execute(select(func.count()).select_from(UserModel))).scalar_one()
     category_count = len(cats)
+    staff_roles = [UserRole.TECHNICIAN, UserRole.ADMIN]
     staff_count = (await db.execute(
-        select(func.count()).select_from(UserModel).where(UserModel.role != UserRole.TEACHER)
+        select(func.count()).select_from(UserModel).where(UserModel.role.in_(staff_roles))
     )).scalar_one()
 
     # weekly (last 4 weeks)
@@ -123,7 +124,7 @@ async def admin_stats(
 
     # by assignee
     staff_users = (await db.execute(
-        select(UserModel).where(UserModel.role != UserRole.TEACHER)
+        select(UserModel).where(UserModel.role.in_(staff_roles))
     )).scalars().all()
     by_assignee = []
     for u in staff_users:

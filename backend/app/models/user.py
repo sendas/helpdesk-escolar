@@ -7,6 +7,8 @@ from app.database import Base
 
 class UserRole(str, enum.Enum):
     TEACHER = "teacher"
+    NON_TEACHING = "non_teaching"
+    SECRETARY = "secretary"
     TECHNICIAN = "technician"
     ADMIN = "admin"
 
@@ -20,6 +22,10 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(200))
     department: Mapped[str | None] = mapped_column(String(100), nullable=True)
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), default=UserRole.TEACHER)
+    role_source: Mapped[str] = mapped_column(String(20), default="entra")
+    role_locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    onprem_dn: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    onprem_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     auth_provider: Mapped[str] = mapped_column(String(20), default="ldap")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

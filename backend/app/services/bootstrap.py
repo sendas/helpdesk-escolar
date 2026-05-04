@@ -53,3 +53,20 @@ async def ensure_schema(db: AsyncSession) -> None:
     if "email_to" not in category_columns:
         await db.execute(text("ALTER TABLE categories ADD COLUMN email_to VARCHAR(200)"))
         await db.commit()
+
+    result = await db.execute(text("PRAGMA table_info(users)"))
+    user_columns = {row[1] for row in result.fetchall()}
+    user_migrations = [
+        ("role_source", "ALTER TABLE users ADD COLUMN role_source VARCHAR(20) DEFAULT 'entra'"),
+        ("role_locked", "ALTER TABLE users ADD COLUMN role_locked BOOLEAN DEFAULT 0"),
+        ("onprem_dn", "ALTER TABLE users ADD COLUMN onprem_dn VARCHAR(500)"),
+        ("onprem_path", "ALTER TABLE users ADD COLUMN onprem_path VARCHAR(500)"),
+    ]
+    changed = False
+    for column, statement in user_migrations:
+        if column not in user_columns:
+            await db.execute(text(statement))
+            changed = True
+    if changed:
+        await db.execute(text("UPDATE users SET role_source = 'manual', role_locked = 1 WHERE role = 'ADMIN'"))
+        await db.commit()
