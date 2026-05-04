@@ -1,6 +1,7 @@
 import msal
 import httpx
 from app.config import settings
+from app.services import azure_access
 
 
 def get_msal_app() -> msal.ConfidentialClientApplication:
@@ -34,7 +35,7 @@ async def exchange_code_for_user(code: str) -> dict | None:
 
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            "https://graph.microsoft.com/v1.0/me",
+            "https://graph.microsoft.com/v1.0/me?$select=displayName,mail,userPrincipalName,onPremisesDistinguishedName",
             headers={"Authorization": f"Bearer {access_token}"},
         )
         if resp.status_code != 200:
@@ -42,22 +43,21 @@ async def exchange_code_for_user(code: str) -> dict | None:
         profile = resp.json()
 
     email = profile.get("mail") or profile.get("userPrincipalName", "")
-    is_admin = await _check_admin_group(access_token) or _is_admin_email(email)
+    onprem_dn = profile.get("onPremisesDistinguishedName")
+    if not azure_access.is_allowed_onprem_user(onprem_dn):
+        return None
+
+    role = azure_access.role_from_onprem_user(onprem_dn)
+    is_admin = await _check_admin_group(access_token) or azure_access.is_email_admin(email) or role.value == "admin"
 
     return {
         "username": (profile.get("userPrincipalName") or "").split("@")[0],
         "email": email,
         "display_name": profile.get("displayName", ""),
         "is_admin": is_admin,
+        "role": role,
         "auth_provider": "azure",
     }
-
-
-def _is_admin_email(email: str) -> bool:
-    if not email or not settings.azure_admin_emails:
-        return False
-    allowed = {item.strip().lower() for item in settings.azure_admin_emails.split(",") if item.strip()}
-    return email.lower() in allowed
 
 
 async def _check_admin_group(access_token: str) -> bool:

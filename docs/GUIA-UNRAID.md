@@ -115,6 +115,9 @@ AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 AZURE_CLIENT_SECRET=segredo-da-aplicacao
 AZURE_REDIRECT_URI=https://sendas.tplinkdns.com/api/v1/auth/azure-callback
 AZURE_ADMIN_EMAILS=admin@escola.pt
+AZURE_ALLOWED_ONPREM_OUS=queiroz.local/AEEQ/_Direcao,queiroz.local/AEEQ/_Docentes,queiroz.local/AEEQ/_Nao Docentes,queiroz.local/AEEQ/_Secretaria,queiroz.local/AEEQ/_Suporte
+AZURE_ADMIN_ONPREM_OUS=queiroz.local/AEEQ/_Direcao
+AZURE_TECHNICIAN_ONPREM_OUS=queiroz.local/AEEQ/_Suporte,queiroz.local/AEEQ/_Secretaria
 ```
 
 Para importar todos os utilizadores do Microsoft Entra ID na página **Administração → Utilizadores**, dá também à App Registration esta permissão:

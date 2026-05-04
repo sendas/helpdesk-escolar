@@ -30,14 +30,17 @@ async def get_or_create_user(db: AsyncSession, info: dict) -> User:
         user.last_login = datetime.utcnow()
         if info.get("is_admin") and user.role != UserRole.ADMIN:
             user.role = UserRole.ADMIN
+        elif info.get("role") and user.role == UserRole.TEACHER and info["role"] != UserRole.TEACHER:
+            user.role = info["role"]
         await db.commit()
         return user
 
+    role = info.get("role") or UserRole.TEACHER
     user = User(
         username=info["username"],
         email=info["email"],
         display_name=info["display_name"],
-        role=UserRole.ADMIN if info.get("is_admin") else UserRole.TEACHER,
+        role=UserRole.ADMIN if info.get("is_admin") else role,
         auth_provider=info["auth_provider"],
         last_login=datetime.utcnow(),
     )

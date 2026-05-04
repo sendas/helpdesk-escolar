@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.user import User, UserRole
+from app.services import azure_access
 
 
 GRAPH_USERS_URL = "https://graph.microsoft.com/v1.0/users"
@@ -38,6 +39,11 @@ async def import_azure_users(db: AsyncSession) -> dict:
             skipped += 1
             continue
 
+        onprem_dn = item.get("onPremisesDistinguishedName")
+        if not azure_access.is_allowed_onprem_user(onprem_dn):
+            skipped += 1
+            continue
+
         email = item.get("mail") or item.get("userPrincipalName")
         if not email:
             skipped += 1
@@ -46,6 +52,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
         email = email.strip()
         display_name = item.get("displayName") or email
         department = item.get("department") or None
+        imported_role = azure_access.role_from_onprem_user(onprem_dn)
         user = by_email.get(email.lower())
 
         if user:
@@ -55,6 +62,9 @@ async def import_azure_users(db: AsyncSession) -> dict:
                 changed = True
             if department and user.department != department:
                 user.department = department
+                changed = True
+            if user.role == UserRole.TEACHER and imported_role != UserRole.TEACHER:
+                user.role = imported_role
                 changed = True
             if changed:
                 updated += 1
@@ -66,7 +76,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
             email=email,
             display_name=display_name,
             department=department,
-            role=UserRole.TEACHER,
+            role=imported_role,
             auth_provider="azure",
             is_active=True,
         )
@@ -94,7 +104,7 @@ def _get_graph_token() -> str:
 async def _fetch_graph_users(access_token: str) -> list[dict]:
     headers = {"Authorization": f"Bearer {access_token}"}
     params = {
-        "$select": "id,displayName,mail,userPrincipalName,department,accountEnabled,userType",
+        "$select": "id,displayName,mail,userPrincipalName,department,accountEnabled,userType,onPremisesDistinguishedName",
         "$top": "999",
     }
     users: list[dict] = []

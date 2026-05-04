@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     azure_admin_group_id: str = ""
     # Comma-separated list of Microsoft account emails that should be admins.
     azure_admin_emails: str = ""
+    # Comma-separated AD/Entra OU paths allowed to use the app.
+    # Example: queiroz.local/AEEQ/_Docentes,queiroz.local/AEEQ/_Suporte
+    azure_allowed_onprem_ous: str = ""
+    azure_admin_onprem_ous: str = ""
+    azure_technician_onprem_ous: str = ""
 
     # JWT
     jwt_algorithm: str = "HS256"
