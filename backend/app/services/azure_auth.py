@@ -41,15 +41,23 @@ async def exchange_code_for_user(code: str) -> dict | None:
             return None
         profile = resp.json()
 
-    is_admin = await _check_admin_group(access_token)
+    email = profile.get("mail") or profile.get("userPrincipalName", "")
+    is_admin = await _check_admin_group(access_token) or _is_admin_email(email)
 
     return {
         "username": (profile.get("userPrincipalName") or "").split("@")[0],
-        "email": profile.get("mail") or profile.get("userPrincipalName", ""),
+        "email": email,
         "display_name": profile.get("displayName", ""),
         "is_admin": is_admin,
         "auth_provider": "azure",
     }
+
+
+def _is_admin_email(email: str) -> bool:
+    if not email or not settings.azure_admin_emails:
+        return False
+    allowed = {item.strip().lower() for item in settings.azure_admin_emails.split(",") if item.strip()}
+    return email.lower() in allowed
 
 
 async def _check_admin_group(access_token: str) -> bool:

@@ -5,7 +5,9 @@ COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
 ARG VITE_API_URL
+ARG VITE_LDAP_ENABLED
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_LDAP_ENABLED=$VITE_LDAP_ENABLED
 RUN npm run build
 
 # Stage 2: serve with nginx

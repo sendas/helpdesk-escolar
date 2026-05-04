@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     azure_client_secret: str = ""
     azure_redirect_uri: str = "http://localhost:8089/api/v1/auth/azure-callback"
     azure_admin_group_id: str = ""
+    # Comma-separated list of Microsoft account emails that should be admins.
+    azure_admin_emails: str = ""
 
     # JWT
     jwt_algorithm: str = "HS256"

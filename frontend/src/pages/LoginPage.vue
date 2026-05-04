@@ -31,36 +31,38 @@
           Autenticação via Microsoft Entra ID
         </p>
 
-        <!-- AD Login form -->
-        <div style="display:flex;align-items:center;gap:12px;margin:24px 0 16px">
-          <div style="height:1px;background:var(--c-border);flex:1"></div>
-          <span style="font-size:12px;color:var(--c-muted)">ou Active Directory local</span>
-          <div style="height:1px;background:var(--c-border);flex:1"></div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <input
-            class="hd-input"
-            v-model="username"
-            autocomplete="username"
-            placeholder="Utilizador do domínio"
-            @keyup.enter="onAdLogin"
-          />
-          <input
-            class="hd-input"
-            v-model="password"
-            type="password"
-            autocomplete="current-password"
-            placeholder="Palavra-passe"
-            @keyup.enter="onAdLogin"
-          />
-        </div>
-        <button class="hd-btn hd-btn-dark hd-btn-lg" style="width:100%;justify-content:center;gap:10px;margin-top:12px" :disabled="loading || !username || !password" @click="onAdLogin">
-          <span class="material-icons" style="font-size:18px">shield</span>
-          {{ loading ? 'A autenticar...' : 'Entrar com a conta da escola' }}
-        </button>
-        <p style="text-align:center;font-size:12px;color:var(--c-muted);margin-top:10px">
-          Autenticação via Active Directory/LDAP
-        </p>
+        <template v-if="ldapEnabled">
+          <!-- AD Login form -->
+          <div style="display:flex;align-items:center;gap:12px;margin:24px 0 16px">
+            <div style="height:1px;background:var(--c-border);flex:1"></div>
+            <span style="font-size:12px;color:var(--c-muted)">ou Active Directory local</span>
+            <div style="height:1px;background:var(--c-border);flex:1"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input
+              class="hd-input"
+              v-model="username"
+              autocomplete="username"
+              placeholder="Utilizador do domínio"
+              @keyup.enter="onAdLogin"
+            />
+            <input
+              class="hd-input"
+              v-model="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Palavra-passe"
+              @keyup.enter="onAdLogin"
+            />
+          </div>
+          <button class="hd-btn hd-btn-dark hd-btn-lg" style="width:100%;justify-content:center;gap:10px;margin-top:12px" :disabled="loading || !username || !password" @click="onAdLogin">
+            <span class="material-icons" style="font-size:18px">shield</span>
+            {{ loading ? 'A autenticar...' : 'Entrar com a conta da escola' }}
+          </button>
+          <p style="text-align:center;font-size:12px;color:var(--c-muted);margin-top:10px">
+            Autenticação via Active Directory/LDAP
+          </p>
+        </template>
 
         <!-- Demo mode -->
         <div style="margin-top:32px;padding:16px;border:1px solid var(--c-border);border-radius:12px">
@@ -122,6 +124,7 @@ const error = ref('')
 const username = ref('')
 const password = ref('')
 const demoRole = ref('teacher')
+const ldapEnabled = import.meta.env.VITE_LDAP_ENABLED === 'true'
 
 const demoProfiles = [
   { role: 'teacher', label: 'Docente' },

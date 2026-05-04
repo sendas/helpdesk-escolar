@@ -24,6 +24,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_LDAP_ENABLED: "false"
     restart: unless-stopped
     ports:
       - "85:80"

@@ -11,6 +11,7 @@ export default defineConfig((ctx) => {
       vueRouterMode: 'history',
       env: {
         VITE_API_URL: process.env.VITE_API_URL || '',
+        VITE_LDAP_ENABLED: process.env.VITE_LDAP_ENABLED || process.env.LDAP_ENABLED || 'true',
       },
     },
 
