@@ -5,8 +5,8 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, require_staff, require_admin
 from app.models.user import User
 from app.models.ticket import Ticket, Comment, TicketStatus
-from app.schemas.ticket import TicketRead, TicketUpdate, PaginatedTickets
-from app.services import ticket_service, email_service
+from app.schemas.ticket import TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets
+from app.services import ticket_service, email_service, email_ingest
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -48,6 +48,45 @@ async def admin_list_tickets(
     return {"items": items, "total": total, "page": page, "size": size}
 
 
+@router.patch("/tickets/bulk", response_model=list[TicketRead])
+async def admin_bulk_update_tickets(
+    data: TicketBulkUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    if not data.ids:
+        return []
+
+    result = await db.execute(
+        select(Ticket)
+        .where(Ticket.id.in_(data.ids))
+        .options(
+            selectinload(Ticket.creator),
+            selectinload(Ticket.assignee),
+            selectinload(Ticket.category),
+            selectinload(Ticket.school),
+            selectinload(Ticket.comments).selectinload(Comment.author),
+            selectinload(Ticket.attachments),
+        )
+    )
+    tickets = result.scalars().all()
+    updated_tickets = []
+    for ticket in tickets:
+        prev_assignee_id = ticket.assignee_id
+        updated = await ticket_service.update_ticket(db, ticket, data)
+        updated_tickets.append(updated)
+        await email_service.send_ticket_notification(
+            updated.creator.email, "updated",
+            {"id": updated.id, "title": updated.title, "status": updated.status.value},
+        )
+        if data.assignee_id and data.assignee_id != prev_assignee_id and updated.assignee:
+            await email_service.send_ticket_notification(
+                updated.creator.email, "assigned",
+                {"id": updated.id, "title": updated.title, "assignee": updated.assignee.display_name},
+            )
+    return updated_tickets
+
+
 @router.patch("/tickets/{ticket_id}", response_model=TicketRead)
 async def admin_update_ticket(
     ticket_id: int,
@@ -72,6 +111,14 @@ async def admin_update_ticket(
             {"id": updated.id, "title": updated.title, "assignee": updated.assignee.display_name},
         )
     return updated
+
+
+@router.post("/mail/sync")
+async def admin_sync_mail_replies(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    return await email_ingest.sync_inbound_replies(db, limit=50)
 
 
 @router.get("/stats")

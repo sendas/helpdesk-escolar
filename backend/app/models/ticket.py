@@ -72,3 +72,13 @@ class Attachment(Base):
 
     ticket: Mapped["Ticket"] = relationship("Ticket", back_populates="attachments")
     uploaded_by: Mapped["User"] = relationship("User")
+
+
+class ProcessedEmail(Base):
+    __tablename__ = "processed_emails"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    message_id: Mapped[str] = mapped_column(String(500), unique=True, index=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
+    sender_email: Mapped[str] = mapped_column(String(200))
+    processed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -146,6 +146,21 @@ MAIL_SUPPRESS_SEND=false
 
 Com SMTP ativo, o sistema envia emails quando um ticket e criado, atualizado, atribuido ou recebe uma resposta publica. Tambem podes definir um email em cada categoria para receber automaticamente os novos tickets dessa categoria.
 
+Para permitir que respostas aos emails entrem automaticamente como comentarios no ticket, ativa tambem IMAP no `app.env`:
+
+```
+MAIL_REPLY_ENABLED=true
+IMAP_SERVER=outlook.office365.com
+IMAP_PORT=993
+IMAP_SSL=true
+IMAP_USERNAME=helpdesk@techpro.pt
+IMAP_PASSWORD=password-ou-app-password
+IMAP_FOLDER=INBOX
+IMAP_POLL_SECONDS=120
+```
+
+O sistema procura o numero no assunto do email, por exemplo `[Ticket #123]`, e adiciona a resposta como comentario publico no ticket correspondente.
+
 **Para guardar e sair do nano:**
 - `Ctrl + O` → Enter (guarda)
 - `Ctrl + X` (sai)

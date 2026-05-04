@@ -545,8 +545,19 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
 @media (max-width: 768px) {
   .hd-login-right { display: none; }
   .hd-login-left  { width: 100%; padding: 32px 24px; }
+  .hd-page { padding: 18px 14px; max-width: none; }
   .hd-grid-4 { grid-template-columns: 1fr 1fr; }
-  .hd-grid-3 { grid-template-columns: 1fr 1fr; }
+  .hd-grid-3, .hd-grid-2 { grid-template-columns: 1fr; }
+  h1 { font-size: 22px !important; }
+  .hd-card { border-radius: 8px; }
+  .hd-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .hd-search {
+    width: auto;
+  }
 }
 
 /* ── Quasar overrides (minimal) ─────────────────── */

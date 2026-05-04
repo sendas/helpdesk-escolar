@@ -1,7 +1,21 @@
 <template>
   <div class="app-shell">
+    <header class="mobile-topbar">
+      <div class="mobile-brand">
+        <img v-if="settings.logo_url" class="mobile-logo-img" :src="settings.logo_url" alt="" />
+        <div v-else class="mobile-logo-dot"></div>
+        <div>
+          <div class="mobile-title">{{ settings.org_name }}</div>
+          <div class="mobile-subtitle">{{ pageTitle }}</div>
+        </div>
+      </div>
+      <button class="hd-icon-btn" type="button" @click="mobileMenuOpen = !mobileMenuOpen" title="Menu">
+        <span class="material-icons">{{ mobileMenuOpen ? 'close' : 'menu' }}</span>
+      </button>
+    </header>
+
     <!-- Sidebar -->
-    <aside class="hd-sidebar app-sidebar">
+    <aside class="hd-sidebar app-sidebar" :class="{ open: mobileMenuOpen }">
       <div class="hd-sidebar-logo">
         <img v-if="settings.logo_url" class="hd-sidebar-logo-img" :src="settings.logo_url" alt="" />
         <div v-else class="hd-sidebar-logo-icon"></div>
@@ -13,34 +27,34 @@
 
       <nav class="hd-nav">
         <div class="hd-nav-section">Principal</div>
-        <router-link class="hd-nav-item" :class="{ active: $route.path === '/dashboard' }" to="/dashboard">
+        <router-link class="hd-nav-item" :class="{ active: $route.path === '/dashboard' }" to="/dashboard" @click="mobileMenuOpen = false">
           <span class="material-icons">home</span> Painel inicial
         </router-link>
-        <router-link class="hd-nav-item" :class="{ active: $route.path.startsWith('/tickets') && !$route.path.startsWith('/admin') }" to="/tickets">
+        <router-link class="hd-nav-item" :class="{ active: $route.path.startsWith('/tickets') && !$route.path.startsWith('/admin') }" to="/tickets" @click="mobileMenuOpen = false">
           <span class="material-icons">inbox</span> Os meus tickets
           <span v-if="openCount" class="hd-nav-badge">{{ openCount }}</span>
         </router-link>
-        <router-link class="hd-nav-item" :class="{ active: $route.path === '/tickets/new' }" to="/tickets/new">
+        <router-link class="hd-nav-item" :class="{ active: $route.path === '/tickets/new' }" to="/tickets/new" @click="mobileMenuOpen = false">
           <span class="material-icons" style="font-size:16px">add_circle</span> Novo ticket
         </router-link>
 
         <template v-if="auth.isStaff">
           <div class="hd-nav-section" style="margin-top:8px">Administração</div>
-          <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/tickets' }" to="/admin/tickets">
+          <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/tickets' }" to="/admin/tickets" @click="mobileMenuOpen = false">
             <span class="material-icons">manage_search</span> Gestão de tickets
             <span v-if="adminOpenCount" class="hd-nav-badge">{{ adminOpenCount }}</span>
           </router-link>
-          <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/users' }" to="/admin/users">
+          <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/users' }" to="/admin/users" @click="mobileMenuOpen = false">
             <span class="material-icons">group</span> Utilizadores
           </router-link>
-          <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/stats' }" to="/admin/stats">
+          <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/stats' }" to="/admin/stats" @click="mobileMenuOpen = false">
             <span class="material-icons">bar_chart</span> Estatísticas
           </router-link>
           <template v-if="auth.isAdmin">
-            <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/settings' }" to="/admin/settings">
+            <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/settings' }" to="/admin/settings" @click="mobileMenuOpen = false">
               <span class="material-icons">settings</span> Configurações
             </router-link>
-            <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/backup' }" to="/admin/backup">
+            <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/backup' }" to="/admin/backup" @click="mobileMenuOpen = false">
               <span class="material-icons">database</span> Backup &amp; Restauro
             </router-link>
           </template>
@@ -119,6 +133,7 @@ const search = ref('')
 const openCount = ref(0)
 const adminOpenCount = ref(0)
 const showNotifications = ref(false)
+const mobileMenuOpen = ref(false)
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '' })
 
 const roleLabel = computed(() => {
@@ -197,6 +212,40 @@ onBeforeUnmount(() => {
   flex-direction: column;
   min-width: 0;
 }
+.mobile-topbar {
+  display: none;
+}
+.mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.mobile-logo-img, .mobile-logo-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+.mobile-logo-img {
+  object-fit: contain;
+}
+.mobile-logo-dot {
+  background: var(--c-primary);
+}
+.mobile-title {
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100vw - 112px);
+}
+.mobile-subtitle {
+  color: var(--c-muted);
+  font-size: 12px;
+}
 .notif-wrap {
   position: relative;
 }
@@ -243,42 +292,82 @@ onBeforeUnmount(() => {
 @media (max-width: 820px) {
   .app-shell {
     display: block;
+    padding-top: 58px;
+  }
+  .mobile-topbar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-border);
+    z-index: 80;
   }
   .app-sidebar {
-    position: sticky;
+    position: fixed;
+    top: 58px;
+    left: 0;
+    right: 0;
     height: auto;
     width: 100%;
+    transform: translateY(-120%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .18s ease, opacity .18s ease;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, .18);
+  }
+  .app-sidebar.open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
   }
   .app-main {
     margin-left: 0;
   }
   :deep(.hd-sidebar) {
     width: 100%;
+    min-height: auto;
     border-right: 0;
     border-bottom: 1px solid var(--c-border);
   }
+  :deep(.hd-sidebar-logo) {
+    display: none;
+  }
   :deep(.hd-nav) {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 12px;
+    max-height: calc(100vh - 58px);
+    overflow-y: auto;
   }
   :deep(.hd-nav-section) {
-    display: none;
+    display: block;
+    grid-column: 1 / -1;
+    padding: 10px 4px 2px;
   }
   :deep(.hd-nav-item) {
-    flex: 0 0 auto;
-    white-space: nowrap;
+    min-height: 48px;
+    padding: 10px 12px;
+    white-space: normal;
+    border: 1px solid var(--c-border);
+    background: var(--c-surface);
   }
   :deep(.hd-sidebar-user) {
-    display: none;
+    display: flex;
+    padding: 12px 14px;
   }
   :deep(.hd-header) {
     position: sticky;
-    top: 0;
+    top: 58px;
     z-index: 15;
     gap: 8px;
     padding: 10px 12px;
+    height: auto;
   }
   :deep(.hd-header-title) {
     display: none;
@@ -289,6 +378,9 @@ onBeforeUnmount(() => {
   }
   :deep(.hd-header-actions) {
     gap: 6px;
+  }
+  :deep(.hd-header-actions > .hd-avatar) {
+    display: none;
   }
 }
 </style>

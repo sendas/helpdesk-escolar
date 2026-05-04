@@ -20,6 +20,13 @@ class TicketUpdate(BaseModel):
     priority: TicketPriority | None = None
 
 
+class TicketBulkUpdate(BaseModel):
+    ids: list[int]
+    status: TicketStatus | None = None
+    assignee_id: int | None = None
+    priority: TicketPriority | None = None
+
+
 class CommentCreate(BaseModel):
     body: str
     is_internal: bool = False

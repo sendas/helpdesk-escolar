@@ -49,6 +49,16 @@ export async function adminUpdateTicket(id: number, payload: Partial<{ status: s
   return data
 }
 
+export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: string; assignee_id?: number | null; priority?: string }) {
+  const { data } = await api.patch<TicketDetail[]>('/api/v1/admin/tickets/bulk', payload)
+  return data
+}
+
+export async function syncMailReplies() {
+  const { data } = await api.post<{ processed: number; skipped: number }>('/api/v1/admin/mail/sync')
+  return data
+}
+
 export async function addComment(ticketId: number, body: string, is_internal = false) {
   const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal })
   return data

@@ -65,5 +65,15 @@ class Settings(BaseSettings):
     mail_ssl_tls: bool = False
     mail_suppress_send: bool = False
 
+    # Incoming mail replies
+    mail_reply_enabled: bool = False
+    imap_server: str = ""
+    imap_port: int = 993
+    imap_ssl: bool = True
+    imap_username: str = ""
+    imap_password: str = ""
+    imap_folder: str = "INBOX"
+    imap_poll_seconds: int = 120
+
 
 settings = Settings()

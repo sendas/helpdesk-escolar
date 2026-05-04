@@ -5,7 +5,7 @@
     </div>
     <h1 style="font-size:26px;margin-bottom:24px">Novo pedido</h1>
 
-    <div class="hd-card" style="padding:28px;max-width:800px">
+    <div class="hd-card ticket-create-card">
       <div style="font-weight:600;font-size:15px;margin-bottom:4px">Novo pedido de apoio</div>
       <div style="font-size:13px;color:var(--c-muted);margin-bottom:28px">Descreva o seu pedido — quanto mais detalhe, mais rápida a resolução.</div>
 
@@ -108,7 +108,7 @@
       </div>
 
       <!-- Actions -->
-      <div class="hd-row" style="justify-content:flex-end">
+      <div class="hd-row ticket-actions">
         <router-link to="/tickets">
           <button class="hd-btn hd-btn-outline">Cancelar</button>
         </router-link>
@@ -192,3 +192,39 @@ function formatSize(size: number) {
   return size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.round(size / 1024)} KB`
 }
 </script>
+
+<style scoped>
+.ticket-create-card {
+  padding: 28px;
+  max-width: 800px;
+}
+.ticket-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 820px) {
+  .ticket-create-card {
+    padding: 18px;
+    border-radius: 8px;
+  }
+  .ticket-create-card :deep(.hd-grid-2),
+  .ticket-create-card :deep(.hd-grid-3) {
+    grid-template-columns: 1fr;
+  }
+  .ticket-create-card :deep(.hd-sel-card) {
+    padding: 12px;
+  }
+  .ticket-create-card :deep(.hd-dropzone) {
+    padding: 22px 14px;
+  }
+  .ticket-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .ticket-actions a,
+  .ticket-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style>
