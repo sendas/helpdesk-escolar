@@ -41,6 +41,7 @@ class Ticket(Base):
     category: Mapped["Category"] = relationship("Category", back_populates="tickets")
     school: Mapped["School | None"] = relationship("School", back_populates="tickets")
     comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="ticket", cascade="all, delete-orphan")
+    attachments: Mapped[list["Attachment"]] = relationship("Attachment", back_populates="ticket", cascade="all, delete-orphan")
 
 
 class Comment(Base):
@@ -55,3 +56,19 @@ class Comment(Base):
 
     ticket: Mapped["Ticket"] = relationship("Ticket", back_populates="comments")
     author: Mapped["User"] = relationship("User", back_populates="comments")
+
+
+class Attachment(Base):
+    __tablename__ = "attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    original_name: Mapped[str] = mapped_column(String(255))
+    stored_name: Mapped[str] = mapped_column(String(255), unique=True)
+    content_type: Mapped[str] = mapped_column(String(100))
+    size: Mapped[int]
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
+    uploaded_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+
+    ticket: Mapped["Ticket"] = relationship("Ticket", back_populates="attachments")
+    uploaded_by: Mapped["User"] = relationship("User")

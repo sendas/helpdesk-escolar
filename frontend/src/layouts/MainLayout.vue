@@ -3,9 +3,10 @@
     <!-- Sidebar -->
     <aside class="hd-sidebar" style="position:fixed;top:0;left:0;height:100vh;z-index:20">
       <div class="hd-sidebar-logo">
-        <div class="hd-sidebar-logo-icon"></div>
+        <img v-if="settings.logo_url" class="hd-sidebar-logo-img" :src="settings.logo_url" alt="" />
+        <div v-else class="hd-sidebar-logo-icon"></div>
         <div class="hd-sidebar-logo-text">
-          <div class="hd-sidebar-logo-name">Agrupamento de Escolas<br>Eça de Queirós</div>
+          <div class="hd-sidebar-logo-name">{{ settings.org_name }}</div>
           <div class="hd-sidebar-logo-sub">Helpdesk {{ roleLabel }}</div>
         </div>
       </div>
@@ -90,6 +91,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getTickets } from '../api/tickets'
+import { getPublicSettings } from '../api/settings'
 import AvatarCircle from '../components/AvatarCircle.vue'
 
 const auth = useAuthStore()
@@ -98,6 +100,7 @@ const router = useRouter()
 const search = ref('')
 const openCount = ref(0)
 const adminOpenCount = ref(0)
+const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '' })
 
 const roleLabel = computed(() => {
   const map: Record<string, string> = { teacher: 'Docente', technician: 'Técnico', admin: 'Administrador' }
@@ -127,6 +130,7 @@ function doSearch() {
 
 onMounted(async () => {
   try {
+    settings.value = await getPublicSettings()
     const d = await getTickets({ page: 1, size: 1, status: 'open' })
     openCount.value = d.total
     if (auth.isStaff) {

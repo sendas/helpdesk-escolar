@@ -4,9 +4,10 @@
     <div class="hd-login-left">
       <!-- Logo -->
       <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:auto">
-        <div class="hd-sidebar-logo-icon" style="width:42px;height:42px;border-radius:10px"></div>
+        <img v-if="settings.logo_url" :src="settings.logo_url" alt="" style="width:42px;height:42px;object-fit:contain;border-radius:8px" />
+        <div v-else class="hd-sidebar-logo-icon" style="width:42px;height:42px;border-radius:10px"></div>
         <div>
-          <div style="font-weight:600;font-size:14px;line-height:1.3">Agrupamento de Escolas<br>Eça de Queirós</div>
+          <div style="font-weight:600;font-size:14px;line-height:1.3">{{ settings.org_name }}</div>
           <div style="font-size:12px;color:var(--c-muted);margin-top:2px">Sistema de Helpdesk</div>
         </div>
       </div>
@@ -115,8 +116,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { getPublicSettings } from '../api/settings'
 
 const auth = useAuthStore()
 const loading = ref(false)
@@ -125,6 +127,7 @@ const username = ref('')
 const password = ref('')
 const demoRole = ref('teacher')
 const ldapEnabled = import.meta.env.VITE_LDAP_ENABLED === 'true'
+const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '' })
 
 const demoProfiles = [
   { role: 'teacher', label: 'Docente' },
@@ -137,6 +140,11 @@ const features = [
   { title: 'Integração com Microsoft Entra ID', sub: 'Login institucional com a conta Microsoft' },
   { title: 'Notificações e SLAs configuráveis', sub: 'Cada categoria com o seu prazo' },
 ]
+
+onMounted(async () => {
+  try { settings.value = await getPublicSettings() }
+  catch { /* ignore */ }
+})
 
 function onMicrosoftLogin() {
   error.value = ''

@@ -32,6 +32,7 @@ async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
             selectinload(Ticket.category),
             selectinload(Ticket.school),
             selectinload(Ticket.comments).selectinload(Comment.author),
+            selectinload(Ticket.attachments),
         )
     )
     return result.scalar_one_or_none()

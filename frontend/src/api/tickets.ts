@@ -10,7 +10,8 @@ export interface TicketListItem {
   creator: UserBrief; assignee?: UserBrief; category: Category; school?: School
 }
 export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; author: UserBrief }
-export interface TicketDetail extends TicketListItem { description: string; comments: Comment[] }
+export interface Attachment { id: number; original_name: string; content_type: string; size: number; created_at: string }
+export interface TicketDetail extends TicketListItem { description: string; comments: Comment[]; attachments: Attachment[] }
 export interface PaginatedTickets { items: TicketListItem[]; total: number; page: number; size: number }
 
 export async function getTickets(params: { page?: number; size?: number; status?: string; category_id?: number; school_id?: number; priority?: string; admin?: boolean }) {
@@ -26,8 +27,15 @@ export async function getTicket(id: number) {
   return data
 }
 
-export async function createTicket(payload: { title: string; description: string; category_id: number; school_id?: number; priority: string }) {
+export async function createTicket(payload: { title: string; description: string; category_id: number; school_id: number; priority: string }) {
   const { data } = await api.post<TicketDetail>('/api/v1/tickets', payload)
+  return data
+}
+
+export async function uploadTicketAttachment(ticketId: number, file: File) {
+  const payload = new FormData()
+  payload.append('file', file)
+  const { data } = await api.post<Attachment>(`/api/v1/tickets/${ticketId}/attachments`, payload)
   return data
 }
 
@@ -62,6 +70,13 @@ export async function getSchools() {
   const { data } = await api.get<School[]>('/api/v1/schools')
   return data
 }
+
+export async function createSchool(payload: { name: string; short_name: string; address?: string }) {
+  const { data } = await api.post<School>('/api/v1/schools', payload)
+  return data
+}
+
+export async function deleteSchool(id: number) { await api.delete(`/api/v1/schools/${id}`) }
 
 export async function getAdminStats() {
   const { data } = await api.get('/api/v1/admin/stats')

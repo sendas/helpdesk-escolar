@@ -10,7 +10,7 @@ class TicketCreate(BaseModel):
     title: str
     description: str
     category_id: int
-    school_id: int | None = None
+    school_id: int
     priority: TicketPriority = TicketPriority.MEDIUM
 
 
@@ -35,6 +35,16 @@ class CommentRead(BaseModel):
     author: UserRead
 
 
+class AttachmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    original_name: str
+    content_type: str
+    size: int
+    created_at: datetime
+
+
 class TicketRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,6 +60,7 @@ class TicketRead(BaseModel):
     category: CategoryRead
     school: SchoolRead | None = None
     comments: list[CommentRead] = []
+    attachments: list[AttachmentRead] = []
 
 
 class TicketListItem(BaseModel):

@@ -11,7 +11,7 @@
 
       <!-- School selector -->
       <div v-if="schools.length" class="hd-field" style="margin-bottom:24px">
-        <label class="hd-label">Escola</label>
+        <label class="hd-label">Escola <span class="hd-label-hint">*</span></label>
         <div class="hd-grid-2" style="margin-top:8px">
           <div
             v-for="s in schools"
@@ -31,10 +31,13 @@
         </div>
         <p class="hd-hint">Escolha a escola onde o pedido se aplica.</p>
       </div>
+      <div v-else style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:13px;color:#DC2626;margin-bottom:20px">
+        Ainda não existem escolas configuradas. Peça a um administrador para adicionar escolas.
+      </div>
 
       <!-- Category selector -->
       <div class="hd-field" style="margin-bottom:24px">
-        <label class="hd-label">Categoria</label>
+        <label class="hd-label">Categoria <span class="hd-label-hint">*</span></label>
         <div class="hd-grid-3" style="margin-top:8px">
           <div
             v-for="cat in categories"
@@ -53,6 +56,7 @@
             </div>
           </div>
         </div>
+        <p v-if="!categories.length" class="hd-hint">Ainda não existem categorias configuradas.</p>
       </div>
 
       <!-- Title -->
@@ -82,15 +86,24 @@
         <p class="hd-hint">A prioridade pode ser ajustada pela equipa de suporte.</p>
       </div>
 
-      <!-- Attachments (UI only) -->
+      <!-- Attachments -->
       <div class="hd-field" style="margin-bottom:32px">
         <label class="hd-label">Anexos <span class="hd-label-hint">(opcional)</span></label>
-        <div class="hd-dropzone" style="margin-top:8px">
+        <input ref="fileInput" type="file" multiple accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf" style="display:none" @change="onFilesPicked" />
+        <div class="hd-dropzone" style="margin-top:8px" @dragover.prevent @drop.prevent="onDrop">
           <span class="material-icons" style="font-size:28px;color:var(--c-muted);margin-bottom:8px;display:block">attach_file</span>
           <div style="font-size:13.5px;color:var(--c-muted)">
-            Arrastar ficheiros para aqui ou <span style="color:var(--c-primary);cursor:pointer">procurar</span>
+            Arrastar ficheiros para aqui ou <span style="color:var(--c-primary);cursor:pointer" @click="fileInput?.click()">procurar</span>
           </div>
           <div style="font-size:12px;color:var(--c-muted);margin-top:4px">PNG, JPG, PDF até 10 MB</div>
+        </div>
+        <div v-if="files.length" style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+          <div v-for="(f, idx) in files" :key="`${f.name}-${idx}`" class="hd-row" style="justify-content:space-between;border:1px solid var(--c-border);border-radius:8px;padding:8px 10px">
+            <span style="font-size:13px">{{ f.name }} · {{ formatSize(f.size) }}</span>
+            <button class="hd-icon-btn" @click="files.splice(idx, 1)" title="Remover">
+              <span class="material-icons" style="font-size:15px">close</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -113,17 +126,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { createTicket, getCategories, getSchools } from '../api/tickets'
+import { createTicket, getCategories, getSchools, uploadTicketAttachment } from '../api/tickets'
 
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const categories = ref<any[]>([])
 const schools = ref<any[]>([])
+const files = ref<File[]>([])
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const form = ref({ title: '', description: '', category_id: null as number | null, school_id: null as number | null, priority: 'medium' })
 
-const canSubmit = computed(() => form.value.title.trim() && form.value.description.trim() && form.value.category_id)
+const canSubmit = computed(() => form.value.title.trim() && form.value.description.trim() && form.value.category_id && form.value.school_id)
 
 onMounted(async () => {
   const [cats, schs] = await Promise.all([getCategories(), getSchools()])
@@ -132,7 +147,7 @@ onMounted(async () => {
 })
 
 async function onSubmit() {
-  if (!form.value.category_id) return
+  if (!form.value.category_id || !form.value.school_id) return
   loading.value = true
   error.value = ''
   try {
@@ -140,14 +155,40 @@ async function onSubmit() {
       title: form.value.title,
       description: form.value.description,
       category_id: form.value.category_id,
-      school_id: form.value.school_id ?? undefined,
+      school_id: form.value.school_id,
       priority: form.value.priority,
     })
+    for (const file of files.value) {
+      await uploadTicketAttachment(t.id, file)
+    }
     router.push(`/tickets/${t.id}`)
   } catch (e: any) {
     error.value = e?.response?.data?.detail || 'Erro ao criar ticket'
   } finally {
     loading.value = false
   }
+}
+
+function onFilesPicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  addFiles(input.files)
+  input.value = ''
+}
+
+function onDrop(event: DragEvent) {
+  addFiles(event.dataTransfer?.files ?? null)
+}
+
+function addFiles(list: FileList | null) {
+  if (!list) return
+  const next = Array.from(list).filter(f => {
+    const allowed = ['image/png', 'image/jpeg', 'application/pdf'].includes(f.type)
+    return allowed && f.size <= 10 * 1024 * 1024
+  })
+  files.value.push(...next)
+}
+
+function formatSize(size: number) {
+  return size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.round(size / 1024)} KB`
 }
 </script>

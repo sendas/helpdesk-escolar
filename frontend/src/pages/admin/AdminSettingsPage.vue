@@ -16,6 +16,9 @@
       <button class="hd-tab" :class="{ active: tab === 'categories' }" @click="tab = 'categories'">
         <span class="material-icons" style="font-size:15px">category</span> Categorias e SLAs
       </button>
+      <button class="hd-tab" :class="{ active: tab === 'schools' }" @click="tab = 'schools'">
+        <span class="material-icons" style="font-size:15px">account_balance</span> Escolas
+      </button>
     </div>
 
     <!-- General -->
@@ -24,6 +27,14 @@
       <div class="hd-field" style="margin-bottom:18px">
         <label class="hd-label">Nome do Agrupamento</label>
         <input class="hd-input" v-model="general.org_name" placeholder="Agrupamento de Escolas Eça de Queirós" />
+      </div>
+      <div class="hd-field" style="margin-bottom:18px">
+        <label class="hd-label">Logotipo do Agrupamento</label>
+        <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp,image/png,image/jpeg,image/svg+xml,image/webp" @change="onLogoPicked" />
+        <div v-if="general.logo_url" style="margin-top:10px">
+          <img :src="general.logo_url" alt="Logotipo" style="max-width:180px;max-height:80px;object-fit:contain" />
+        </div>
+        <p class="hd-hint">PNG, JPG, SVG ou WEBP até 2 MB.</p>
       </div>
       <div class="hd-field" style="margin-bottom:18px">
         <label class="hd-label">URL base da aplicação</label>
@@ -41,10 +52,61 @@
         <input class="hd-input" type="number" v-model="general.jwt_expire" style="max-width:140px" />
         <p class="hd-hint">Tempo até o token JWT expirar e o utilizador ter de iniciar sessão novamente.</p>
       </div>
-      <button class="hd-btn hd-btn-primary" @click="saved = true">
+      <button class="hd-btn hd-btn-primary" @click="saveGeneral">
         <span class="material-icons" style="font-size:16px">save</span> Guardar
       </button>
       <span v-if="saved" style="margin-left:12px;font-size:13px;color:#22C55E">Guardado!</span>
+    </div>
+
+    <!-- Schools -->
+    <div v-if="tab === 'schools'" class="hd-card" style="padding:28px;max-width:760px">
+      <div class="hd-row" style="margin-bottom:20px">
+        <div style="font-weight:600;font-size:15px">Escolas</div>
+        <div class="hd-spacer"></div>
+        <button class="hd-btn hd-btn-primary" style="font-size:12px;padding:6px 14px" @click="showNewSchool = true">
+          <span class="material-icons" style="font-size:14px">add</span> Nova escola
+        </button>
+      </div>
+      <div v-if="loadingSchools" style="color:var(--c-muted)">A carregar...</div>
+      <table v-else class="hd-table">
+        <thead><tr><th>NOME</th><th>NOME CURTO</th><th>MORADA</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="school in schools" :key="school.id">
+            <td style="font-weight:500">{{ school.name }}</td>
+            <td style="font-size:12px;color:var(--c-muted)">{{ school.short_name }}</td>
+            <td style="font-size:12px;color:var(--c-muted)">{{ school.address || '—' }}</td>
+            <td>
+              <button class="hd-icon-btn" @click="deleteSchool(school.id)" title="Eliminar">
+                <span class="material-icons" style="font-size:15px;color:#EF4444">delete</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div v-if="showNewSchool" style="margin-top:20px;border:1px solid var(--c-border);border-radius:10px;padding:20px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:16px">Nova escola</div>
+        <div class="hd-grid-2" style="margin-bottom:12px">
+          <div class="hd-field">
+            <label class="hd-label">Nome</label>
+            <input class="hd-input" v-model="newSchool.name" placeholder="Escola Eça de Queirós" />
+          </div>
+          <div class="hd-field">
+            <label class="hd-label">Nome curto</label>
+            <input class="hd-input" v-model="newSchool.short_name" placeholder="Eça" />
+          </div>
+        </div>
+        <div class="hd-field" style="margin-bottom:16px">
+          <label class="hd-label">Morada</label>
+          <input class="hd-input" v-model="newSchool.address" placeholder="Morada da escola" />
+        </div>
+        <div class="hd-row" style="gap:8px;justify-content:flex-end">
+          <button class="hd-btn hd-btn-outline" @click="showNewSchool = false">Cancelar</button>
+          <button class="hd-btn hd-btn-primary" @click="createSchool" :disabled="!newSchool.name || !newSchool.short_name">
+            Criar escola
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- LDAP -->
@@ -236,18 +298,23 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getCategories, createCategory, deleteCategory as apiDeleteCategory } from '../../api/tickets'
+import { createCategory, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteSchool as apiDeleteSchool, getCategories, getSchools } from '../../api/tickets'
+import { getPublicSettings, updateSettings } from '../../api/settings'
 
-const tab = ref<'general' | 'ldap' | 'email' | 'categories'>('general')
+const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools'>('general')
 const saved = ref(false)
 const testing = ref(false)
 const ldapTestResult = ref('')
 const ldapTestOk = ref(false)
 const showNewCat = ref(false)
+const showNewSchool = ref(false)
 const loadingCats = ref(false)
+const loadingSchools = ref(false)
 const categories = ref<any[]>([])
+const schools = ref<any[]>([])
+const logoFile = ref<File | null>(null)
 
-const general = ref({ org_name: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480 })
+const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480 })
 const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
 const email = ref({ server: '', port: 587, from: '', username: '', password: '' })
 
@@ -259,12 +326,37 @@ const notifications = ref([
 ])
 
 const newCat = ref({ name: '', description: '', icon: 'help', color: '#3D52D5', sla_hours: 24 })
+const newSchool = ref({ name: '', short_name: '', address: '' })
 
 onMounted(async () => {
   loadingCats.value = true
-  try { categories.value = await getCategories() }
-  finally { loadingCats.value = false }
+  loadingSchools.value = true
+  try {
+    const [settings, cats, schs] = await Promise.all([getPublicSettings(), getCategories(), getSchools()])
+    general.value.org_name = settings.org_name
+    general.value.logo_url = settings.logo_url
+    categories.value = cats
+    schools.value = schs
+  } finally {
+    loadingCats.value = false
+    loadingSchools.value = false
+  }
 })
+
+function onLogoPicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  logoFile.value = input.files?.[0] ?? null
+}
+
+async function saveGeneral() {
+  try {
+    const settings = await updateSettings({ org_name: general.value.org_name, logo: logoFile.value })
+    general.value.org_name = settings.org_name
+    general.value.logo_url = settings.logo_url
+    logoFile.value = null
+    saved.value = true
+  } catch { /* ignore */ }
+}
 
 async function testLdap() {
   testing.value = true
@@ -289,6 +381,23 @@ async function deleteCategory(id: number) {
   try {
     await apiDeleteCategory(id)
     categories.value = categories.value.filter(c => c.id !== id)
+  } catch { /* ignore */ }
+}
+
+async function createSchool() {
+  try {
+    const school = await apiCreateSchool({ ...newSchool.value })
+    schools.value.push(school)
+    showNewSchool.value = false
+    newSchool.value = { name: '', short_name: '', address: '' }
+  } catch { /* ignore */ }
+}
+
+async function deleteSchool(id: number) {
+  if (!confirm('Eliminar esta escola?')) return
+  try {
+    await apiDeleteSchool(id)
+    schools.value = schools.value.filter(s => s.id !== id)
   } catch { /* ignore */ }
 }
 </script>

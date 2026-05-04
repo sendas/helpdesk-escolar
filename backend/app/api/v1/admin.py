@@ -159,7 +159,7 @@ async def backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_a
     from app.models.school import School
     from app.models.category import Category
     from app.models.user import User as UserModel
-    from app.models.ticket import Ticket as TicketModel, Comment as CommentModel
+    from app.models.ticket import Ticket as TicketModel, Comment as CommentModel, Attachment as AttachmentModel
     import json
     from datetime import datetime
 
@@ -168,6 +168,7 @@ async def backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_a
     users = (await db.execute(select(UserModel))).scalars().all()
     tickets = (await db.execute(select(TicketModel))).scalars().all()
     comments = (await db.execute(select(CommentModel))).scalars().all()
+    attachments = (await db.execute(select(AttachmentModel))).scalars().all()
 
     def to_dict(obj):
         d = {}
@@ -187,6 +188,7 @@ async def backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_a
         "users": [to_dict(u) for u in users],
         "tickets": [to_dict(t) for t in tickets],
         "comments": [to_dict(c) for c in comments],
+        "attachments": [to_dict(a) for a in attachments],
     }
     from fastapi.responses import JSONResponse
     return JSONResponse(content=data, headers={"Content-Disposition": "attachment; filename=helpdesk-backup.json"})

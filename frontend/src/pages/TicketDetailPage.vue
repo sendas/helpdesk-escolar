@@ -33,6 +33,19 @@
                 <span class="hd-msg-time">{{ formatDate(ticket.created_at) }}</span>
               </div>
               <div class="hd-msg-bubble">{{ ticket.description }}</div>
+              <div v-if="ticket.attachments?.length" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+                <a
+                  v-for="a in ticket.attachments"
+                  :key="a.id"
+                  class="hd-row"
+                  :href="`/api/v1/tickets/${ticket.id}/attachments/${a.id}/download`"
+                  target="_blank"
+                  style="gap:6px;color:var(--c-primary);font-size:12.5px;text-decoration:none"
+                >
+                  <span class="material-icons" style="font-size:15px">attach_file</span>
+                  {{ a.original_name }} · {{ formatSize(a.size) }}
+                </a>
+              </div>
             </div>
           </div>
 
@@ -263,5 +276,9 @@ function statusLabel(s: string) {
 
 function formatDate(d: string) {
   return new Date(d).toLocaleString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function formatSize(size: number) {
+  return size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.round(size / 1024)} KB`
 }
 </script>

@@ -90,6 +90,13 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
   border-radius: 8px;
   flex-shrink: 0;
 }
+.hd-sidebar-logo-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
 .hd-sidebar-logo-text { flex: 1; }
 .hd-sidebar-logo-name {
   font-size: 12.5px;
