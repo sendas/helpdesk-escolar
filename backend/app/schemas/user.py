@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.models.user import UserRole
 
 
@@ -33,3 +33,27 @@ class UserBulkUpdate(BaseModel):
     role: UserRole | None = None
     is_active: bool | None = None
     role_locked: bool | None = None
+
+
+class HelpdeskGroupRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    description: str | None = None
+    created_at: datetime
+    members: list[UserRead] = Field(default_factory=list)
+
+
+class HelpdeskGroupCreate(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class HelpdeskGroupUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+
+class HelpdeskGroupMembersUpdate(BaseModel):
+    user_ids: list[int]

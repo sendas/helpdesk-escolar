@@ -86,7 +86,7 @@
 
       <!-- Footer -->
       <p style="font-size:11.5px;color:var(--c-muted);margin-top:auto">
-        © 2026 Agrupamento de Escolas Eça de Queirós · Apoio: helpdesk@escola.pt
+        © 2026 Agrupamento de Escolas Eça de Queirós
       </p>
     </div>
 

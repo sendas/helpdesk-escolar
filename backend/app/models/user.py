@@ -38,3 +38,8 @@ class User(Base):
         "Ticket", foreign_keys="Ticket.assignee_id", back_populates="assignee"
     )
     comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="author")
+    helpdesk_groups: Mapped[list["HelpdeskGroup"]] = relationship(
+        "HelpdeskGroup",
+        secondary="helpdesk_group_members",
+        back_populates="members",
+    )

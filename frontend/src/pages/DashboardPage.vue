@@ -76,6 +76,7 @@ import { ref, computed, onMounted } from 'vue'
 import { getTickets, getCategories } from '../api/tickets'
 import { useAuthStore } from '../stores/auth'
 import PriorityBadge from '../components/PriorityBadge.vue'
+import { timeAgo } from '../utils/dates'
 
 const auth = useAuthStore()
 const tickets = ref<any[]>([])
@@ -100,12 +101,4 @@ function statusLabel(s: string) {
   return { open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', resolved: 'Resolvido', closed: 'Fechado' }[s] ?? s
 }
 
-function timeAgo(d: string) {
-  const diff = Date.now() - new Date(d).getTime()
-  const h = Math.floor(diff / 3600000)
-  if (h < 1) return 'agora'
-  if (h < 24) return `há ${h}h`
-  const days = Math.floor(h / 24)
-  return `há ${days} d`
-}
 </script>

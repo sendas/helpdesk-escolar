@@ -1,9 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, get_current_user, require_admin
+from app.models.group import HelpdeskGroup
 from app.models.user import User
-from app.schemas.user import UserBulkUpdate, UserRead, UserUpdate
+from app.schemas.user import (
+    HelpdeskGroupCreate,
+    HelpdeskGroupMembersUpdate,
+    HelpdeskGroupRead,
+    HelpdeskGroupUpdate,
+    UserBulkUpdate,
+    UserRead,
+    UserUpdate,
+)
 from app.services import azure_import
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -32,6 +42,112 @@ async def import_users_from_azure(
         return await azure_import.import_azure_users(db)
     except azure_import.AzureImportError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/groups", response_model=list[HelpdeskGroupRead])
+async def list_helpdesk_groups(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    result = await db.execute(
+        select(HelpdeskGroup)
+        .options(selectinload(HelpdeskGroup.members))
+        .order_by(HelpdeskGroup.name)
+    )
+    return result.scalars().all()
+
+
+@router.post("/groups", response_model=HelpdeskGroupRead, status_code=status.HTTP_201_CREATED)
+async def create_helpdesk_group(
+    data: HelpdeskGroupCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group name is required")
+    exists = await db.execute(select(HelpdeskGroup).where(HelpdeskGroup.name == name))
+    if exists.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Group already exists")
+    group = HelpdeskGroup(name=name, description=(data.description or "").strip() or None)
+    db.add(group)
+    await db.commit()
+    await db.refresh(group, ["members"])
+    return group
+
+
+@router.patch("/groups/{group_id}", response_model=HelpdeskGroupRead)
+async def update_helpdesk_group(
+    group_id: int,
+    data: HelpdeskGroupUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    result = await db.execute(
+        select(HelpdeskGroup)
+        .where(HelpdeskGroup.id == group_id)
+        .options(selectinload(HelpdeskGroup.members))
+    )
+    group = result.scalar_one_or_none()
+    if not group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if data.name is not None:
+        name = data.name.strip()
+        if not name:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group name is required")
+        group.name = name
+    if data.description is not None:
+        group.description = data.description.strip() or None
+    await db.commit()
+    await db.refresh(group)
+    return group
+
+
+@router.put("/groups/{group_id}/members", response_model=HelpdeskGroupRead)
+async def update_helpdesk_group_members(
+    group_id: int,
+    data: HelpdeskGroupMembersUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    result = await db.execute(
+        select(HelpdeskGroup)
+        .where(HelpdeskGroup.id == group_id)
+        .options(selectinload(HelpdeskGroup.members))
+    )
+    group = result.scalar_one_or_none()
+    if not group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    members = []
+    if data.user_ids:
+        members = (await db.execute(select(User).where(User.id.in_(data.user_ids)))).scalars().all()
+    group.members = list(members)
+    await db.commit()
+    result = await db.execute(
+        select(HelpdeskGroup)
+        .where(HelpdeskGroup.id == group_id)
+        .options(selectinload(HelpdeskGroup.members))
+    )
+    return result.scalar_one()
+
+
+@router.delete("/groups/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_helpdesk_group(
+    group_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    result = await db.execute(
+        select(HelpdeskGroup)
+        .where(HelpdeskGroup.id == group_id)
+        .options(selectinload(HelpdeskGroup.members))
+    )
+    group = result.scalar_one_or_none()
+    if not group:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    group.members = []
+    await db.delete(group)
+    await db.commit()
 
 
 @router.patch("/bulk", response_model=list[UserRead])

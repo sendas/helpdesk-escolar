@@ -82,7 +82,8 @@ async def admin_bulk_update_tickets(
         )
         if data.assignee_id and data.assignee_id != prev_assignee_id and updated.assignee:
             await email_service.send_ticket_notification(
-                updated.creator.email, "assigned",
+                updated.assignee.email,
+                "assigned",
                 {"id": updated.id, "title": updated.title, "assignee": updated.assignee.display_name},
             )
     return updated_tickets
@@ -108,7 +109,8 @@ async def admin_update_ticket(
     )
     if data.assignee_id and data.assignee_id != prev_assignee_id and updated.assignee:
         await email_service.send_ticket_notification(
-            updated.creator.email, "assigned",
+            updated.assignee.email,
+            "assigned",
             {"id": updated.id, "title": updated.title, "assignee": updated.assignee.display_name},
         )
     return updated

@@ -46,6 +46,7 @@
 import { ref, onMounted } from 'vue'
 import { getTickets, getCategories } from '../api/tickets'
 import PriorityBadge from '../components/PriorityBadge.vue'
+import { timeAgo } from '../utils/dates'
 
 const tickets = ref<any[]>([])
 const categories = ref<any[]>([])
@@ -76,11 +77,5 @@ async function load() {
 
 function statusLabel(s: string) {
   return { open:'Aberto', assigned:'Atribuído', in_progress:'Em Curso', resolved:'Resolvido', closed:'Fechado' }[s] ?? s
-}
-function timeAgo(d: string) {
-  const h = Math.floor((Date.now() - new Date(d).getTime()) / 3600000)
-  if (h < 1) return 'agora'
-  if (h < 24) return `há ${h}h`
-  return `há ${Math.floor(h/24)} d`
 }
 </script>

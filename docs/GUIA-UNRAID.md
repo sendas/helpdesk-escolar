@@ -118,7 +118,7 @@ AZURE_ADMIN_EMAILS=admin@escola.pt
 AZURE_ALLOWED_ONPREM_OUS=queiroz.local/AEEQ/_Direcao,queiroz.local/AEEQ/_Docentes,queiroz.local/AEEQ/_Nao Docentes,queiroz.local/AEEQ/_Secretaria,queiroz.local/AEEQ/_Suporte
 AZURE_ADMIN_ONPREM_OUS=queiroz.local/AEEQ/_Direcao
 AZURE_TECHNICIAN_ONPREM_OUS=queiroz.local/AEEQ/_Suporte
-AZURE_SECRETARY_ONPREM_OUS=queiroz.local/AEEQ/_Secretaria
+AZURE_SECRETARY_ONPREM_OUS=queiroz.local/AEEQ/Secretaria-ESEQ
 AZURE_NON_TEACHING_ONPREM_OUS=queiroz.local/AEEQ/_Nao Docentes
 AZURE_SYNC_INTERVAL_MINUTES=60
 ```

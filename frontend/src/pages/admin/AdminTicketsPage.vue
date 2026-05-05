@@ -158,6 +158,7 @@ import { adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, g
 import { getUsers } from '../../api/users'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
+import { timeAgo as formatTimeAgo } from '../../utils/dates'
 
 const CategoryPill = defineComponent({
   props: { category: { type: Object, required: true } },
@@ -330,10 +331,7 @@ async function syncReplies() {
 }
 
 function timeAgo(date: string) {
-  const hours = Math.floor((Date.now() - new Date(date).getTime()) / 3600000)
-  if (hours < 1) return 'agora'
-  if (hours < 24) return `há ${hours}h`
-  return `há ${Math.floor(hours / 24)} d`
+  return formatTimeAgo(date)
 }
 </script>
 

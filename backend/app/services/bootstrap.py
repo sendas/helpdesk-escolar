@@ -2,6 +2,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.category import Category
+from app.models.group import HelpdeskGroup
 from app.models.school import School
 
 
@@ -30,6 +31,12 @@ DEFAULT_CATEGORIES = [
     },
 ]
 
+DEFAULT_GROUPS = [
+    {"name": "Equipa TIC VG", "description": "Equipa TIC da Escola Vasco da Gama"},
+    {"name": "Equipa TIC PN", "description": "Equipa TIC da Escola Parque das Nações"},
+    {"name": "Equipa TIC EQ", "description": "Equipa TIC da Escola Eça de Queirós"},
+]
+
 
 async def ensure_defaults(db: AsyncSession) -> None:
     await ensure_schema(db)
@@ -43,6 +50,11 @@ async def ensure_defaults(db: AsyncSession) -> None:
         exists = await db.execute(select(Category).where(Category.name == data["name"]))
         if not exists.scalar_one_or_none():
             db.add(Category(**data))
+
+    for data in DEFAULT_GROUPS:
+        exists = await db.execute(select(HelpdeskGroup).where(HelpdeskGroup.name == data["name"]))
+        if not exists.scalar_one_or_none():
+            db.add(HelpdeskGroup(**data))
 
     await db.commit()
 

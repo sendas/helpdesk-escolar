@@ -203,6 +203,7 @@ import { getUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
+import { formatDateTime } from '../utils/dates'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -308,7 +309,7 @@ function statusLabel(s: string) {
 }
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return formatDateTime(d)
 }
 
 function formatSize(size: number) {

@@ -39,6 +39,9 @@
       <button class="hd-tab" :class="{ active: tab === 'departments' }" @click="tab = 'departments'">
         <span class="material-icons" style="font-size:15px">apartment</span> Departamentos
       </button>
+      <button class="hd-tab" :class="{ active: tab === 'groups' }" @click="tab = 'groups'">
+        <span class="material-icons" style="font-size:15px">groups</span> Grupos
+      </button>
     </div>
 
     <div v-if="tab === 'users'" class="hd-card users-card">
@@ -205,27 +208,100 @@
         <div v-if="!departments.length" style="color:var(--c-muted);font-size:13px;grid-column:1/-1">Nenhum departamento encontrado.</div>
       </div>
     </div>
+
+    <div v-if="tab === 'groups'" class="hd-card groups-card">
+      <div class="groups-head">
+        <div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">Grupos internos</div>
+          <div style="font-size:13px;color:var(--c-muted)">Cria equipas e atribui os utilizadores que devem pertencer a cada grupo.</div>
+        </div>
+        <div class="group-create">
+          <input class="hd-input" v-model="groupForm.name" placeholder="Nome do grupo" />
+          <input class="hd-input" v-model="groupForm.description" placeholder="Descrição opcional" />
+          <button class="hd-btn hd-btn-primary" @click="addGroup" :disabled="!groupForm.name.trim()">
+            <span class="material-icons" style="font-size:16px">add</span> Criar grupo
+          </button>
+        </div>
+      </div>
+
+      <div class="groups-layout">
+        <aside class="groups-list">
+          <button
+            v-for="group in groups"
+            :key="group.id"
+            class="group-list-item"
+            :class="{ active: selectedGroupId === group.id }"
+            @click="selectGroup(group.id)"
+          >
+            <span class="material-icons">groups</span>
+            <span>
+              <strong>{{ group.name }}</strong>
+              <small>{{ group.members.length }} membro{{ group.members.length !== 1 ? 's' : '' }}</small>
+            </span>
+          </button>
+          <div v-if="!groups.length" class="empty-note">Ainda não existem grupos.</div>
+        </aside>
+
+        <section v-if="selectedGroup" class="group-detail">
+          <div class="group-detail-top">
+            <div>
+              <h2>{{ selectedGroup.name }}</h2>
+              <p>{{ selectedGroup.description || 'Sem descrição' }}</p>
+            </div>
+            <button class="hd-btn hd-btn-outline" @click="removeGroup(selectedGroup.id)">
+              <span class="material-icons" style="font-size:16px">delete</span> Apagar
+            </button>
+          </div>
+
+          <div class="group-member-toolbar">
+            <input class="hd-input" v-model="groupUserSearch" placeholder="Pesquisar docente ou utilizador..." />
+            <button class="hd-btn hd-btn-primary" @click="saveGroupMembers">
+              <span class="material-icons" style="font-size:16px">save</span> Guardar membros
+            </button>
+          </div>
+
+          <div class="group-members-grid">
+            <label v-for="u in groupCandidateUsers" :key="u.id" class="group-member-card">
+              <input type="checkbox" :value="u.id" v-model="groupMemberIds" />
+              <AvatarCircle :name="u.display_name" size="30" />
+              <span>
+                <strong>{{ u.display_name }}</strong>
+                <small>{{ u.email }}</small>
+              </span>
+            </label>
+          </div>
+        </section>
+        <section v-else class="group-detail empty-note">
+          Seleciona ou cria um grupo para gerir os membros.
+        </section>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { bulkUpdateUsers, getUsers, importAzureUsers, updateUser } from '../../api/users'
+import { bulkUpdateUsers, createGroup, deleteGroup, getGroups, getUsers, importAzureUsers, updateGroupMembers, updateUser } from '../../api/users'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 
 const users = ref<any[]>([])
+const groups = ref<any[]>([])
 const selectedIds = ref<number[]>([])
 const loading = ref(false)
 const syncing = ref(false)
 const syncMessage = ref('')
 const syncReport = ref<any>(null)
-const tab = ref<'users' | 'permissions' | 'departments'>('users')
+const tab = ref<'users' | 'permissions' | 'departments' | 'groups'>('users')
 const search = ref('')
 const filterRole = ref('')
 const filterSource = ref('')
 const filterActive = ref('')
 const filterDepartment = ref('')
 const bulkRole = ref('')
+const groupForm = ref({ name: '', description: '' })
+const selectedGroupId = ref<number | null>(null)
+const groupMemberIds = ref<number[]>([])
+const groupUserSearch = ref('')
 
 const roleOptions = [
   { value: 'teacher', label: 'Docente' },
@@ -252,6 +328,13 @@ const departments = computed(() => {
 
 const lockedCount = computed(() => users.value.filter(u => u.role_locked).length)
 const allVisibleSelected = computed(() => filteredUsers.value.length > 0 && filteredUsers.value.every(u => selectedIds.value.includes(u.id)))
+const selectedGroup = computed(() => groups.value.find(g => g.id === selectedGroupId.value) || null)
+const groupCandidateUsers = computed(() => {
+  const q = groupUserSearch.value.trim().toLowerCase()
+  return users.value
+    .filter(u => u.is_active)
+    .filter(u => !q || `${u.display_name} ${u.email} ${u.department || ''}`.toLowerCase().includes(q))
+})
 
 const roleDefinitions = [
   { name: 'teacher', label: 'Docente', icon: 'school', color: '#3D52D5', permissions: ['Criar e gerir os próprios tickets', 'Adicionar comentários', 'Ver estado dos pedidos'] },
@@ -261,12 +344,51 @@ const roleDefinitions = [
   { name: 'admin', label: 'Administrador', icon: 'admin_panel_settings', color: '#EF4444', permissions: ['Gerir utilizadores e papéis', 'Configurar categorias e SLAs', 'Exportar dados e fazer backup', 'Configurar integrações'] },
 ]
 
-onMounted(loadUsers)
+onMounted(async () => {
+  await Promise.all([loadUsers(), loadGroups()])
+})
 
 async function loadUsers() {
   loading.value = true
   try { users.value = await getUsers() }
   finally { loading.value = false }
+}
+
+async function loadGroups() {
+  groups.value = await getGroups()
+  if (!selectedGroupId.value && groups.value.length) selectGroup(groups.value[0].id)
+}
+
+async function addGroup() {
+  if (!groupForm.value.name.trim()) return
+  const created = await createGroup({ name: groupForm.value.name, description: groupForm.value.description })
+  groups.value = [...groups.value, created].sort((a, b) => a.name.localeCompare(b.name))
+  groupForm.value = { name: '', description: '' }
+  selectGroup(created.id)
+}
+
+function selectGroup(id: number) {
+  selectedGroupId.value = id
+  const group = groups.value.find(g => g.id === id)
+  groupMemberIds.value = group ? group.members.map((m: any) => m.id) : []
+}
+
+async function saveGroupMembers() {
+  if (!selectedGroupId.value) return
+  const updated = await updateGroupMembers(selectedGroupId.value, groupMemberIds.value)
+  const idx = groups.value.findIndex(g => g.id === updated.id)
+  if (idx !== -1) groups.value[idx] = updated
+}
+
+async function removeGroup(id: number) {
+  if (!window.confirm('Apagar este grupo?')) return
+  await deleteGroup(id)
+  groups.value = groups.value.filter(g => g.id !== id)
+  selectGroup(groups.value[0]?.id ?? 0)
+  if (!groups.value.length) {
+    selectedGroupId.value = null
+    groupMemberIds.value = []
+  }
 }
 
 async function changeRole(user: any, role: string) {
@@ -465,6 +587,113 @@ function replaceUser(updated: any) {
   color: #22C55E;
 }
 .users-mobile-list { display: none; }
+.groups-card {
+  padding: 0;
+  overflow: hidden;
+}
+.groups-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  border-bottom: 1px solid var(--c-border);
+}
+.group-create {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(180px, 260px) auto;
+  gap: 10px;
+  align-items: center;
+}
+.groups-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 420px;
+}
+.groups-list {
+  border-right: 1px solid var(--c-border);
+  padding: 12px;
+  background: var(--c-bg);
+}
+.group-list-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--c-text);
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.group-list-item.active {
+  background: rgba(61, 82, 213, 0.1);
+  border-color: rgba(61, 82, 213, 0.25);
+  color: #3D52D5;
+}
+.group-list-item .material-icons { font-size: 18px; }
+.group-list-item strong, .group-list-item small {
+  display: block;
+}
+.group-list-item small, .empty-note {
+  color: var(--c-muted);
+  font-size: 12px;
+}
+.group-detail {
+  padding: 20px;
+  min-width: 0;
+}
+.group-detail-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.group-detail h2 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+.group-detail p {
+  margin: 0;
+  color: var(--c-muted);
+  font-size: 13px;
+}
+.group-member-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.group-member-toolbar .hd-input {
+  max-width: 360px;
+}
+.group-members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.group-member-card {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--c-surface);
+}
+.group-member-card strong, .group-member-card small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.group-member-card strong {
+  font-size: 13px;
+}
+.group-member-card small {
+  color: var(--c-muted);
+  font-size: 11px;
+}
 
 @media (max-width: 820px) {
   .admin-users-page { padding: 16px; }
@@ -533,6 +762,25 @@ function replaceUser(updated: any) {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
+  }
+  .groups-head {
+    flex-direction: column;
+  }
+  .group-create, .groups-layout {
+    grid-template-columns: 1fr;
+  }
+  .groups-list {
+    border-right: 0;
+    border-bottom: 1px solid var(--c-border);
+  }
+  .group-member-toolbar {
+    flex-direction: column;
+  }
+  .group-member-toolbar .hd-input {
+    max-width: none;
+  }
+  .group-members-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
