@@ -6,8 +6,8 @@
         <div class="sync-note">
           <span class="material-icons">sync</span>
           Sincronização Entra ID
-          <button class="sync-link" @click="openSyncDialog" :disabled="syncing">
-            {{ syncing ? 'A sincronizar...' : 'Sincronizar agora' }}
+          <button type="button" class="sync-link" @click="openSyncDialog" :disabled="syncing">
+            {{ syncing ? 'A sincronizar...' : 'Escolher OUs e sincronizar' }}
           </button>
         </div>
       </div>
@@ -369,6 +369,15 @@ const selectedSyncOus = ref<string[]>([])
 const newSyncOu = ref('')
 const azureSyncSettingsLoaded = ref(false)
 
+const suggestedOus = [
+  'queiroz.local/aeeq/_direcao',
+  'queiroz.local/aeeq/_docentes',
+  'queiroz.local/aeeq/_nao docentes',
+  'queiroz.local/aeeq/_secretaria',
+  'queiroz.local/aeeq/_suporte',
+  'queiroz.local/aeeq/secretaria-eseq',
+]
+
 const roleOptions = [
   { value: 'teacher', label: 'Docente' },
   { value: 'non_teaching', label: 'Não docente' },
@@ -394,6 +403,7 @@ const departments = computed(() => {
 
 const knownOus = computed(() => {
   const set = new Set<string>()
+  suggestedOus.forEach(ou => set.add(ou))
   users.value.forEach(u => {
     if (u.onprem_path) set.add(u.onprem_path)
   })

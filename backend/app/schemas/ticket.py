@@ -21,6 +21,7 @@ class TicketUpdate(BaseModel):
     assignee_id: int | None = None
     group_id: int | None = None
     priority: TicketPriority | None = None
+    creator_email_notifications: bool | None = None
 
 
 class TicketBulkUpdate(BaseModel):
@@ -29,6 +30,7 @@ class TicketBulkUpdate(BaseModel):
     assignee_id: int | None = None
     group_id: int | None = None
     priority: TicketPriority | None = None
+    creator_email_notifications: bool | None = None
 
 
 class TicketBulkAction(BaseModel):

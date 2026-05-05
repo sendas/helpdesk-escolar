@@ -128,6 +128,22 @@
               </div>
             </div>
 
+            <div v-if="canManageEmailNotifications" class="email-notification-panel">
+              <div>
+                <strong>Atualizações por email</strong>
+                <span>{{ ticket.creator_email_notifications ? 'Ativas para o autor' : 'Desativadas para o autor' }}</span>
+              </div>
+              <button
+                class="email-toggle-btn"
+                :class="{ active: ticket.creator_email_notifications }"
+                :disabled="savingEmailPreference"
+                @click="toggleEmailNotifications"
+              >
+                <span class="material-icons">{{ ticket.creator_email_notifications ? 'notifications_active' : 'notifications_off' }}</span>
+                {{ ticket.creator_email_notifications ? 'Desativar emails' : 'Ativar emails' }}
+              </button>
+            </div>
+
             <div class="hd-detail-row">
               <div class="hd-detail-label">Em conhecimento</div>
               <div v-if="ticket.watchers?.length" class="watcher-list">
@@ -252,9 +268,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTicket, addComment, adminUpdateTicket, updateComment, deleteComment, escalateTicket } from '../api/tickets'
+import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket } from '../api/tickets'
 import { getGroups, getUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -279,6 +295,12 @@ const editingCommentBody = ref('')
 const escalating = ref(false)
 const escalationMessage = ref('')
 const escalationError = ref(false)
+const savingEmailPreference = ref(false)
+
+const canManageEmailNotifications = computed(() => {
+  if (!ticket.value || !auth.user) return false
+  return auth.isAdmin || ticket.value.creator?.id === auth.user.id
+})
 
 const statusOpts = [
   { v: 'open', l: 'Aberto' }, { v: 'assigned', l: 'Atribuído' },
@@ -377,6 +399,19 @@ async function onGroupChange() {
     await load()
   } catch {
     groupId.value = ticket.value.group?.id ? String(ticket.value.group.id) : ''
+  }
+}
+
+async function toggleEmailNotifications() {
+  if (!ticket.value || savingEmailPreference.value) return
+  savingEmailPreference.value = true
+  try {
+    const payload = { creator_email_notifications: !ticket.value.creator_email_notifications }
+    ticket.value = auth.isAdmin
+      ? await adminUpdateTicket(ticket.value.id, payload)
+      : await updateTicket(ticket.value.id, payload)
+  } finally {
+    savingEmailPreference.value = false
   }
 }
 
@@ -521,6 +556,58 @@ function formatSize(size: number) {
   border-top: 1px solid var(--c-border);
   margin-top: 4px;
   padding-top: 16px;
+}
+
+.email-notification-panel {
+  align-items: center;
+  background: rgba(61, 82, 213, 0.06);
+  border: 1px solid rgba(61, 82, 213, 0.18);
+  border-radius: 9px;
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px;
+}
+
+.email-notification-panel strong,
+.email-notification-panel span {
+  display: block;
+}
+
+.email-notification-panel strong {
+  font-size: 13px;
+}
+
+.email-notification-panel span {
+  color: var(--c-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.email-toggle-btn {
+  align-items: center;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  color: var(--c-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 7px;
+  justify-content: center;
+  padding: 9px 10px;
+  width: 100%;
+}
+
+.email-toggle-btn.active {
+  background: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.24);
+  color: #15803D;
+}
+
+.email-toggle-btn .material-icons {
+  font-size: 16px;
 }
 
 .provider-escalation p {

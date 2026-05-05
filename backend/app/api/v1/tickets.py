@@ -203,13 +203,15 @@ async def update_ticket(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     if not _can_access_ticket(ticket, current_user, allow_watcher=False):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    only_email_preference = data.model_fields_set == {"creator_email_notifications"}
     updated = await ticket_service.update_ticket(db, ticket, data)
-    for recipient in _ticket_update_recipients(updated, current_user):
-        await email_service.send_ticket_notification(
-            recipient,
-            "updated",
-            {"id": updated.id, "title": updated.title, "status": updated.status.value},
-        )
+    if not only_email_preference:
+        for recipient in _ticket_update_recipients(updated, current_user):
+            await email_service.send_ticket_notification(
+                recipient,
+                "updated",
+                {"id": updated.id, "title": updated.title, "status": updated.status.value},
+            )
     return updated
 
 

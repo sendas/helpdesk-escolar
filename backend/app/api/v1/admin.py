@@ -134,10 +134,13 @@ async def admin_bulk_update_tickets(
     )
     tickets = result.scalars().all()
     updated_tickets = []
+    only_email_preference = data.model_fields_set == {"ids", "creator_email_notifications"}
     for ticket in tickets:
         prev_assignee_id = ticket.assignee_id
         updated = await ticket_service.update_ticket(db, ticket, data)
         updated_tickets.append(updated)
+        if only_email_preference:
+            continue
         if updated.creator_email_notifications:
             await email_service.send_ticket_notification(
                 updated.creator.email, "updated",
@@ -210,7 +213,11 @@ async def admin_update_ticket(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
 
     prev_assignee_id = ticket.assignee_id
+    only_email_preference = data.model_fields_set == {"creator_email_notifications"}
     updated = await ticket_service.update_ticket(db, ticket, data)
+
+    if only_email_preference:
+        return updated
 
     if updated.creator_email_notifications:
         await email_service.send_ticket_notification(

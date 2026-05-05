@@ -6,9 +6,9 @@
         <p>{{ total }} ticket{{ total !== 1 ? 's' : '' }} encontrado{{ total !== 1 ? 's' : '' }}</p>
       </div>
       <div class="tickets-actions">
-        <button class="hd-btn hd-btn-outline" @click="syncReplies">
+        <button v-if="auth.isAdmin" class="hd-btn hd-btn-outline" @click="syncReplies" :disabled="mailSyncing">
           <span class="material-icons">mark_email_read</span>
-          Ler respostas
+          {{ mailSyncing ? 'A atualizar emails...' : 'Atualizar receção de emails' }}
         </button>
         <button class="hd-btn hd-btn-primary" @click="load">
           <span class="material-icons">refresh</span>
@@ -96,6 +96,7 @@
                 <th>Estado</th>
                 <th>Responsável</th>
                 <th>Grupo</th>
+                <th v-if="auth.isAdmin">Emails</th>
                 <th>Atualizado</th>
                 <th></th>
               </tr>
@@ -109,7 +110,7 @@
                   <small>{{ t.school?.short_name || t.school?.name || 'Sem escola' }}</small>
                 </td>
                 <td><CategoryPill :category="t.category" /></td>
-                <td>
+                <td v-if="auth.isAdmin">
                   <div class="user-cell">
                     <AvatarCircle :name="t.creator.display_name" size="24" />
                     <span>{{ t.creator.display_name }}</span>
@@ -119,6 +120,16 @@
                 <td><StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></td>
                 <td><AssigneeSelect :value="t.assignee?.id ?? ''" :users="staffUsers" @change="changeAssignee(t, $event)" /></td>
                 <td><GroupSelect :value="t.group?.id ?? ''" :groups="groups" @change="changeGroup(t, $event)" /></td>
+                <td>
+                  <button
+                    class="email-pill"
+                    :class="{ active: t.creator_email_notifications }"
+                    @click="toggleEmailNotifications(t)"
+                  >
+                    <span class="material-icons">{{ t.creator_email_notifications ? 'notifications_active' : 'notifications_off' }}</span>
+                    {{ t.creator_email_notifications ? 'Ativos' : 'Desativados' }}
+                  </button>
+                </td>
                 <td class="muted-cell">{{ timeAgo(t.updated_at) }}</td>
                 <td>
                   <router-link :to="`/tickets/${t.id}`">
@@ -153,6 +164,17 @@
               <label>Estado<StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></label>
               <label>Responsável<AssigneeSelect :value="t.assignee?.id ?? ''" :users="staffUsers" @change="changeAssignee(t, $event)" /></label>
               <label>Grupo<GroupSelect :value="t.group?.id ?? ''" :groups="groups" @change="changeGroup(t, $event)" /></label>
+              <label v-if="auth.isAdmin">
+                Emails
+                <button
+                  class="email-pill"
+                  :class="{ active: t.creator_email_notifications }"
+                  @click="toggleEmailNotifications(t)"
+                >
+                  <span class="material-icons">{{ t.creator_email_notifications ? 'notifications_active' : 'notifications_off' }}</span>
+                  {{ t.creator_email_notifications ? 'Ativos' : 'Desativados' }}
+                </button>
+              </label>
             </div>
           </article>
         </div>
@@ -249,6 +271,7 @@ const bulkAssignee = ref('')
 const bulkGroup = ref('')
 const bulkPriority = ref('')
 const mailSyncMessage = ref('')
+const mailSyncing = ref(false)
 const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 const filterPriority = ref('')
@@ -306,6 +329,10 @@ async function changeAssignee(ticket: any, value: string) {
 
 async function changeGroup(ticket: any, value: string) {
   await updateTicketInList(ticket.id, { group_id: value ? Number(value) : null })
+}
+
+async function toggleEmailNotifications(ticket: any) {
+  await updateTicketInList(ticket.id, { creator_email_notifications: !ticket.creator_email_notifications })
 }
 
 async function updateTicketInList(id: number, payload: any) {
@@ -384,6 +411,8 @@ async function deleteSelected() {
 }
 
 async function syncReplies() {
+  if (mailSyncing.value) return
+  mailSyncing.value = true
   mailSyncMessage.value = 'A ler respostas de email...'
   try {
     const result = await syncMailReplies()
@@ -391,6 +420,8 @@ async function syncReplies() {
     await load()
   } catch {
     mailSyncMessage.value = 'Não foi possível ler respostas de email. Verifica a configuração IMAP.'
+  } finally {
+    mailSyncing.value = false
   }
 }
 
@@ -442,7 +473,7 @@ function timeAgo(date: string) {
 }
 .danger-action:hover { background: rgba(239, 68, 68, .14); }
 .desktop-table-wrap { overflow-x: auto; }
-.tickets-table { min-width: 1320px; }
+.tickets-table { min-width: 1420px; }
 .tickets-table th, .tickets-table td { vertical-align: middle; }
 .ticket-id, .muted-cell { color: var(--c-muted); font-size: 12px; white-space: nowrap; }
 .subject-cell { max-width: 260px; }
@@ -482,6 +513,29 @@ function timeAgo(date: string) {
   min-width: 132px;
   padding: 5px 8px;
   font-size: 12px;
+}
+.email-pill {
+  align-items: center;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  color: var(--c-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 5px;
+  justify-content: center;
+  min-width: 116px;
+  padding: 5px 9px;
+}
+.email-pill.active {
+  background: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.24);
+  color: #15803D;
+}
+.email-pill .material-icons {
+  font-size: 14px;
 }
 .state-block {
   padding: 44px 18px;

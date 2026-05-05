@@ -42,12 +42,12 @@ export async function uploadTicketAttachment(ticketId: number, file: File) {
   return data
 }
 
-export async function updateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string }>) {
+export async function updateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string; creator_email_notifications: boolean }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/tickets/${id}`, payload)
   return data
 }
 
-export async function adminUpdateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string }>) {
+export async function adminUpdateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string; creator_email_notifications: boolean }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/admin/tickets/${id}`, payload)
   return data
 }
@@ -57,7 +57,7 @@ export async function escalateTicket(id: number) {
   return data
 }
 
-export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: string; assignee_id?: number | null; group_id?: number | null; priority?: string }) {
+export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: string; assignee_id?: number | null; group_id?: number | null; priority?: string; creator_email_notifications?: boolean }) {
   const { data } = await api.patch<TicketDetail[]>('/api/v1/admin/tickets/bulk', payload)
   return data
 }

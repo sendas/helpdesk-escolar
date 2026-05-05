@@ -115,6 +115,9 @@ async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) ->
     if data.priority is not None:
         ticket.priority = data.priority
         changes.append(f"Prioridade alterada para {data.priority.value}")
+    if "creator_email_notifications" in data.model_fields_set and data.creator_email_notifications is not None:
+        ticket.creator_email_notifications = data.creator_email_notifications
+        changes.append("Preferência de notificações por email atualizada")
     for message in changes:
         db.add(TicketEvent(ticket_id=ticket.id, event_type="updated", message=message))
     ticket.updated_at = datetime.utcnow()
