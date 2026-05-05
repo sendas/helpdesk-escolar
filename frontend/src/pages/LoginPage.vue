@@ -66,21 +66,32 @@
         </template>
 
         <!-- Demo mode -->
-        <div style="margin-top:32px;padding:16px;border:1px solid var(--c-border);border-radius:12px">
-          <div style="display:flex;gap:0;border:1px solid var(--c-border);border-radius:8px;overflow:hidden;margin-bottom:10px">
-            <button
-              v-for="p in demoProfiles"
-              :key="p.role"
-              :style="{ background: demoRole === p.role ? 'var(--c-text)' : 'transparent', color: demoRole === p.role ? 'var(--c-surface)' : 'var(--c-muted)', flex: 1, border: 'none', padding: '7px 0', font: '600 12.5px Inter, sans-serif', cursor: 'pointer', transition: 'all .15s' }"
-              @click="demoRole = p.role"
-            >{{ p.label }}</button>
-          </div>
-          <p style="font-size:12px;color:var(--c-muted);text-align:center;margin:0 0 10px">
-            Modo de demonstração — selecione o perfil para experimentar
-          </p>
-          <button class="hd-btn hd-btn-outline" style="width:100%;justify-content:center" @click="onDemoLogin">
+        <div style="margin-top:32px">
+          <button
+            v-if="!showDemoOptions"
+            class="hd-btn hd-btn-outline"
+            style="width:100%;justify-content:center"
+            type="button"
+            @click="showDemoOptions = true"
+          >
             Entrar em modo demo
           </button>
+          <div v-else style="padding:16px;border:1px solid var(--c-border);border-radius:12px">
+            <p style="font-size:12px;color:var(--c-muted);text-align:center;margin:0 0 10px">
+              Escolha o perfil de demonstração
+            </p>
+            <div style="display:flex;gap:0;border:1px solid var(--c-border);border-radius:8px;overflow:hidden;margin-bottom:10px">
+              <button
+                v-for="p in demoProfiles"
+                :key="p.role"
+                :style="{ background: demoRole === p.role ? 'var(--c-text)' : 'transparent', color: demoRole === p.role ? 'var(--c-surface)' : 'var(--c-muted)', flex: 1, border: 'none', padding: '7px 0', font: '600 12.5px Inter, sans-serif', cursor: 'pointer', transition: 'all .15s' }"
+                @click="demoRole = p.role"
+              >{{ p.label }}</button>
+            </div>
+            <button class="hd-btn hd-btn-outline" style="width:100%;justify-content:center" @click="onDemoLogin">
+              Entrar como {{ selectedDemoLabel }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -116,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { getPublicSettings } from '../api/settings'
 import { applyFavicon } from '../utils/branding'
@@ -127,6 +138,7 @@ const error = ref('')
 const username = ref('')
 const password = ref('')
 const demoRole = ref('teacher')
+const showDemoOptions = ref(false)
 const ldapEnabled = import.meta.env.VITE_LDAP_ENABLED === 'true'
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
 
@@ -135,6 +147,8 @@ const demoProfiles = [
   { role: 'technician', label: 'Técnico' },
   { role: 'admin', label: 'Administrador' },
 ]
+
+const selectedDemoLabel = computed(() => demoProfiles.find(profile => profile.role === demoRole.value)?.label ?? 'demo')
 
 const features = [
   { title: 'Aberto → Atribuído → Em Curso → Resolvido', sub: 'Estados claros e auditáveis' },
