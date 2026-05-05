@@ -119,6 +119,7 @@
 import { onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { getPublicSettings } from '../api/settings'
+import { applyFavicon } from '../utils/branding'
 
 const auth = useAuthStore()
 const loading = ref(false)
@@ -127,7 +128,7 @@ const username = ref('')
 const password = ref('')
 const demoRole = ref('teacher')
 const ldapEnabled = import.meta.env.VITE_LDAP_ENABLED === 'true'
-const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '' })
+const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
 
 const demoProfiles = [
   { role: 'teacher', label: 'Docente' },
@@ -144,7 +145,10 @@ const features = [
 onMounted(async () => {
   localStorage.setItem('dark', '0')
   document.documentElement.classList.remove('dark')
-  try { settings.value = await getPublicSettings() }
+  try {
+    settings.value = await getPublicSettings()
+    applyFavicon(settings.value.favicon_url || settings.value.logo_url)
+  }
   catch { /* ignore */ }
 })
 

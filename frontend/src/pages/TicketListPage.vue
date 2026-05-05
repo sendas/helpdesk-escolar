@@ -56,7 +56,8 @@ const filterCat = ref<number | ''>('')
 
 const statusOpts = [
   { v: 'open', l: 'Aberto' }, { v: 'assigned', l: 'Atribuído' },
-  { v: 'in_progress', l: 'Em Curso' }, { v: 'resolved', l: 'Resolvido' }, { v: 'closed', l: 'Fechado' },
+  { v: 'in_progress', l: 'Em Curso' }, { v: 'waiting_user', l: 'A aguardar utilizador' },
+  { v: 'resolved', l: 'Resolvido' }, { v: 'closed', l: 'Fechado' },
 ]
 
 onMounted(async () => {
@@ -76,6 +77,6 @@ async function load() {
 }
 
 function statusLabel(s: string) {
-  return { open:'Aberto', assigned:'Atribuído', in_progress:'Em Curso', resolved:'Resolvido', closed:'Fechado' }[s] ?? s
+  return { open:'Aberto', assigned:'Atribuído', in_progress:'Em Curso', waiting_user:'A aguardar utilizador', resolved:'Resolvido', closed:'Fechado' }[s] ?? s
 }
 </script>

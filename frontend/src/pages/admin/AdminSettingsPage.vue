@@ -19,6 +19,12 @@
       <button class="hd-tab" :class="{ active: tab === 'schools' }" @click="tab = 'schools'">
         <span class="material-icons" style="font-size:15px">account_balance</span> Escolas
       </button>
+      <button class="hd-tab" :class="{ active: tab === 'routing' }" @click="tab = 'routing'">
+        <span class="material-icons" style="font-size:15px">alt_route</span> Encaminhamento
+      </button>
+      <button class="hd-tab" :class="{ active: tab === 'knowledge' }" @click="tab = 'knowledge'">
+        <span class="material-icons" style="font-size:15px">menu_book</span> Base de conhecimento
+      </button>
     </div>
 
     <!-- General -->
@@ -306,15 +312,99 @@
         </div>
       </div>
     </div>
+
+    <div v-if="tab === 'routing'" class="hd-card" style="padding:28px;max-width:1100px">
+      <div style="font-weight:600;font-size:15px;margin-bottom:4px">Encaminhamento automático</div>
+      <p class="hd-hint" style="margin-bottom:18px">Quando um ticket é criado, a primeira regra compatível atribui automaticamente grupo e/ou responsável.</p>
+      <div class="routing-form">
+        <select class="hd-select" v-model="newRoute.category_id">
+          <option :value="''">Qualquer categoria</option>
+          <option v-for="c in categories" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
+        </select>
+        <select class="hd-select" v-model="newRoute.school_id">
+          <option :value="''">Qualquer escola</option>
+          <option v-for="s in schools" :key="s.id" :value="String(s.id)">{{ s.name }}</option>
+        </select>
+        <select class="hd-select" v-model="newRoute.group_id">
+          <option :value="''">Sem grupo</option>
+          <option v-for="g in groups" :key="g.id" :value="String(g.id)">{{ g.name }}</option>
+        </select>
+        <select class="hd-select" v-model="newRoute.assignee_id">
+          <option :value="''">Sem responsável</option>
+          <option v-for="u in staffUsers" :key="u.id" :value="String(u.id)">{{ u.display_name }}</option>
+        </select>
+        <input class="hd-input" type="number" v-model="newRoute.priority" title="Prioridade" />
+        <button class="hd-btn hd-btn-primary" @click="addRoute">Adicionar regra</button>
+      </div>
+      <table class="hd-table">
+        <thead><tr><th>Categoria</th><th>Escola</th><th>Grupo</th><th>Responsável</th><th>Ordem</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="rule in routingRules" :key="rule.id">
+            <td>{{ rule.category?.name || 'Qualquer' }}</td>
+            <td>{{ rule.school?.name || 'Qualquer' }}</td>
+            <td>{{ rule.group?.name || '—' }}</td>
+            <td>{{ rule.assignee?.display_name || '—' }}</td>
+            <td>{{ rule.priority }}</td>
+            <td>
+              <button class="hd-icon-btn" @click="removeRoute(rule.id)" title="Eliminar">
+                <span class="material-icons" style="font-size:15px;color:#EF4444">delete</span>
+              </button>
+            </td>
+          </tr>
+          <tr v-if="!routingRules.length">
+            <td colspan="6" style="text-align:center;color:var(--c-muted);padding:32px">Sem regras de encaminhamento.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div v-if="tab === 'knowledge'" class="hd-card" style="padding:28px;max-width:1100px">
+      <div style="font-weight:600;font-size:15px;margin-bottom:4px">Base de conhecimento</div>
+      <p class="hd-hint" style="margin-bottom:18px">Artigos visíveis aos utilizadores para respostas rápidas e redução de tickets repetidos.</p>
+
+      <div class="knowledge-form">
+        <input class="hd-input" v-model="newArticle.title" placeholder="Título do artigo" />
+        <select class="hd-select" v-model="newArticle.category_id">
+          <option :value="''">Sem categoria</option>
+          <option v-for="c in categories" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
+        </select>
+        <label class="publish-toggle">
+          <input type="checkbox" v-model="newArticle.is_published" />
+          Publicado
+        </label>
+        <textarea class="hd-textarea" v-model="newArticle.body" rows="4" placeholder="Conteúdo do artigo"></textarea>
+        <button class="hd-btn hd-btn-primary" @click="addArticle" :disabled="!newArticle.title || !newArticle.body">Adicionar artigo</button>
+      </div>
+
+      <table class="hd-table">
+        <thead><tr><th>TÍTULO</th><th>CATEGORIA</th><th>ESTADO</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="article in articles" :key="article.id">
+            <td style="font-weight:700">{{ article.title }}</td>
+            <td>{{ article.category?.name || '—' }}</td>
+            <td>{{ article.is_published ? 'Publicado' : 'Rascunho' }}</td>
+            <td>
+              <button class="hd-icon-btn" @click="removeArticle(article.id)" title="Eliminar">
+                <span class="material-icons" style="font-size:15px;color:#EF4444">delete</span>
+              </button>
+            </td>
+          </tr>
+          <tr v-if="!articles.length">
+            <td colspan="4" style="text-align:center;color:var(--c-muted);padding:32px">Sem artigos.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { createCategory, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteSchool as apiDeleteSchool, getCategories, getSchools, updateCategory as apiUpdateCategory } from '../../api/tickets'
+import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory } from '../../api/tickets'
 import { getPublicSettings, updateSettings } from '../../api/settings'
+import { getGroups, getUsers } from '../../api/users'
 
-const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools'>('general')
+const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools' | 'routing' | 'knowledge'>('general')
 const saved = ref(false)
 const testing = ref(false)
 const ldapTestResult = ref('')
@@ -325,6 +415,10 @@ const loadingCats = ref(false)
 const loadingSchools = ref(false)
 const categories = ref<any[]>([])
 const schools = ref<any[]>([])
+const groups = ref<any[]>([])
+const staffUsers = ref<any[]>([])
+const routingRules = ref<any[]>([])
+const articles = ref<any[]>([])
 const logoFile = ref<File | null>(null)
 
 const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480 })
@@ -340,16 +434,22 @@ const notifications = ref([
 
 const newCat = ref({ name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 24 })
 const newSchool = ref({ name: '', short_name: '', address: '' })
+const newRoute = ref({ category_id: '', school_id: '', group_id: '', assignee_id: '', priority: 100 })
+const newArticle = ref({ title: '', body: '', category_id: '', is_published: true })
 
 onMounted(async () => {
   loadingCats.value = true
   loadingSchools.value = true
   try {
-    const [settings, cats, schs] = await Promise.all([getPublicSettings(), getCategories(), getSchools()])
+    const [settings, cats, schs, grps, users, routes, kb] = await Promise.all([getPublicSettings(), getCategories(), getSchools(), getGroups(), getUsers(), getRoutingRules(), getKnowledgeArticles(true)])
     general.value.org_name = settings.org_name
     general.value.logo_url = settings.logo_url
     categories.value = cats
     schools.value = schs
+    groups.value = grps
+    staffUsers.value = users.filter((u: any) => u.is_active && (u.role === 'technician' || u.role === 'admin'))
+    routingRules.value = routes
+    articles.value = kb
   } finally {
     loadingCats.value = false
     loadingSchools.value = false
@@ -421,4 +521,69 @@ async function deleteSchool(id: number) {
     schools.value = schools.value.filter(s => s.id !== id)
   } catch { /* ignore */ }
 }
+
+async function addRoute() {
+  const route = await createRoutingRule({
+    category_id: newRoute.value.category_id ? Number(newRoute.value.category_id) : null,
+    school_id: newRoute.value.school_id ? Number(newRoute.value.school_id) : null,
+    group_id: newRoute.value.group_id ? Number(newRoute.value.group_id) : null,
+    assignee_id: newRoute.value.assignee_id ? Number(newRoute.value.assignee_id) : null,
+    priority: Number(newRoute.value.priority) || 100,
+  })
+  routingRules.value.push(route)
+  routingRules.value.sort((a, b) => a.priority - b.priority)
+  newRoute.value = { category_id: '', school_id: '', group_id: '', assignee_id: '', priority: 100 }
+}
+
+async function removeRoute(id: number) {
+  if (!confirm('Eliminar esta regra?')) return
+  await deleteRoutingRule(id)
+  routingRules.value = routingRules.value.filter(r => r.id !== id)
+}
+
+async function addArticle() {
+  const article = await createKnowledgeArticle({
+    title: newArticle.value.title,
+    body: newArticle.value.body,
+    category_id: newArticle.value.category_id ? Number(newArticle.value.category_id) : null,
+    is_published: newArticle.value.is_published,
+  })
+  articles.value.unshift(article)
+  newArticle.value = { title: '', body: '', category_id: '', is_published: true }
+}
+
+async function removeArticle(id: number) {
+  if (!confirm('Eliminar este artigo?')) return
+  await deleteKnowledgeArticle(id)
+  articles.value = articles.value.filter(a => a.id !== id)
+}
 </script>
+
+<style scoped>
+.routing-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr)) 90px auto;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.knowledge-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 220px auto;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.knowledge-form .hd-textarea {
+  grid-column: 1 / -1;
+}
+.publish-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--c-muted);
+  font-weight: 700;
+}
+@media (max-width: 900px) {
+  .routing-form { grid-template-columns: 1fr; }
+  .knowledge-form { grid-template-columns: 1fr; }
+}
+</style>

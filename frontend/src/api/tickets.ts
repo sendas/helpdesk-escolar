@@ -3,16 +3,19 @@ import { api } from '../boot/axios'
 export interface School { id: number; name: string; short_name: string; address?: string }
 export interface Category { id: number; name: string; description?: string; email_to?: string; color: string; icon: string; sla_hours: number }
 export interface UserBrief { id: number; username: string; email: string; display_name: string; department?: string; role: string }
+export interface HelpdeskGroupBrief { id: number; name: string; description?: string; members?: UserBrief[] }
 
 export interface TicketListItem {
   id: number; title: string; status: string; priority: string
   created_at: string; updated_at: string
-  creator: UserBrief; assignee?: UserBrief; category: Category; school?: School
+  creator: UserBrief; assignee?: UserBrief; group?: HelpdeskGroupBrief; category: Category; school?: School
 }
-export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; author: UserBrief }
+export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; updated_at?: string; author: UserBrief }
 export interface Attachment { id: number; original_name: string; content_type: string; size: number; created_at: string }
-export interface TicketDetail extends TicketListItem { description: string; comments: Comment[]; attachments: Attachment[] }
+export interface TicketEvent { id: number; event_type: string; message: string; created_at: string; actor?: UserBrief | null }
+export interface TicketDetail extends TicketListItem { description: string; comments: Comment[]; attachments: Attachment[]; events: TicketEvent[] }
 export interface PaginatedTickets { items: TicketListItem[]; total: number; page: number; size: number }
+export interface KnowledgeArticle { id: number; title: string; body: string; is_published: boolean; category_id?: number | null; category?: Category | null; updated_at: string }
 
 export async function getTickets(params: { page?: number; size?: number; status?: string; category_id?: number; school_id?: number; priority?: string; admin?: boolean }) {
   const prefix = params.admin ? '/api/v1/admin' : '/api/v1'
@@ -39,17 +42,17 @@ export async function uploadTicketAttachment(ticketId: number, file: File) {
   return data
 }
 
-export async function updateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; priority: string }>) {
+export async function updateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/tickets/${id}`, payload)
   return data
 }
 
-export async function adminUpdateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; priority: string }>) {
+export async function adminUpdateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/admin/tickets/${id}`, payload)
   return data
 }
 
-export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: string; assignee_id?: number | null; priority?: string }) {
+export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: string; assignee_id?: number | null; group_id?: number | null; priority?: string }) {
   const { data } = await api.patch<TicketDetail[]>('/api/v1/admin/tickets/bulk', payload)
   return data
 }
@@ -62,6 +65,29 @@ export async function syncMailReplies() {
 export async function addComment(ticketId: number, body: string, is_internal = false) {
   const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal })
   return data
+}
+
+export async function updateComment(ticketId: number, commentId: number, body: string) {
+  const { data } = await api.patch<Comment>(`/api/v1/tickets/${ticketId}/comments/${commentId}`, { body })
+  return data
+}
+
+export async function deleteComment(ticketId: number, commentId: number) {
+  await api.delete(`/api/v1/tickets/${ticketId}/comments/${commentId}`)
+}
+
+export async function getRoutingRules() {
+  const { data } = await api.get('/api/v1/admin/routing-rules')
+  return data
+}
+
+export async function createRoutingRule(payload: { category_id?: number | null; school_id?: number | null; group_id?: number | null; assignee_id?: number | null; priority?: number }) {
+  const { data } = await api.post('/api/v1/admin/routing-rules', payload)
+  return data
+}
+
+export async function deleteRoutingRule(id: number) {
+  await api.delete(`/api/v1/admin/routing-rules/${id}`)
 }
 
 export async function getCategories() {
@@ -121,4 +147,23 @@ export async function updateBackupConfig(payload: { enabled: boolean; interval_h
 export async function runServerBackup() {
   const { data } = await api.post('/api/v1/admin/backup/run')
   return data as { filename: string; path: string }
+}
+
+export async function getKnowledgeArticles(admin = false) {
+  const { data } = await api.get<KnowledgeArticle[]>(admin ? '/api/v1/knowledge/admin' : '/api/v1/knowledge')
+  return data
+}
+
+export async function createKnowledgeArticle(payload: { title: string; body: string; category_id?: number | null; is_published?: boolean }) {
+  const { data } = await api.post<KnowledgeArticle>('/api/v1/knowledge/admin', payload)
+  return data
+}
+
+export async function updateKnowledgeArticle(id: number, payload: Partial<{ title: string; body: string; category_id: number | null; is_published: boolean }>) {
+  const { data } = await api.patch<KnowledgeArticle>(`/api/v1/knowledge/admin/${id}`, payload)
+  return data
+}
+
+export async function deleteKnowledgeArticle(id: number) {
+  await api.delete(`/api/v1/knowledge/admin/${id}`)
 }

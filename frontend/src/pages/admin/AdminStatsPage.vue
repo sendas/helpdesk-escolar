@@ -170,10 +170,10 @@ const barOptions = {
 }
 
 const statusColors: Record<string, string> = {
-  open: '#3D52D5', assigned: '#F59E0B', in_progress: '#8B5CF6', resolved: '#22C55E', closed: '#6B7280',
+  open: '#3D52D5', assigned: '#F59E0B', in_progress: '#8B5CF6', waiting_user: '#0891B2', resolved: '#22C55E', closed: '#6B7280',
 }
 const statusLabels: Record<string, string> = {
-  open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', resolved: 'Resolvido', closed: 'Fechado',
+  open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', waiting_user: 'A aguardar utilizador', resolved: 'Resolvido', closed: 'Fechado',
 }
 
 const donutData = computed(() => {

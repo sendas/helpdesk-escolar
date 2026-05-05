@@ -55,6 +55,12 @@
           <option v-for="u in staffUsers" :key="u.id" :value="String(u.id)">{{ u.display_name }}</option>
         </select>
         <button class="hd-btn hd-btn-outline" :disabled="!bulkAssignee" @click="applyBulkAssignee">Aplicar responsável</button>
+        <select class="hd-select" v-model="bulkGroup">
+          <option value="">Grupo...</option>
+          <option value="none">— Sem grupo</option>
+          <option v-for="g in groups" :key="g.id" :value="String(g.id)">{{ g.name }}</option>
+        </select>
+        <button class="hd-btn hd-btn-outline" :disabled="!bulkGroup" @click="applyBulkGroup">Aplicar grupo</button>
         <select class="hd-select" v-model="bulkPriority">
           <option value="">Prioridade...</option>
           <option value="urgent">Urgente</option>
@@ -81,6 +87,7 @@
                 <th>Prioridade</th>
                 <th>Estado</th>
                 <th>Responsável</th>
+                <th>Grupo</th>
                 <th>Atualizado</th>
                 <th></th>
               </tr>
@@ -103,6 +110,7 @@
                 <td><PriorityBadge :priority="t.priority" /></td>
                 <td><StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></td>
                 <td><AssigneeSelect :value="t.assignee?.id ?? ''" :users="staffUsers" @change="changeAssignee(t, $event)" /></td>
+                <td><GroupSelect :value="t.group?.id ?? ''" :groups="groups" @change="changeGroup(t, $event)" /></td>
                 <td class="muted-cell">{{ timeAgo(t.updated_at) }}</td>
                 <td>
                   <router-link :to="`/tickets/${t.id}`">
@@ -136,6 +144,7 @@
             <div class="ticket-card-controls">
               <label>Estado<StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></label>
               <label>Responsável<AssigneeSelect :value="t.assignee?.id ?? ''" :users="staffUsers" @change="changeAssignee(t, $event)" /></label>
+              <label>Grupo<GroupSelect :value="t.group?.id ?? ''" :groups="groups" @change="changeGroup(t, $event)" /></label>
             </div>
           </article>
         </div>
@@ -155,7 +164,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies } from '../../api/tickets'
-import { getUsers } from '../../api/users'
+import { getGroups, getUsers } from '../../api/users'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
 import { timeAgo as formatTimeAgo } from '../../utils/dates'
@@ -200,10 +209,26 @@ const AssigneeSelect = defineComponent({
   },
 })
 
+const GroupSelect = defineComponent({
+  props: { value: { type: [String, Number], default: '' }, groups: { type: Array, required: true } },
+  emits: ['change'],
+  setup(props, { emit }) {
+    return () => h('select', {
+      class: 'hd-select compact-select',
+      value: props.value,
+      onChange: (e: Event) => emit('change', (e.target as HTMLSelectElement).value),
+    }, [
+      h('option', { value: '' }, '— Sem grupo'),
+      ...(props.groups as any[]).map(g => h('option', { value: g.id }, g.name)),
+    ])
+  },
+})
+
 const tickets = ref<any[]>([])
 const categories = ref<any[]>([])
 const schools = ref<any[]>([])
 const staffUsers = ref<any[]>([])
+const groups = ref<any[]>([])
 const loading = ref(false)
 const total = ref(0)
 const page = ref(1)
@@ -211,6 +236,7 @@ const pageSize = 25
 const selectedIds = ref<number[]>([])
 const bulkStatus = ref('')
 const bulkAssignee = ref('')
+const bulkGroup = ref('')
 const bulkPriority = ref('')
 const mailSyncMessage = ref('')
 const filterStatus = ref('')
@@ -222,6 +248,7 @@ const statusOpts = [
   { v: 'open', l: 'Aberto' },
   { v: 'assigned', l: 'Atribuído' },
   { v: 'in_progress', l: 'Em Curso' },
+  { v: 'waiting_user', l: 'A aguardar utilizador' },
   { v: 'resolved', l: 'Resolvido' },
   { v: 'closed', l: 'Fechado' },
 ]
@@ -229,9 +256,10 @@ const statusOpts = [
 const allVisibleSelected = computed(() => tickets.value.length > 0 && tickets.value.every(t => selectedIds.value.includes(t.id)))
 
 onMounted(async () => {
-  const [cats, schs, users] = await Promise.all([getCategories(), getSchools(), getUsers()])
+  const [cats, schs, users, grps] = await Promise.all([getCategories(), getSchools(), getUsers(), getGroups()])
   categories.value = cats
   schools.value = schs
+  groups.value = grps
   staffUsers.value = users.filter((u: any) => u.is_active && (u.role === 'technician' || u.role === 'admin'))
   await load()
 })
@@ -266,6 +294,10 @@ async function changeAssignee(ticket: any, value: string) {
   await updateTicketInList(ticket.id, { assignee_id: value ? Number(value) : null })
 }
 
+async function changeGroup(ticket: any, value: string) {
+  await updateTicketInList(ticket.id, { group_id: value ? Number(value) : null })
+}
+
 async function updateTicketInList(id: number, payload: any) {
   try {
     const updated = await adminUpdateTicket(id, payload)
@@ -298,6 +330,12 @@ async function applyBulkAssignee() {
   if (!bulkAssignee.value) return
   await applyBulk({ assignee_id: bulkAssignee.value === 'none' ? null : Number(bulkAssignee.value) })
   bulkAssignee.value = ''
+}
+
+async function applyBulkGroup() {
+  if (!bulkGroup.value) return
+  await applyBulk({ group_id: bulkGroup.value === 'none' ? null : Number(bulkGroup.value) })
+  bulkGroup.value = ''
 }
 
 async function applyBulkPriority() {
@@ -372,7 +410,7 @@ function timeAgo(date: string) {
 }
 .bulk-bar .hd-select { width: auto; min-width: 150px; }
 .desktop-table-wrap { overflow-x: auto; }
-.tickets-table { min-width: 1120px; }
+.tickets-table { min-width: 1320px; }
 .tickets-table th, .tickets-table td { vertical-align: middle; }
 .ticket-id, .muted-cell { color: var(--c-muted); font-size: 12px; white-space: nowrap; }
 .subject-cell { max-width: 260px; }

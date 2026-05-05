@@ -9,6 +9,7 @@ class TicketStatus(str, enum.Enum):
     OPEN = "open"
     ASSIGNED = "assigned"
     IN_PROGRESS = "in_progress"
+    WAITING_USER = "waiting_user"
     RESOLVED = "resolved"
     CLOSED = "closed"
 
@@ -33,15 +34,23 @@ class Ticket(Base):
 
     creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    group_id: Mapped[int | None] = mapped_column(ForeignKey("helpdesk_groups.id"), nullable=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
     school_id: Mapped[int | None] = mapped_column(ForeignKey("schools.id"), nullable=True)
 
     creator: Mapped["User"] = relationship("User", foreign_keys=[creator_id], back_populates="created_tickets")
     assignee: Mapped["User | None"] = relationship("User", foreign_keys=[assignee_id], back_populates="assigned_tickets")
+    group: Mapped["HelpdeskGroup | None"] = relationship("HelpdeskGroup")
     category: Mapped["Category"] = relationship("Category", back_populates="tickets")
     school: Mapped["School | None"] = relationship("School", back_populates="tickets")
     comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="ticket", cascade="all, delete-orphan")
     attachments: Mapped[list["Attachment"]] = relationship("Attachment", back_populates="ticket", cascade="all, delete-orphan")
+    events: Mapped[list["TicketEvent"]] = relationship(
+        "TicketEvent",
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+        order_by="TicketEvent.created_at.desc()",
+    )
 
 
 class Comment(Base):
@@ -50,12 +59,44 @@ class Comment(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     body: Mapped[str] = mapped_column(Text)
     is_internal: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     ticket: Mapped["Ticket"] = relationship("Ticket", back_populates="comments")
     author: Mapped["User"] = relationship("User", back_populates="comments")
+
+
+class TicketEvent(Base):
+    __tablename__ = "ticket_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(80))
+    message: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+    ticket: Mapped["Ticket"] = relationship("Ticket", back_populates="events")
+    actor: Mapped["User | None"] = relationship("User")
+
+
+class TicketRoutingRule(Base):
+    __tablename__ = "ticket_routing_rules"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
+    school_id: Mapped[int | None] = mapped_column(ForeignKey("schools.id"), nullable=True)
+    group_id: Mapped[int | None] = mapped_column(ForeignKey("helpdesk_groups.id"), nullable=True)
+    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    priority: Mapped[int] = mapped_column(default=100)
+
+    category: Mapped["Category | None"] = relationship("Category")
+    school: Mapped["School | None"] = relationship("School")
+    group: Mapped["HelpdeskGroup | None"] = relationship("HelpdeskGroup")
+    assignee: Mapped["User | None"] = relationship("User")
 
 
 class Attachment(Base):

@@ -5,11 +5,67 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, require_staff, require_admin
 from app.models.user import User
-from app.models.ticket import Ticket, Comment, TicketStatus
-from app.schemas.ticket import TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets
+from app.models.group import HelpdeskGroup
+from app.models.ticket import Ticket, Comment, TicketRoutingRule, TicketStatus
+from app.schemas.ticket import TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets, TicketRoutingRuleCreate, TicketRoutingRuleRead, TicketRoutingRuleUpdate
 from app.services import ticket_service, email_service, email_ingest, backup_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/routing-rules", response_model=list[TicketRoutingRuleRead])
+async def list_routing_rules(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    result = await db.execute(
+        select(TicketRoutingRule)
+        .options(
+            selectinload(TicketRoutingRule.category),
+            selectinload(TicketRoutingRule.school),
+            selectinload(TicketRoutingRule.group).selectinload(HelpdeskGroup.members),
+            selectinload(TicketRoutingRule.assignee),
+        )
+        .order_by(TicketRoutingRule.priority.asc())
+    )
+    return result.scalars().all()
+
+
+@router.post("/routing-rules", response_model=TicketRoutingRuleRead, status_code=status.HTTP_201_CREATED)
+async def create_routing_rule(data: TicketRoutingRuleCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    rule = TicketRoutingRule(**data.model_dump())
+    db.add(rule)
+    await db.commit()
+    await db.refresh(rule)
+    result = await db.execute(
+        select(TicketRoutingRule)
+        .where(TicketRoutingRule.id == rule.id)
+        .options(selectinload(TicketRoutingRule.category), selectinload(TicketRoutingRule.school), selectinload(TicketRoutingRule.group), selectinload(TicketRoutingRule.assignee))
+    )
+    return result.scalar_one()
+
+
+@router.patch("/routing-rules/{rule_id}", response_model=TicketRoutingRuleRead)
+async def update_routing_rule(rule_id: int, data: TicketRoutingRuleUpdate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    rule = (await db.execute(select(TicketRoutingRule).where(TicketRoutingRule.id == rule_id))).scalar_one_or_none()
+    if not rule:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routing rule not found")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(rule, key, value)
+    await db.commit()
+    await db.refresh(rule)
+    result = await db.execute(
+        select(TicketRoutingRule)
+        .where(TicketRoutingRule.id == rule.id)
+        .options(selectinload(TicketRoutingRule.category), selectinload(TicketRoutingRule.school), selectinload(TicketRoutingRule.group), selectinload(TicketRoutingRule.assignee))
+    )
+    return result.scalar_one()
+
+
+@router.delete("/routing-rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_routing_rule(rule_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    rule = (await db.execute(select(TicketRoutingRule).where(TicketRoutingRule.id == rule_id))).scalar_one_or_none()
+    if not rule:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routing rule not found")
+    await db.delete(rule)
+    await db.commit()
 
 
 @router.get("/tickets", response_model=PaginatedTickets)
@@ -27,6 +83,7 @@ async def admin_list_tickets(
     query = select(Ticket).options(
         selectinload(Ticket.creator),
         selectinload(Ticket.assignee),
+        selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
         selectinload(Ticket.category),
         selectinload(Ticket.school),
     )
@@ -64,6 +121,7 @@ async def admin_bulk_update_tickets(
         .options(
             selectinload(Ticket.creator),
             selectinload(Ticket.assignee),
+            selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
             selectinload(Ticket.category),
             selectinload(Ticket.school),
             selectinload(Ticket.comments).selectinload(Comment.author),
@@ -86,6 +144,14 @@ async def admin_bulk_update_tickets(
                 "assigned",
                 {"id": updated.id, "title": updated.title, "assignee": updated.assignee.display_name},
             )
+        if "group_id" in data.model_fields_set and data.group_id and updated.group:
+            for member in updated.group.members:
+                if member.email:
+                    await email_service.send_ticket_notification(
+                        member.email,
+                        "assigned",
+                        {"id": updated.id, "title": updated.title, "assignee": updated.group.name},
+                    )
     return updated_tickets
 
 
@@ -113,6 +179,14 @@ async def admin_update_ticket(
             "assigned",
             {"id": updated.id, "title": updated.title, "assignee": updated.assignee.display_name},
         )
+    if "group_id" in data.model_fields_set and data.group_id and updated.group:
+        for member in updated.group.members:
+            if member.email:
+                await email_service.send_ticket_notification(
+                    member.email,
+                    "assigned",
+                    {"id": updated.id, "title": updated.title, "assignee": updated.group.name},
+                )
     return updated
 
 

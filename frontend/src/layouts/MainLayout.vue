@@ -37,6 +37,9 @@
         <router-link class="hd-nav-item" :class="{ active: $route.path === '/tickets/new' }" to="/tickets/new" @click="mobileMenuOpen = false">
           <span class="material-icons" style="font-size:16px">add_circle</span> Novo ticket
         </router-link>
+        <router-link class="hd-nav-item" :class="{ active: $route.path === '/knowledge' }" to="/knowledge" @click="mobileMenuOpen = false">
+          <span class="material-icons" style="font-size:16px">menu_book</span> Base de conhecimento
+        </router-link>
 
         <template v-if="auth.isStaff">
           <div class="hd-nav-section" style="margin-top:8px">Administração</div>
@@ -124,6 +127,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getTickets } from '../api/tickets'
 import { getPublicSettings } from '../api/settings'
+import { applyFavicon } from '../utils/branding'
 import AvatarCircle from '../components/AvatarCircle.vue'
 
 const auth = useAuthStore()
@@ -134,7 +138,7 @@ const openCount = ref(0)
 const adminOpenCount = ref(0)
 const showNotifications = ref(false)
 const mobileMenuOpen = ref(false)
-const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '' })
+const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
 
 const roleLabel = computed(() => {
   const map: Record<string, string> = {
@@ -153,6 +157,7 @@ const titleMap: Record<string, string> = {
   '/dashboard': 'Painel inicial',
   '/tickets': 'Os meus tickets',
   '/tickets/new': 'Novo pedido',
+  '/knowledge': 'Base de conhecimento',
   '/admin/tickets': 'Gestão de tickets',
   '/admin/users': 'Utilizadores e permissões',
   '/admin/stats': 'Estatísticas',
@@ -178,6 +183,7 @@ onMounted(async () => {
   document.addEventListener('click', closeNotifications)
   try {
     settings.value = await getPublicSettings()
+    applyFavicon(settings.value.favicon_url || settings.value.logo_url)
     const d = await getTickets({ page: 1, size: 1, status: 'open' })
     openCount.value = d.total
     if (auth.isStaff) {

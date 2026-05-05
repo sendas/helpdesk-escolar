@@ -3,6 +3,7 @@ import { api } from '../boot/axios'
 export interface PublicSettings {
   org_name: string
   logo_url: string
+  favicon_url: string
 }
 
 export async function getPublicSettings() {

@@ -18,6 +18,7 @@
   --status-open:        #0D9488; /* teal */
   --status-assigned:    #7C3AED; /* purple */
   --status-in_progress: #D97706; /* amber */
+  --status-waiting_user:#0891B2; /* cyan */
   --status-resolved:    #16A34A; /* green */
   --status-closed:      #6B7280; /* gray */
 
@@ -275,6 +276,7 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
 .hd-status.open        { color: var(--status-open);        background: #F0FDF9; }
 .hd-status.assigned    { color: var(--status-assigned);    background: #F5F3FF; }
 .hd-status.in_progress { color: var(--status-in_progress); background: #FFFBEB; }
+.hd-status.waiting_user{ color: var(--status-waiting_user);background: #ECFEFF; }
 .hd-status.resolved    { color: var(--status-resolved);    background: #F0FDF4; }
 .hd-status.closed      { color: var(--status-closed);      background: #F9FAFB; }
 

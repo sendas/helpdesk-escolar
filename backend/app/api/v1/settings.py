@@ -16,6 +16,7 @@ ALLOWED_LOGO_TYPES = {"image/png", "image/jpeg", "image/svg+xml", "image/webp"}
 DEFAULT_SETTINGS = {
     "org_name": "Agrupamento de Escolas Eça de Queirós",
     "logo_url": "",
+    "favicon_url": "",
 }
 
 
@@ -45,6 +46,7 @@ async def update_settings(
         with open(os.path.join(LOGO_DIR, stored_name), "wb") as f:
             f.write(content)
         data["logo_url"] = f"/uploads/branding/{stored_name}"
+        data["favicon_url"] = data["logo_url"]
 
     _write_settings(data)
     return data

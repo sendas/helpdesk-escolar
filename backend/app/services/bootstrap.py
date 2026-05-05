@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.category import Category
 from app.models.group import HelpdeskGroup
+from app.models.knowledge import KnowledgeArticle
 from app.models.school import School
 
 
@@ -37,6 +38,17 @@ DEFAULT_GROUPS = [
     {"name": "Equipa TIC EQ", "description": "Equipa TIC da Escola Eça de Queirós"},
 ]
 
+DEFAULT_KNOWLEDGE = [
+    {
+        "title": "Antes de abrir um pedido de Apoio Técnico",
+        "body": "Indique sempre escola, sala, equipamento afetado, hora em que o problema ocorreu e, se possível, anexe uma captura de ecrã ou fotografia.",
+    },
+    {
+        "title": "Antes de abrir um pedido sobre Inovar",
+        "body": "Inclua o módulo do Inovar, a turma ou aluno afetado quando aplicável, a mensagem de erro e os passos que fez até ao problema aparecer.",
+    },
+]
+
 
 async def ensure_defaults(db: AsyncSession) -> None:
     await ensure_schema(db)
@@ -55,6 +67,11 @@ async def ensure_defaults(db: AsyncSession) -> None:
         exists = await db.execute(select(HelpdeskGroup).where(HelpdeskGroup.name == data["name"]))
         if not exists.scalar_one_or_none():
             db.add(HelpdeskGroup(**data))
+
+    for data in DEFAULT_KNOWLEDGE:
+        exists = await db.execute(select(KnowledgeArticle).where(KnowledgeArticle.title == data["title"]))
+        if not exists.scalar_one_or_none():
+            db.add(KnowledgeArticle(**data))
 
     await db.commit()
 
@@ -81,4 +98,25 @@ async def ensure_schema(db: AsyncSession) -> None:
             changed = True
     if changed:
         await db.execute(text("UPDATE users SET role_source = 'manual', role_locked = 1 WHERE role = 'ADMIN'"))
+        await db.commit()
+
+    result = await db.execute(text("PRAGMA table_info(tickets)"))
+    ticket_columns = {row[1] for row in result.fetchall()}
+    ticket_changed = False
+    if "group_id" not in ticket_columns:
+        await db.execute(text("ALTER TABLE tickets ADD COLUMN group_id INTEGER"))
+        ticket_changed = True
+    if ticket_changed:
+        await db.commit()
+
+    result = await db.execute(text("PRAGMA table_info(comments)"))
+    comment_columns = {row[1] for row in result.fetchall()}
+    comment_changed = False
+    if "updated_at" not in comment_columns:
+        await db.execute(text("ALTER TABLE comments ADD COLUMN updated_at DATETIME"))
+        comment_changed = True
+    if "deleted_at" not in comment_columns:
+        await db.execute(text("ALTER TABLE comments ADD COLUMN deleted_at DATETIME"))
+        comment_changed = True
+    if comment_changed:
         await db.commit()

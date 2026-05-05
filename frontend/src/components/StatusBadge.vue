@@ -9,7 +9,9 @@ const props = defineProps<{ status: string }>()
 
 const map: Record<string, { color: string; label: string }> = {
   open: { color: 'orange', label: 'Aberto' },
-  in_progress: { color: 'blue', label: 'Em Progresso' },
+  assigned: { color: 'purple', label: 'Atribuído' },
+  in_progress: { color: 'blue', label: 'Em Curso' },
+  waiting_user: { color: 'cyan', label: 'A aguardar utilizador' },
   resolved: { color: 'green', label: 'Resolvido' },
   closed: { color: 'grey', label: 'Fechado' },
 }

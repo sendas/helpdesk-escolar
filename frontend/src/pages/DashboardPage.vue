@@ -92,13 +92,13 @@ const recent = computed(() => tickets.value.slice(0, 5))
 
 const stats = computed(() => [
   { label: 'Tickets Abertos', count: tickets.value.filter(t => t.status === 'open').length, icon: 'inbox', sub: 'em aberto' },
-  { label: 'Em Análise', count: tickets.value.filter(t => ['assigned','in_progress'].includes(t.status)).length, icon: 'schedule', sub: 'em curso' },
+  { label: 'Em Análise', count: tickets.value.filter(t => ['assigned','in_progress','waiting_user'].includes(t.status)).length, icon: 'schedule', sub: 'em curso' },
   { label: 'Resolvidos', count: tickets.value.filter(t => t.status === 'resolved').length, icon: 'check_circle', sub: 'resolvidos' },
   { label: 'Tempo Médio', count: '—', icon: 'bar_chart', sub: 'até resposta' },
 ])
 
 function statusLabel(s: string) {
-  return { open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', resolved: 'Resolvido', closed: 'Fechado' }[s] ?? s
+  return { open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', waiting_user: 'A aguardar utilizador', resolved: 'Resolvido', closed: 'Fechado' }[s] ?? s
 }
 
 </script>
