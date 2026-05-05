@@ -29,6 +29,11 @@ class TicketBulkUpdate(BaseModel):
     priority: TicketPriority | None = None
 
 
+class TicketBulkAction(BaseModel):
+    ids: list[int]
+    action: str
+
+
 class CommentCreate(BaseModel):
     body: str
     is_internal: bool = False
@@ -80,6 +85,7 @@ class TicketRead(BaseModel):
     priority: TicketPriority
     created_at: datetime
     updated_at: datetime
+    archived_at: datetime | None = None
     creator: UserRead
     assignee: UserRead | None = None
     group: HelpdeskGroupRead | None = None
@@ -99,6 +105,7 @@ class TicketListItem(BaseModel):
     priority: TicketPriority
     created_at: datetime
     updated_at: datetime
+    archived_at: datetime | None = None
     creator: UserRead
     assignee: UserRead | None = None
     group: HelpdeskGroupRead | None = None

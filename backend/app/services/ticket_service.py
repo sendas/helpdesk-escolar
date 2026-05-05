@@ -60,7 +60,7 @@ async def list_tickets(
         selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
         selectinload(Ticket.category),
         selectinload(Ticket.school),
-    )
+    ).where(Ticket.archived_at.is_(None))
     if user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
         query = query.where(Ticket.creator_id == user.id)
     if status:

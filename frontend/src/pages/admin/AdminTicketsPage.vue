@@ -69,6 +69,14 @@
           <option value="low">Baixa</option>
         </select>
         <button class="hd-btn hd-btn-outline" :disabled="!bulkPriority" @click="applyBulkPriority">Aplicar prioridade</button>
+        <button v-if="auth.isAdmin" class="hd-btn hd-btn-outline" @click="archiveSelected">
+          <span class="material-icons">archive</span>
+          Arquivar
+        </button>
+        <button v-if="auth.isAdmin" class="hd-btn danger-action" @click="deleteSelected">
+          <span class="material-icons">delete</span>
+          Apagar
+        </button>
         <button class="hd-btn hd-btn-outline" @click="selectedIds = []">Limpar</button>
       </div>
 
@@ -163,8 +171,9 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
-import { adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies } from '../../api/tickets'
+import { adminBulkActionTickets, adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies } from '../../api/tickets'
 import { getGroups, getUsers } from '../../api/users'
+import { useAuthStore } from '../../stores/auth'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
 import { timeAgo as formatTimeAgo } from '../../utils/dates'
@@ -225,6 +234,7 @@ const GroupSelect = defineComponent({
 })
 
 const tickets = ref<any[]>([])
+const auth = useAuthStore()
 const categories = ref<any[]>([])
 const schools = ref<any[]>([])
 const staffUsers = ref<any[]>([])
@@ -357,6 +367,22 @@ async function applyBulk(payload: any) {
   }
 }
 
+async function archiveSelected() {
+  if (!selectedIds.value.length) return
+  if (!window.confirm(`Arquivar ${selectedIds.value.length} ticket(s) selecionado(s)?`)) return
+  await adminBulkActionTickets({ ids: selectedIds.value, action: 'archive' })
+  selectedIds.value = []
+  await load()
+}
+
+async function deleteSelected() {
+  if (!selectedIds.value.length) return
+  if (!window.confirm(`Apagar definitivamente ${selectedIds.value.length} ticket(s)? Esta ação não pode ser anulada.`)) return
+  await adminBulkActionTickets({ ids: selectedIds.value, action: 'delete' })
+  selectedIds.value = []
+  await load()
+}
+
 async function syncReplies() {
   mailSyncMessage.value = 'A ler respostas de email...'
   try {
@@ -409,6 +435,12 @@ function timeAgo(date: string) {
   background: var(--c-bg);
 }
 .bulk-bar .hd-select { width: auto; min-width: 150px; }
+.danger-action {
+  border-color: rgba(239, 68, 68, .35);
+  color: #EF4444;
+  background: rgba(239, 68, 68, .08);
+}
+.danger-action:hover { background: rgba(239, 68, 68, .14); }
 .desktop-table-wrap { overflow-x: auto; }
 .tickets-table { min-width: 1320px; }
 .tickets-table th, .tickets-table td { vertical-align: middle; }

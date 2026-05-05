@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, func
@@ -6,8 +8,8 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, require_staff, require_admin
 from app.models.user import User
 from app.models.group import HelpdeskGroup
-from app.models.ticket import Ticket, Comment, TicketRoutingRule, TicketStatus
-from app.schemas.ticket import TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets, TicketRoutingRuleCreate, TicketRoutingRuleRead, TicketRoutingRuleUpdate
+from app.models.ticket import Ticket, Comment, TicketEvent, TicketRoutingRule, TicketStatus
+from app.schemas.ticket import TicketBulkAction, TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets, TicketRoutingRuleCreate, TicketRoutingRuleRead, TicketRoutingRuleUpdate
 from app.services import ticket_service, email_service, email_ingest, backup_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -86,7 +88,7 @@ async def admin_list_tickets(
         selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
         selectinload(Ticket.category),
         selectinload(Ticket.school),
-    )
+    ).where(Ticket.archived_at.is_(None))
     if status:
         query = query.where(Ticket.status == status)
     if category_id:
@@ -153,6 +155,37 @@ async def admin_bulk_update_tickets(
                         {"id": updated.id, "title": updated.title, "assignee": updated.group.name},
                     )
     return updated_tickets
+
+
+@router.post("/tickets/bulk-action")
+async def admin_bulk_action_tickets(
+    data: TicketBulkAction,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_admin),
+):
+    if not data.ids:
+        return {"affected": 0}
+    if data.action not in {"archive", "delete"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported bulk action")
+
+    result = await db.execute(select(Ticket).where(Ticket.id.in_(data.ids)))
+    tickets = result.scalars().all()
+    now = datetime.utcnow()
+    affected = 0
+
+    for ticket in tickets:
+        if data.action == "archive":
+            if ticket.archived_at is None:
+                ticket.archived_at = now
+                ticket.updated_at = now
+                db.add(TicketEvent(ticket_id=ticket.id, actor_id=actor.id, event_type="archived", message="Ticket arquivado"))
+                affected += 1
+        else:
+            await db.delete(ticket)
+            affected += 1
+
+    await db.commit()
+    return {"affected": affected}
 
 
 @router.patch("/tickets/{ticket_id}", response_model=TicketRead)

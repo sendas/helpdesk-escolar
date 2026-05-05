@@ -57,6 +57,11 @@ export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: 
   return data
 }
 
+export async function adminBulkActionTickets(payload: { ids: number[]; action: 'archive' | 'delete' }) {
+  const { data } = await api.post<{ affected: number }>('/api/v1/admin/tickets/bulk-action', payload)
+  return data
+}
+
 export async function syncMailReplies() {
   const { data } = await api.post<{ processed: number; skipped: number }>('/api/v1/admin/mail/sync')
   return data
