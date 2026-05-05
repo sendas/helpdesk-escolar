@@ -6,7 +6,7 @@
         <div class="sync-note">
           <span class="material-icons">sync</span>
           Sincronização Entra ID
-          <button class="sync-link" @click="syncEntra" :disabled="syncing">
+          <button class="sync-link" @click="openSyncDialog" :disabled="syncing">
             {{ syncing ? 'A sincronizar...' : 'Sincronizar agora' }}
           </button>
         </div>
@@ -24,10 +24,60 @@
       <div><strong>{{ syncReport.manual_locked }}</strong><span>mantidos manualmente</span></div>
       <div><strong>{{ syncReport.skipped }}</strong><span>ignorados</span></div>
       <div class="sync-report-muted">
-        convidados {{ syncReport.skipped_guests }} · inativos {{ syncReport.skipped_disabled }} · fora das OUs {{ syncReport.skipped_outside_ou }} · sem email {{ syncReport.skipped_without_email }}
+        convidados {{ syncReport.skipped_guests }} · inativos {{ syncReport.skipped_disabled }} · alunos {{ syncReport.skipped_students || 0 }} · fora das OUs {{ syncReport.skipped_outside_ou }} · sem email {{ syncReport.skipped_without_email }}
       </div>
     </div>
     <div v-if="syncMessage" class="sync-message">{{ syncMessage }}</div>
+
+    <div v-if="showSyncDialog" class="sync-modal-backdrop" @click.self="showSyncDialog = false">
+      <section class="sync-modal hd-card">
+        <div class="sync-modal-head">
+          <div>
+            <h2>Sincronizar Entra ID</h2>
+            <p>Escolha as OUs que pretende importar. Os alunos são sempre ignorados automaticamente.</p>
+          </div>
+          <button class="hd-icon-btn" @click="showSyncDialog = false" title="Fechar">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+
+        <label class="sync-all-option">
+          <input type="checkbox" v-model="syncAllOus" />
+          <span>
+            <strong>Sincronizar todas as OUs permitidas</strong>
+            <small>Importa todos os utilizadores ativos do Entra ID, exceto OUs de alunos.</small>
+          </span>
+        </label>
+
+        <div v-if="!syncAllOus" class="sync-ou-panel">
+          <div class="sync-ou-list">
+            <label v-for="ou in knownOus" :key="ou" class="sync-ou-item">
+              <input type="checkbox" :value="ou" v-model="selectedSyncOus" />
+              <span>{{ ou }}</span>
+            </label>
+            <div v-if="!knownOus.length" class="empty-note">Ainda não há OUs importadas. Pode escrever uma manualmente abaixo.</div>
+          </div>
+          <div class="sync-ou-add">
+            <input class="hd-input" v-model="newSyncOu" placeholder="Ex: queiroz.local/aeeq/_docentes" @keyup.enter="addSyncOu" />
+            <button class="hd-btn hd-btn-outline" @click="addSyncOu" :disabled="!newSyncOu.trim()">Adicionar OU</button>
+          </div>
+          <div v-if="selectedSyncOus.length" class="sync-ou-chips">
+            <button v-for="ou in selectedSyncOus" :key="ou" class="watcher-chip" @click="removeSyncOu(ou)">
+              {{ ou }}
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="sync-modal-actions">
+          <button class="hd-btn hd-btn-outline" @click="showSyncDialog = false">Cancelar</button>
+          <button class="hd-btn hd-btn-primary" @click="runSyncWithOus" :disabled="syncing || (!syncAllOus && !selectedSyncOus.length)">
+            <span class="material-icons" style="font-size:16px">sync</span>
+            {{ syncing ? 'A sincronizar...' : 'Guardar e sincronizar' }}
+          </button>
+        </div>
+      </section>
+    </div>
 
     <div class="hd-tabs" style="margin-bottom:20px">
       <button class="hd-tab" :class="{ active: tab === 'users' }" @click="tab = 'users'">
@@ -121,7 +171,12 @@
                 </button>
               </td>
               <td>
-                <div style="font-size:13px">{{ u.department || '—' }}</div>
+                <input
+                  class="department-input"
+                  :value="u.department || ''"
+                  placeholder="Departamento / OU"
+                  @change="changeDepartment(u, ($event.target as HTMLInputElement).value)"
+                />
                 <div style="font-size:11px;color:var(--c-muted);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                   {{ u.onprem_path || 'Sem OU local' }}
                 </div>
@@ -170,7 +225,12 @@
                 </button>
               </label>
             </div>
-            <div class="user-card-meta">{{ u.department || 'Sem departamento' }}</div>
+            <input
+              class="department-input mobile"
+              :value="u.department || ''"
+              placeholder="Departamento / OU"
+              @change="changeDepartment(u, ($event.target as HTMLInputElement).value)"
+            />
             <div class="user-card-ou">{{ u.onprem_path || 'Sem OU local' }}</div>
           </article>
         </div>
@@ -282,6 +342,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { bulkUpdateUsers, createGroup, deleteGroup, getGroups, getUsers, importAzureUsers, updateGroupMembers, updateUser } from '../../api/users'
+import { getAzureSyncSettings, updateAzureSyncSettings } from '../../api/settings'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 
 const users = ref<any[]>([])
@@ -302,6 +363,11 @@ const groupForm = ref({ name: '', description: '' })
 const selectedGroupId = ref<number | null>(null)
 const groupMemberIds = ref<number[]>([])
 const groupUserSearch = ref('')
+const showSyncDialog = ref(false)
+const syncAllOus = ref(true)
+const selectedSyncOus = ref<string[]>([])
+const newSyncOu = ref('')
+const azureSyncSettingsLoaded = ref(false)
 
 const roleOptions = [
   { value: 'teacher', label: 'Docente' },
@@ -326,6 +392,15 @@ const departments = computed(() => {
   return Array.from(set).sort() as string[]
 })
 
+const knownOus = computed(() => {
+  const set = new Set<string>()
+  users.value.forEach(u => {
+    if (u.onprem_path) set.add(u.onprem_path)
+  })
+  selectedSyncOus.value.forEach(ou => set.add(ou))
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
 const lockedCount = computed(() => users.value.filter(u => u.role_locked).length)
 const allVisibleSelected = computed(() => filteredUsers.value.length > 0 && filteredUsers.value.every(u => selectedIds.value.includes(u.id)))
 const selectedGroup = computed(() => groups.value.find(g => g.id === selectedGroupId.value) || null)
@@ -345,7 +420,7 @@ const roleDefinitions = [
 ]
 
 onMounted(async () => {
-  await Promise.all([loadUsers(), loadGroups()])
+  await Promise.all([loadUsers(), loadGroups(), loadAzureSyncSettings()])
 })
 
 async function loadUsers() {
@@ -357,6 +432,42 @@ async function loadUsers() {
 async function loadGroups() {
   groups.value = await getGroups()
   if (!selectedGroupId.value && groups.value.length) selectGroup(groups.value[0].id)
+}
+
+async function loadAzureSyncSettings() {
+  try {
+    const settings = await getAzureSyncSettings()
+    selectedSyncOus.value = settings.allowed_onprem_ous || []
+    syncAllOus.value = selectedSyncOus.value.length === 0
+    azureSyncSettingsLoaded.value = true
+  } catch {
+    azureSyncSettingsLoaded.value = false
+  }
+}
+
+async function openSyncDialog() {
+  if (!azureSyncSettingsLoaded.value) await loadAzureSyncSettings()
+  showSyncDialog.value = true
+}
+
+function addSyncOu() {
+  const ou = newSyncOu.value.trim()
+  if (ou && !selectedSyncOus.value.some(item => item.toLowerCase() === ou.toLowerCase())) {
+    selectedSyncOus.value = [...selectedSyncOus.value, ou]
+  }
+  newSyncOu.value = ''
+}
+
+function removeSyncOu(ou: string) {
+  selectedSyncOus.value = selectedSyncOus.value.filter(item => item !== ou)
+}
+
+async function runSyncWithOus() {
+  const allowed_onprem_ous = syncAllOus.value ? [] : selectedSyncOus.value
+  await updateAzureSyncSettings({ allowed_onprem_ous })
+  azureSyncSettingsLoaded.value = true
+  showSyncDialog.value = false
+  await syncEntra()
 }
 
 async function addGroup() {
@@ -408,6 +519,15 @@ async function toggleRoleLock(user: any) {
 async function toggleActive(user: any) {
   try {
     const updated = await updateUser(user.id, { is_active: !user.is_active })
+    replaceUser(updated)
+  } catch { /* ignore */ }
+}
+
+async function changeDepartment(user: any, department: string) {
+  const value = department.trim()
+  if ((user.department || '') === value) return
+  try {
+    const updated = await updateUser(user.id, { department: value })
     replaceUser(updated)
   } catch { /* ignore */ }
 }
@@ -516,6 +636,99 @@ function replaceUser(updated: any) {
   display: flex !important;
   align-items: center;
 }
+.sync-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.48);
+}
+.sync-modal {
+  width: min(720px, 100%);
+  padding: 22px;
+}
+.sync-modal-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.sync-modal h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+.sync-modal p {
+  margin: 0;
+  color: var(--c-muted);
+  font-size: 13px;
+}
+.sync-all-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.sync-all-option strong,
+.sync-all-option small {
+  display: block;
+}
+.sync-all-option small {
+  color: var(--c-muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+.sync-ou-panel {
+  display: grid;
+  gap: 12px;
+}
+.sync-ou-list {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 10px;
+}
+.sync-ou-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  color: var(--c-text);
+  font-size: 13px;
+}
+.sync-ou-add,
+.sync-modal-actions,
+.sync-ou-chips {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.sync-modal-actions {
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.watcher-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(61, 82, 213, 0.24);
+  border-radius: 999px;
+  background: rgba(61, 82, 213, 0.08);
+  color: #3D52D5;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.watcher-chip .material-icons { font-size: 13px; }
 .users-toolbar, .bulk-bar {
   display: flex;
   gap: 10px;
@@ -557,6 +770,19 @@ function replaceUser(updated: any) {
   border-color: rgba(61, 82, 213, 0.25);
 }
 .role-source .material-icons { font-size: 14px; }
+.department-input {
+  width: min(260px, 100%);
+  border: 1px solid var(--c-border);
+  border-radius: 7px;
+  background: var(--c-surface);
+  color: var(--c-text);
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.department-input.mobile {
+  width: 100%;
+  margin-bottom: 8px;
+}
 .role-grid, .department-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -780,6 +1006,14 @@ function replaceUser(updated: any) {
     max-width: none;
   }
   .group-members-grid {
+    grid-template-columns: 1fr;
+  }
+  .sync-modal {
+    padding: 18px;
+  }
+  .sync-modal-actions,
+  .sync-ou-add {
+    display: grid;
     grid-template-columns: 1fr;
   }
 }

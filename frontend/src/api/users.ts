@@ -42,7 +42,7 @@ export async function updateUser(id: number, payload: { role?: string; is_active
 export async function importAzureUsers() {
   const { data } = await api.post<{
     created: number; updated: number; skipped: number; total: number; role_changes: number; manual_locked: number
-    skipped_guests: number; skipped_disabled: number; skipped_outside_ou: number; skipped_without_email: number
+    skipped_guests: number; skipped_disabled: number; skipped_outside_ou: number; skipped_students: number; skipped_without_email: number
   }>('/api/v1/users/import-azure')
   return data
 }

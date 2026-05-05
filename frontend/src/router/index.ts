@@ -23,6 +23,7 @@ const routes = [
       { path: 'tickets/new', component: () => import('../pages/TicketCreatePage.vue') },
       { path: 'tickets/:id', component: () => import('../pages/TicketDetailPage.vue') },
       { path: 'knowledge', component: () => import('../pages/KnowledgePage.vue') },
+      { path: 'version', component: () => import('../pages/VersionPage.vue') },
       {
         path: 'admin',
         meta: { requiresStaff: true },

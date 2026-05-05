@@ -17,6 +17,7 @@ async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> 
         school_id=data.school_id,
         priority=data.priority,
         creator_id=creator.id,
+        creator_email_notifications=data.creator_email_notifications,
         group_id=group_id,
         assignee_id=assignee_id,
         status=TicketStatus.ASSIGNED if group_id or assignee_id else TicketStatus.OPEN,

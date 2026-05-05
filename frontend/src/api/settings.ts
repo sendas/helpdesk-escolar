@@ -6,6 +6,11 @@ export interface PublicSettings {
   favicon_url: string
   support_provider_name: string
   support_provider_email: string
+  azure_allowed_onprem_ous?: string[]
+}
+
+export interface AzureSyncSettings {
+  allowed_onprem_ous: string[]
 }
 
 export async function getPublicSettings() {
@@ -20,5 +25,15 @@ export async function updateSettings(payload: { org_name: string; support_provid
   form.append('support_provider_email', payload.support_provider_email || '')
   if (payload.logo) form.append('logo', payload.logo)
   const { data } = await api.put<PublicSettings>('/api/v1/settings', form)
+  return data
+}
+
+export async function getAzureSyncSettings() {
+  const { data } = await api.get<AzureSyncSettings>('/api/v1/settings/azure-sync')
+  return data
+}
+
+export async function updateAzureSyncSettings(payload: AzureSyncSettings) {
+  const { data } = await api.put<AzureSyncSettings>('/api/v1/settings/azure-sync', payload)
   return data
 }

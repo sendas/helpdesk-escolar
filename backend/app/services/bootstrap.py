@@ -109,6 +109,9 @@ async def ensure_schema(db: AsyncSession) -> None:
     if "archived_at" not in ticket_columns:
         await db.execute(text("ALTER TABLE tickets ADD COLUMN archived_at DATETIME"))
         ticket_changed = True
+    if "creator_email_notifications" not in ticket_columns:
+        await db.execute(text("ALTER TABLE tickets ADD COLUMN creator_email_notifications BOOLEAN DEFAULT 1"))
+        ticket_changed = True
     if ticket_changed:
         await db.commit()
 

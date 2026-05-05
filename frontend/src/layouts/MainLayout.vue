@@ -40,6 +40,9 @@
         <router-link class="hd-nav-item" :class="{ active: $route.path === '/knowledge' }" to="/knowledge" @click="mobileMenuOpen = false">
           <span class="material-icons" style="font-size:16px">menu_book</span> Base de conhecimento
         </router-link>
+        <router-link class="hd-nav-item" :class="{ active: $route.path === '/version' }" to="/version" @click="mobileMenuOpen = false">
+          <span class="material-icons" style="font-size:16px">new_releases</span> Versão / Atualizações
+        </router-link>
 
         <template v-if="auth.isStaff">
           <div class="hd-nav-section" style="margin-top:8px">Administração</div>
@@ -72,6 +75,9 @@
         </div>
         <span class="material-icons" style="font-size:16px;color:var(--c-muted);margin-left:auto">logout</span>
       </div>
+      <router-link class="app-version-link" to="/version" @click="mobileMenuOpen = false">
+        {{ versionLabelText }}
+      </router-link>
     </aside>
 
     <!-- Main -->
@@ -128,6 +134,7 @@ import { useAuthStore } from '../stores/auth'
 import { getTickets } from '../api/tickets'
 import { getPublicSettings } from '../api/settings'
 import { applyFavicon } from '../utils/branding'
+import { versionLabel } from '../utils/version'
 import AvatarCircle from '../components/AvatarCircle.vue'
 
 const auth = useAuthStore()
@@ -139,6 +146,7 @@ const adminOpenCount = ref(0)
 const showNotifications = ref(false)
 const mobileMenuOpen = ref(false)
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
+const versionLabelText = versionLabel()
 
 const roleLabel = computed(() => {
   const map: Record<string, string> = {
@@ -158,6 +166,7 @@ const titleMap: Record<string, string> = {
   '/tickets': 'Os meus tickets',
   '/tickets/new': 'Novo pedido',
   '/knowledge': 'Base de conhecimento',
+  '/version': 'Versão / Atualizações',
   '/admin/tickets': 'Gestão de tickets',
   '/admin/users': 'Utilizadores e permissões',
   '/admin/stats': 'Estatísticas',
@@ -217,6 +226,21 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+.app-version-link {
+  border-top: 1px solid var(--c-border);
+  color: var(--c-muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 9px 14px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.app-version-link:hover {
+  color: var(--c-primary);
 }
 .mobile-topbar {
   display: none;

@@ -57,11 +57,12 @@ async def create_ticket(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escola obrigatória ou inválida")
 
     ticket = await ticket_service.create_ticket(db, data, current_user)
-    await email_service.send_ticket_notification(
-        current_user.email,
-        "created",
-        {"id": ticket.id, "title": ticket.title, "category": ticket.category.name, "priority": ticket.priority.value},
-    )
+    if ticket.creator_email_notifications:
+        await email_service.send_ticket_notification(
+            current_user.email,
+            "created",
+            {"id": ticket.id, "title": ticket.title, "category": ticket.category.name, "priority": ticket.priority.value},
+        )
     if ticket.category.email_to:
         await email_service.send_ticket_notification(
             ticket.category.email_to,
@@ -342,7 +343,7 @@ async def delete_comment(
 
 def _ticket_update_recipients(ticket, current_user: User) -> set[str]:
     recipients: set[str] = set()
-    if current_user.id != ticket.creator_id and ticket.creator.email:
+    if current_user.id != ticket.creator_id and ticket.creator.email and ticket.creator_email_notifications:
         recipients.add(ticket.creator.email)
     if ticket.assignee and ticket.assignee.email and current_user.id != ticket.assignee_id:
         recipients.add(ticket.assignee.email)

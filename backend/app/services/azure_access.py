@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 import unicodedata
 
 from app.config import settings
@@ -7,6 +9,11 @@ from app.models.user import UserRole
 
 DEFAULT_SECRETARY_ONPREM_OUS = {"queiroz.local/aeeq/secretaria-eseq"}
 DEFAULT_NON_TEACHING_ONPREM_OUS = {"queiroz.local/aeeq/_nao docentes"}
+DEFAULT_EXCLUDED_ONPREM_OUS = {
+    "queiroz.local/aeeq/_alunos",
+    "queiroz.local/aeeq/alunos",
+}
+RUNTIME_SETTINGS_FILE = Path("/app/data/app_settings.json")
 
 
 def is_email_admin(email: str) -> bool:
@@ -17,10 +24,29 @@ def is_email_admin(email: str) -> bool:
 
 
 def is_allowed_onprem_user(onprem_dn: str | None) -> bool:
-    allowed_paths = _csv(settings.azure_allowed_onprem_ous)
+    user_path = dn_to_path(onprem_dn)
+    if not user_path:
+        return False
+    if is_student_onprem_user(onprem_dn):
+        return False
+    allowed_paths = runtime_allowed_onprem_ous()
     if not allowed_paths:
         return True
-    return _matches_any_path(onprem_dn, allowed_paths)
+    return any(user_path == path or user_path.startswith(f"{path}/") for path in allowed_paths)
+
+
+def is_student_onprem_user(onprem_dn: str | None) -> bool:
+    user_path = dn_to_path(onprem_dn)
+    return bool(user_path and _is_student_path(user_path))
+
+
+def runtime_allowed_onprem_ous() -> set[str]:
+    runtime_value = _runtime_setting("azure_allowed_onprem_ous")
+    if isinstance(runtime_value, list):
+        return {_normalize_path(str(item)) for item in runtime_value if str(item).strip()}
+    if isinstance(runtime_value, str) and runtime_value.strip():
+        return _csv(runtime_value)
+    return _csv(settings.azure_allowed_onprem_ous)
 
 
 def role_from_onprem_user(onprem_dn: str | None, fallback: UserRole = UserRole.TEACHER) -> UserRole:
@@ -49,6 +75,14 @@ def _matches_any_path(onprem_dn: str | None, allowed_paths: set[str]) -> bool:
     return any(user_path == path or user_path.startswith(f"{path}/") for path in normalized_paths)
 
 
+def _is_student_path(user_path: str) -> bool:
+    path = _normalize_path(user_path)
+    if any(path == excluded or path.startswith(f"{excluded}/") for excluded in DEFAULT_EXCLUDED_ONPREM_OUS):
+        return True
+    segments = {segment for segment in path.split("/") if segment}
+    return bool({"aluno", "alunos", "_aluno", "_alunos"} & segments)
+
+
 def dn_to_path(dn: str | None) -> str:
     if not dn:
         return ""
@@ -74,3 +108,13 @@ def dn_to_path(dn: str | None) -> str:
 def _normalize_path(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value.strip().lower())
     return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+
+def _runtime_setting(key: str):
+    try:
+        if not RUNTIME_SETTINGS_FILE.exists():
+            return None
+        data = json.loads(RUNTIME_SETTINGS_FILE.read_text(encoding="utf-8"))
+        return data.get(key) if isinstance(data, dict) else None
+    except (OSError, json.JSONDecodeError):
+        return None

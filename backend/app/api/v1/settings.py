@@ -2,6 +2,7 @@ import json
 import os
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from pydantic import BaseModel
 from app.api.deps import require_admin
 from app.models.user import User
 
@@ -19,7 +20,12 @@ DEFAULT_SETTINGS = {
     "favicon_url": "",
     "support_provider_name": "Fornecedor externo",
     "support_provider_email": "",
+    "azure_allowed_onprem_ous": [],
 }
+
+
+class AzureSyncSettings(BaseModel):
+    allowed_onprem_ous: list[str] = []
 
 
 @router.get("/public")
@@ -58,6 +64,20 @@ async def update_settings(
     return data
 
 
+@router.get("/azure-sync")
+async def get_azure_sync_settings(_: User = Depends(require_admin)):
+    allowed = _normalize_ou_list(_read_settings().get("azure_allowed_onprem_ous", []))
+    return {"allowed_onprem_ous": allowed}
+
+
+@router.put("/azure-sync")
+async def update_azure_sync_settings(payload: AzureSyncSettings, _: User = Depends(require_admin)):
+    data = _read_settings()
+    data["azure_allowed_onprem_ous"] = _normalize_ou_list(payload.allowed_onprem_ous)
+    _write_settings(data)
+    return {"allowed_onprem_ous": data["azure_allowed_onprem_ous"]}
+
+
 def _read_settings() -> dict:
     os.makedirs(DATA_DIR, exist_ok=True)
     if not os.path.exists(SETTINGS_FILE):
@@ -73,3 +93,21 @@ def _write_settings(data: dict) -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _normalize_ou_list(value) -> list[str]:
+    if isinstance(value, str):
+        items = value.split(",")
+    elif isinstance(value, list):
+        items = value
+    else:
+        items = []
+    seen: set[str] = set()
+    normalized: list[str] = []
+    for item in items:
+        ou = str(item).strip()
+        key = ou.lower()
+        if ou and key not in seen:
+            normalized.append(ou)
+            seen.add(key)
+    return normalized

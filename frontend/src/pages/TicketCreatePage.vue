@@ -86,6 +86,29 @@
         <p class="hd-hint">A prioridade pode ser ajustada pela equipa de suporte.</p>
       </div>
 
+      <div class="email-choice">
+        <div>
+          <div class="email-choice-title">Quer receber atualizações por email?</div>
+          <div class="email-choice-sub">Escolha obrigatoriamente se pretende receber notificações deste ticket.</div>
+        </div>
+        <div class="email-choice-actions" role="radiogroup" aria-label="Receber atualizações por email">
+          <button
+            type="button"
+            :class="{ active: form.creator_email_notifications === true }"
+            @click="form.creator_email_notifications = true"
+          >
+            Sim
+          </button>
+          <button
+            type="button"
+            :class="{ active: form.creator_email_notifications === false }"
+            @click="form.creator_email_notifications = false"
+          >
+            Não
+          </button>
+        </div>
+      </div>
+
       <!-- Watchers -->
       <div class="hd-field" style="margin-bottom:24px">
         <label class="hd-label">Dar conhecimento a <span class="hd-label-hint">(opcional)</span></label>
@@ -184,9 +207,22 @@ const watcherSearch = ref('')
 const watcherResults = ref<UserFull[]>([])
 const selectedWatchers = ref<UserFull[]>([])
 
-const form = ref({ title: '', description: '', category_id: null as number | null, school_id: null as number | null, priority: 'medium' })
+const form = ref({
+  title: '',
+  description: '',
+  category_id: null as number | null,
+  school_id: null as number | null,
+  priority: 'medium',
+  creator_email_notifications: null as boolean | null,
+})
 
-const canSubmit = computed(() => form.value.title.trim() && form.value.description.trim() && form.value.category_id && form.value.school_id)
+const canSubmit = computed(() =>
+  form.value.title.trim()
+  && form.value.description.trim()
+  && form.value.category_id
+  && form.value.school_id
+  && form.value.creator_email_notifications !== null
+)
 
 onMounted(async () => {
   const [cats, schs] = await Promise.all([getCategories(), getSchools()])
@@ -206,6 +242,7 @@ async function onSubmit() {
       school_id: form.value.school_id,
       priority: form.value.priority,
       watcher_ids: selectedWatchers.value.map(user => user.id),
+      creator_email_notifications: form.value.creator_email_notifications === true,
     })
     for (const file of files.value) {
       await uploadTicketAttachment(t.id, file)
@@ -286,6 +323,54 @@ function formatSize(size: number) {
 }
 .ticket-actions {
   justify-content: flex-end;
+}
+
+.email-choice {
+  align-items: center;
+  background: rgba(61, 82, 213, 0.06);
+  border: 1px solid rgba(61, 82, 213, 0.18);
+  border-radius: 10px;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 16px;
+}
+
+.email-choice-title {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.email-choice-sub {
+  color: var(--c-muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.email-choice-actions {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  width: 180px;
+}
+
+.email-choice-actions button {
+  background: transparent;
+  border: 0;
+  color: var(--c-muted);
+  cursor: pointer;
+  font-weight: 800;
+  padding: 10px 0;
+}
+
+.email-choice-actions button.active {
+  background: var(--c-primary);
+  color: #fff;
 }
 
 .watcher-picker {
@@ -414,6 +499,13 @@ function formatSize(size: number) {
   }
   .ticket-create-card :deep(.hd-dropzone) {
     padding: 22px 14px;
+  }
+  .email-choice {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .email-choice-actions {
+    width: 100%;
   }
   .ticket-actions {
     display: grid;

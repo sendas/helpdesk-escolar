@@ -36,6 +36,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
     skipped_guests = 0
     skipped_disabled = 0
     skipped_outside_ou = 0
+    skipped_students = 0
     skipped_without_email = 0
     role_changes = 0
     manual_locked = 0
@@ -51,6 +52,10 @@ async def import_azure_users(db: AsyncSession) -> dict:
             continue
 
         onprem_dn = item.get("onPremisesDistinguishedName")
+        if azure_access.is_student_onprem_user(onprem_dn):
+            skipped_students += 1
+            skipped += 1
+            continue
         if not azure_access.is_allowed_onprem_user(onprem_dn):
             skipped_outside_ou += 1
             skipped += 1
@@ -64,9 +69,9 @@ async def import_azure_users(db: AsyncSession) -> dict:
 
         email = email.strip()
         display_name = item.get("displayName") or email
-        department = item.get("department") or None
         imported_role = azure_access.role_from_onprem_user(onprem_dn)
         onprem_path = azure_access.dn_to_path(onprem_dn) or None
+        department = item.get("department") or onprem_path or None
         user = by_email.get(email.lower())
 
         if user:
@@ -123,6 +128,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
         "skipped_guests": skipped_guests,
         "skipped_disabled": skipped_disabled,
         "skipped_outside_ou": skipped_outside_ou,
+        "skipped_students": skipped_students,
         "skipped_without_email": skipped_without_email,
     }
 

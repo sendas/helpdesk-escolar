@@ -97,7 +97,7 @@
 
       <!-- Footer -->
       <p style="font-size:11.5px;color:var(--c-muted);margin-top:auto">
-        © 2026 Agrupamento de Escolas Eça de Queirós
+        {{ versionLabelText }} · © 2026 Agrupamento de Escolas Eça de Queirós
       </p>
     </div>
 
@@ -131,6 +131,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { getPublicSettings } from '../api/settings'
 import { applyFavicon } from '../utils/branding'
+import { versionLabel } from '../utils/version'
 
 const auth = useAuthStore()
 const loading = ref(false)
@@ -141,6 +142,7 @@ const demoRole = ref('teacher')
 const showDemoOptions = ref(false)
 const ldapEnabled = import.meta.env.VITE_LDAP_ENABLED === 'true'
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
+const versionLabelText = versionLabel()
 
 const demoProfiles = [
   { role: 'teacher', label: 'Docente' },

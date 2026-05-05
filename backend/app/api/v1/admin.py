@@ -138,10 +138,11 @@ async def admin_bulk_update_tickets(
         prev_assignee_id = ticket.assignee_id
         updated = await ticket_service.update_ticket(db, ticket, data)
         updated_tickets.append(updated)
-        await email_service.send_ticket_notification(
-            updated.creator.email, "updated",
-            {"id": updated.id, "title": updated.title, "status": updated.status.value},
-        )
+        if updated.creator_email_notifications:
+            await email_service.send_ticket_notification(
+                updated.creator.email, "updated",
+                {"id": updated.id, "title": updated.title, "status": updated.status.value},
+            )
         for watcher in updated.watchers:
             if watcher.email:
                 await email_service.send_ticket_notification(
@@ -211,10 +212,11 @@ async def admin_update_ticket(
     prev_assignee_id = ticket.assignee_id
     updated = await ticket_service.update_ticket(db, ticket, data)
 
-    await email_service.send_ticket_notification(
-        updated.creator.email, "updated",
-        {"id": updated.id, "title": updated.title, "status": updated.status.value},
-    )
+    if updated.creator_email_notifications:
+        await email_service.send_ticket_notification(
+            updated.creator.email, "updated",
+            {"id": updated.id, "title": updated.title, "status": updated.status.value},
+        )
     for watcher in updated.watchers:
         if watcher.email:
             await email_service.send_ticket_notification(

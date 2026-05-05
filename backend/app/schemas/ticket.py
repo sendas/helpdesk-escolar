@@ -13,6 +13,7 @@ class TicketCreate(BaseModel):
     school_id: int
     priority: TicketPriority = TicketPriority.MEDIUM
     watcher_ids: list[int] = []
+    creator_email_notifications: bool = True
 
 
 class TicketUpdate(BaseModel):
@@ -87,6 +88,7 @@ class TicketRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None = None
+    creator_email_notifications: bool = True
     creator: UserRead
     assignee: UserRead | None = None
     group: HelpdeskGroupRead | None = None
@@ -108,6 +110,7 @@ class TicketListItem(BaseModel):
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None = None
+    creator_email_notifications: bool = True
     creator: UserRead
     assignee: UserRead | None = None
     group: HelpdeskGroupRead | None = None

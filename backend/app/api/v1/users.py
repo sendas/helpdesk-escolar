@@ -213,6 +213,8 @@ async def update_user(
         user.role_locked = True
     if data.is_active is not None:
         user.is_active = data.is_active
+    if data.department is not None:
+        user.department = data.department.strip() or None
     if data.role_locked is not None:
         user.role_locked = data.role_locked
         user.role_source = "manual" if data.role_locked else "entra"
