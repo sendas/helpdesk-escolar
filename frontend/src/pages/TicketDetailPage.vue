@@ -129,6 +129,17 @@
             </div>
 
             <div class="hd-detail-row">
+              <div class="hd-detail-label">Em conhecimento</div>
+              <div v-if="ticket.watchers?.length" class="watcher-list">
+                <div v-for="user in ticket.watchers" :key="user.id" class="watcher-mini">
+                  <AvatarCircle :name="user.display_name" size="22" />
+                  <span>{{ user.display_name }}</span>
+                </div>
+              </div>
+              <span v-else style="font-size:13px">—</span>
+            </div>
+
+            <div class="hd-detail-row">
               <div class="hd-detail-label">Atribuído a</div>
               <div v-if="auth.isStaff" class="hd-row" style="gap:6px;align-items:center">
                 <input
@@ -483,6 +494,27 @@ function formatSize(size: number) {
 .quick-reply:hover {
   border-color: var(--c-primary);
   color: var(--c-primary);
+}
+
+.watcher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.watcher-mini {
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 22px minmax(0, 1fr);
+}
+
+.watcher-mini span {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .provider-escalation {

@@ -29,6 +29,11 @@ export async function getUsers() {
   return data
 }
 
+export async function searchUsers(q: string) {
+  const { data } = await api.get<UserFull[]>('/api/v1/users/search', { params: { q } })
+  return data
+}
+
 export async function updateUser(id: number, payload: { role?: string; is_active?: boolean; department?: string; role_locked?: boolean }) {
   const { data } = await api.patch<UserFull>(`/api/v1/users/${id}`, payload)
   return data

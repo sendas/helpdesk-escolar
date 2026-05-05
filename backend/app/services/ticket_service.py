@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.models.group import HelpdeskGroup
@@ -21,8 +21,26 @@ async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> 
         assignee_id=assignee_id,
         status=TicketStatus.ASSIGNED if group_id or assignee_id else TicketStatus.OPEN,
     )
+    if data.watcher_ids:
+        watcher_ids = [uid for uid in dict.fromkeys(data.watcher_ids) if uid != creator.id]
+        if watcher_ids:
+            watchers = (
+                await db.execute(
+                    select(User).where(User.id.in_(watcher_ids), User.is_active.is_(True))
+                )
+            ).scalars().all()
+            ticket.watchers = list(watchers)
     db.add(ticket)
     db.add(TicketEvent(ticket=ticket, actor_id=creator.id, event_type="created", message="Ticket criado"))
+    if ticket.watchers:
+        db.add(
+            TicketEvent(
+                ticket=ticket,
+                actor_id=creator.id,
+                event_type="watchers_added",
+                message=f"Adicionado conhecimento a {len(ticket.watchers)} pessoa(s)",
+            )
+        )
     await db.commit()
     await db.refresh(ticket)
     return await get_ticket(db, ticket.id)
@@ -36,6 +54,7 @@ async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
             selectinload(Ticket.creator),
             selectinload(Ticket.assignee),
             selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
+            selectinload(Ticket.watchers),
             selectinload(Ticket.category),
             selectinload(Ticket.school),
             selectinload(Ticket.comments.and_(Comment.deleted_at.is_(None))).selectinload(Comment.author),
@@ -58,11 +77,12 @@ async def list_tickets(
         selectinload(Ticket.creator),
         selectinload(Ticket.assignee),
         selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
+        selectinload(Ticket.watchers),
         selectinload(Ticket.category),
         selectinload(Ticket.school),
     ).where(Ticket.archived_at.is_(None))
     if user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
-        query = query.where(Ticket.creator_id == user.id)
+        query = query.where(or_(Ticket.creator_id == user.id, Ticket.watchers.any(User.id == user.id)))
     if status:
         query = query.where(Ticket.status == status)
     if category_id:

@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import String, Text, ForeignKey, DateTime, Enum as SAEnum, Boolean
+from sqlalchemy import String, Text, ForeignKey, DateTime, Enum as SAEnum, Boolean, Column, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -19,6 +19,14 @@ class TicketPriority(str, enum.Enum):
     MEDIUM = "medium"
     HIGH = "high"
     URGENT = "urgent"
+
+
+ticket_watchers = Table(
+    "ticket_watchers",
+    Base.metadata,
+    Column("ticket_id", ForeignKey("tickets.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class Ticket(Base):
@@ -46,6 +54,11 @@ class Ticket(Base):
     school: Mapped["School | None"] = relationship("School", back_populates="tickets")
     comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="ticket", cascade="all, delete-orphan")
     attachments: Mapped[list["Attachment"]] = relationship("Attachment", back_populates="ticket", cascade="all, delete-orphan")
+    watchers: Mapped[list["User"]] = relationship(
+        "User",
+        secondary=ticket_watchers,
+        back_populates="watched_tickets",
+    )
     events: Mapped[list["TicketEvent"]] = relationship(
         "TicketEvent",
         back_populates="ticket",

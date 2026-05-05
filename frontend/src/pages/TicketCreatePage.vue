@@ -86,6 +86,50 @@
         <p class="hd-hint">A prioridade pode ser ajustada pela equipa de suporte.</p>
       </div>
 
+      <!-- Watchers -->
+      <div class="hd-field" style="margin-bottom:24px">
+        <label class="hd-label">Dar conhecimento a <span class="hd-label-hint">(opcional)</span></label>
+        <p class="hd-hint" style="margin-bottom:8px">
+          Estas pessoas recebem atualizações por email e podem acompanhar, responder e anexar informação ao pedido.
+        </p>
+        <div class="watcher-picker">
+          <span class="material-icons">search</span>
+          <input
+            v-model="watcherSearch"
+            placeholder="Pesquisar por nome ou email"
+            @input="onWatcherSearch"
+            @focus="onWatcherSearch"
+          />
+        </div>
+        <div v-if="watcherResults.length" class="watcher-results">
+          <button
+            v-for="user in watcherResults"
+            :key="user.id"
+            type="button"
+            class="watcher-result"
+            @click="addWatcher(user)"
+          >
+            <span>{{ initials(user.display_name) }}</span>
+            <div>
+              <strong>{{ user.display_name }}</strong>
+              <small>{{ user.email }}</small>
+            </div>
+          </button>
+        </div>
+        <div v-if="selectedWatchers.length" class="watcher-chips">
+          <button
+            v-for="user in selectedWatchers"
+            :key="user.id"
+            type="button"
+            class="watcher-chip"
+            @click="removeWatcher(user.id)"
+          >
+            {{ user.display_name }}
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Attachments -->
       <div class="hd-field" style="margin-bottom:32px">
         <label class="hd-label">Anexos <span class="hd-label-hint">(opcional)</span></label>
@@ -127,6 +171,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { createTicket, getCategories, getSchools, uploadTicketAttachment } from '../api/tickets'
+import { searchUsers, type UserFull } from '../api/users'
 
 const router = useRouter()
 const loading = ref(false)
@@ -135,6 +180,9 @@ const categories = ref<any[]>([])
 const schools = ref<any[]>([])
 const files = ref<File[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
+const watcherSearch = ref('')
+const watcherResults = ref<UserFull[]>([])
+const selectedWatchers = ref<UserFull[]>([])
 
 const form = ref({ title: '', description: '', category_id: null as number | null, school_id: null as number | null, priority: 'medium' })
 
@@ -157,6 +205,7 @@ async function onSubmit() {
       category_id: form.value.category_id,
       school_id: form.value.school_id,
       priority: form.value.priority,
+      watcher_ids: selectedWatchers.value.map(user => user.id),
     })
     for (const file of files.value) {
       await uploadTicketAttachment(t.id, file)
@@ -188,6 +237,43 @@ function addFiles(list: FileList | null) {
   files.value.push(...next)
 }
 
+let watcherSearchTimer: number | undefined
+
+function onWatcherSearch() {
+  window.clearTimeout(watcherSearchTimer)
+  watcherSearchTimer = window.setTimeout(async () => {
+    const term = watcherSearch.value.trim()
+    if (term.length < 2) {
+      watcherResults.value = []
+      return
+    }
+    const selectedIds = new Set(selectedWatchers.value.map(user => user.id))
+    const results = await searchUsers(term)
+    watcherResults.value = results.filter(user => !selectedIds.has(user.id)).slice(0, 8)
+  }, 220)
+}
+
+function addWatcher(user: UserFull) {
+  if (!selectedWatchers.value.some(existing => existing.id === user.id)) {
+    selectedWatchers.value.push(user)
+  }
+  watcherSearch.value = ''
+  watcherResults.value = []
+}
+
+function removeWatcher(userId: number) {
+  selectedWatchers.value = selectedWatchers.value.filter(user => user.id !== userId)
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || 'U'
+}
+
 function formatSize(size: number) {
   return size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.round(size / 1024)} KB`
 }
@@ -200,6 +286,118 @@ function formatSize(size: number) {
 }
 .ticket-actions {
   justify-content: flex-end;
+}
+
+.watcher-picker {
+  align-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  display: flex;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.watcher-picker .material-icons {
+  color: var(--c-muted);
+  font-size: 18px;
+}
+
+.watcher-picker input {
+  background: transparent;
+  border: 0;
+  color: var(--c-text);
+  flex: 1;
+  font: inherit;
+  min-height: 42px;
+  outline: none;
+}
+
+.watcher-results {
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.watcher-result {
+  align-items: center;
+  background: var(--c-surface);
+  border: 0;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text);
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 32px minmax(0, 1fr);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.watcher-result:last-child {
+  border-bottom: 0;
+}
+
+.watcher-result:hover {
+  background: rgba(61, 82, 213, 0.06);
+}
+
+.watcher-result > span {
+  align-items: center;
+  background: #eef1ff;
+  border-radius: 50%;
+  color: var(--c-primary);
+  display: flex;
+  font-size: 12px;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.watcher-result strong,
+.watcher-result small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watcher-result strong {
+  font-size: 13px;
+}
+
+.watcher-result small {
+  color: var(--c-muted);
+  font-size: 12px;
+}
+
+.watcher-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.watcher-chip {
+  align-items: center;
+  background: #eef1ff;
+  border: 1px solid #dbe2ff;
+  border-radius: 999px;
+  color: var(--c-primary);
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 6px;
+  padding: 7px 10px;
+}
+
+.watcher-chip .material-icons {
+  font-size: 14px;
 }
 
 @media (max-width: 820px) {

@@ -8,7 +8,7 @@ export interface HelpdeskGroupBrief { id: number; name: string; description?: st
 export interface TicketListItem {
   id: number; title: string; status: string; priority: string
   created_at: string; updated_at: string
-  creator: UserBrief; assignee?: UserBrief; group?: HelpdeskGroupBrief; category: Category; school?: School
+  creator: UserBrief; assignee?: UserBrief; group?: HelpdeskGroupBrief; watchers?: UserBrief[]; category: Category; school?: School
 }
 export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; updated_at?: string; author: UserBrief }
 export interface Attachment { id: number; original_name: string; content_type: string; size: number; created_at: string }
@@ -30,7 +30,7 @@ export async function getTicket(id: number) {
   return data
 }
 
-export async function createTicket(payload: { title: string; description: string; category_id: number; school_id: number; priority: string }) {
+export async function createTicket(payload: { title: string; description: string; category_id: number; school_id: number; priority: string; watcher_ids?: number[] }) {
   const { data } = await api.post<TicketDetail>('/api/v1/tickets', payload)
   return data
 }

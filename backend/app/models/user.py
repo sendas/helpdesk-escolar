@@ -43,3 +43,8 @@ class User(Base):
         secondary="helpdesk_group_members",
         back_populates="members",
     )
+    watched_tickets: Mapped[list["Ticket"]] = relationship(
+        "Ticket",
+        secondary="ticket_watchers",
+        back_populates="watchers",
+    )

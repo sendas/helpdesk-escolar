@@ -86,6 +86,7 @@ async def admin_list_tickets(
         selectinload(Ticket.creator),
         selectinload(Ticket.assignee),
         selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
+        selectinload(Ticket.watchers),
         selectinload(Ticket.category),
         selectinload(Ticket.school),
     ).where(Ticket.archived_at.is_(None))
@@ -124,6 +125,7 @@ async def admin_bulk_update_tickets(
             selectinload(Ticket.creator),
             selectinload(Ticket.assignee),
             selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
+            selectinload(Ticket.watchers),
             selectinload(Ticket.category),
             selectinload(Ticket.school),
             selectinload(Ticket.comments).selectinload(Comment.author),
@@ -140,6 +142,13 @@ async def admin_bulk_update_tickets(
             updated.creator.email, "updated",
             {"id": updated.id, "title": updated.title, "status": updated.status.value},
         )
+        for watcher in updated.watchers:
+            if watcher.email:
+                await email_service.send_ticket_notification(
+                    watcher.email,
+                    "updated",
+                    {"id": updated.id, "title": updated.title, "status": updated.status.value},
+                )
         if data.assignee_id and data.assignee_id != prev_assignee_id and updated.assignee:
             await email_service.send_ticket_notification(
                 updated.assignee.email,
@@ -206,6 +215,13 @@ async def admin_update_ticket(
         updated.creator.email, "updated",
         {"id": updated.id, "title": updated.title, "status": updated.status.value},
     )
+    for watcher in updated.watchers:
+        if watcher.email:
+            await email_service.send_ticket_notification(
+                watcher.email,
+                "updated",
+                {"id": updated.id, "title": updated.title, "status": updated.status.value},
+            )
     if data.assignee_id and data.assignee_id != prev_assignee_id and updated.assignee:
         await email_service.send_ticket_notification(
             updated.assignee.email,

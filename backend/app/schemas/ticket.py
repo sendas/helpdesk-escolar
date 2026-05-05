@@ -12,6 +12,7 @@ class TicketCreate(BaseModel):
     category_id: int
     school_id: int
     priority: TicketPriority = TicketPriority.MEDIUM
+    watcher_ids: list[int] = []
 
 
 class TicketUpdate(BaseModel):
@@ -93,6 +94,7 @@ class TicketRead(BaseModel):
     school: SchoolRead | None = None
     comments: list[CommentRead] = []
     attachments: list[AttachmentRead] = []
+    watchers: list[UserRead] = []
     events: list[TicketEventRead] = []
 
 
@@ -109,6 +111,7 @@ class TicketListItem(BaseModel):
     creator: UserRead
     assignee: UserRead | None = None
     group: HelpdeskGroupRead | None = None
+    watchers: list[UserRead] = []
     category: CategoryRead
     school: SchoolRead | None = None
 

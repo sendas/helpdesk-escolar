@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Query
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -19,6 +20,14 @@ router = APIRouter(prefix="/tickets", tags=["tickets"])
 UPLOAD_DIR = "/app/data/uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "application/pdf"}
+
+
+def _can_access_ticket(ticket, user: User, *, allow_watcher: bool = True) -> bool:
+    if user.role in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+        return True
+    if ticket.creator_id == user.id:
+        return True
+    return allow_watcher and any(watcher.id == user.id for watcher in ticket.watchers)
 
 
 @router.get("", response_model=PaginatedTickets)
@@ -80,6 +89,18 @@ async def create_ticket(
                     "assigned",
                     {"id": ticket.id, "title": ticket.title, "assignee": ticket.group.name},
                 )
+    for watcher in ticket.watchers:
+        if watcher.email and watcher.id != current_user.id:
+            await email_service.send_ticket_notification(
+                watcher.email,
+                "updated",
+                {
+                    "id": ticket.id,
+                    "title": ticket.title,
+                    "status": ticket.status.value,
+                    "message": f"{current_user.display_name} deu-lhe conhecimento deste ticket.",
+                },
+            )
     return ticket
 
 
@@ -93,7 +114,7 @@ async def upload_attachment(
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and ticket.creator_id != current_user.id:
+    if not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato inválido. Use PNG, JPG ou PDF.")
@@ -117,8 +138,16 @@ async def upload_attachment(
         uploaded_by_id=current_user.id,
     )
     db.add(attachment)
+    ticket.updated_at = datetime.utcnow()
+    db.add(TicketEvent(ticket_id=ticket_id, actor_id=current_user.id, event_type="attachment_added", message=f"Anexo adicionado: {attachment.original_name}"))
     await db.commit()
     await db.refresh(attachment)
+    for recipient in _ticket_update_recipients(ticket, current_user):
+        await email_service.send_ticket_notification(
+            recipient,
+            "updated",
+            {"id": ticket.id, "title": ticket.title, "status": ticket.status.value},
+        )
     return attachment
 
 
@@ -132,7 +161,7 @@ async def download_attachment(
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and ticket.creator_id != current_user.id:
+    if not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     attachment = (
@@ -156,7 +185,7 @@ async def get_ticket(
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and ticket.creator_id != current_user.id:
+    if not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     return ticket
 
@@ -171,14 +200,15 @@ async def update_ticket(
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and ticket.creator_id != current_user.id:
+    if not _can_access_ticket(ticket, current_user, allow_watcher=False):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     updated = await ticket_service.update_ticket(db, ticket, data)
-    await email_service.send_ticket_notification(
-        ticket.creator.email,
-        "updated",
-        {"id": updated.id, "title": updated.title, "status": updated.status.value},
-    )
+    for recipient in _ticket_update_recipients(updated, current_user):
+        await email_service.send_ticket_notification(
+            recipient,
+            "updated",
+            {"id": updated.id, "title": updated.title, "status": updated.status.value},
+        )
     return updated
 
 
@@ -234,8 +264,10 @@ async def add_comment(
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and ticket.creator_id != current_user.id:
+    if not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+        data.is_internal = False
     comment = await ticket_service.add_comment(db, ticket, data, current_user)
     if not data.is_internal:
         recipients = _ticket_update_recipients(ticket, current_user)
@@ -318,6 +350,9 @@ def _ticket_update_recipients(ticket, current_user: User) -> set[str]:
         for member in ticket.group.members:
             if member.email and member.id != current_user.id:
                 recipients.add(member.email)
+    for watcher in ticket.watchers:
+        if watcher.email and watcher.id != current_user.id:
+            recipients.add(watcher.email)
     if ticket.category.email_to:
         recipients.add(ticket.category.email_to)
     return recipients

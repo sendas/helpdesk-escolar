@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, get_current_user, require_admin, require_staff
@@ -30,6 +30,28 @@ async def list_users(
     _: User = Depends(require_staff),
 ):
     result = await db.execute(select(User).order_by(User.display_name))
+    return result.scalars().all()
+
+
+@router.get("/search", response_model=list[UserRead])
+async def search_users(
+    q: str = Query("", max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    term = q.strip()
+    query = select(User).where(User.is_active.is_(True), User.id != current_user.id)
+    if term:
+        like = f"%{term}%"
+        query = query.where(
+            or_(
+                User.display_name.ilike(like),
+                User.email.ilike(like),
+                User.username.ilike(like),
+            )
+        )
+    result = await db.execute(query.order_by(User.display_name).limit(limit))
     return result.scalars().all()
 
 
