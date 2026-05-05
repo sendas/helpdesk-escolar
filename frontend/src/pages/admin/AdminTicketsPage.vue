@@ -1,44 +1,46 @@
 <template>
-  <div class="hd-page">
-    <div class="hd-row" style="margin-bottom:20px">
-      <h1 style="font-size:22px">Gestão de tickets</h1>
-      <div class="hd-spacer"></div>
-      <span style="font-size:13px;color:var(--c-muted)">{{ total }} ticket{{ total !== 1 ? 's' : '' }}</span>
+  <div class="hd-page admin-tickets-page">
+    <div class="tickets-heading">
+      <div>
+        <h1>Gestão de tickets</h1>
+        <p>{{ total }} ticket{{ total !== 1 ? 's' : '' }} encontrado{{ total !== 1 ? 's' : '' }}</p>
+      </div>
+      <div class="tickets-actions">
+        <button class="hd-btn hd-btn-outline" @click="syncReplies">
+          <span class="material-icons">mark_email_read</span>
+          Ler respostas
+        </button>
+        <button class="hd-btn hd-btn-primary" @click="load">
+          <span class="material-icons">refresh</span>
+          Atualizar
+        </button>
+      </div>
     </div>
 
-    <div class="hd-card">
-      <!-- Filters -->
-      <div style="display:flex;gap:10px;padding:14px 16px;border-bottom:1px solid var(--c-border);flex-wrap:wrap;align-items:center">
-        <select class="hd-select" style="width:auto" v-model="filterStatus" @change="load">
+    <section class="hd-card tickets-panel">
+      <div class="filters-grid">
+        <select class="hd-select" v-model="filterStatus" @change="resetAndLoad">
           <option value="">Todos os estados</option>
           <option v-for="o in statusOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
         </select>
-        <select class="hd-select" style="width:auto" v-model="filterCat" @change="load">
+        <select class="hd-select" v-model="filterCat" @change="resetAndLoad">
           <option value="">Todas as categorias</option>
           <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
-        <select class="hd-select" style="width:auto" v-model="filterPriority" @change="load">
+        <select class="hd-select" v-model="filterPriority" @change="resetAndLoad">
           <option value="">Todas as prioridades</option>
           <option value="urgent">Urgente</option>
           <option value="high">Alta</option>
           <option value="medium">Média</option>
           <option value="low">Baixa</option>
         </select>
-        <select class="hd-select" style="width:auto" v-model="filterSchool" @change="load">
+        <select class="hd-select" v-model="filterSchool" @change="resetAndLoad">
           <option value="">Todas as escolas</option>
           <option v-for="s in schools" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
-        <div class="hd-spacer"></div>
-        <button class="hd-btn hd-btn-outline" style="font-size:12px;padding:6px 12px" @click="syncReplies">
-          <span class="material-icons" style="font-size:14px">mark_email_read</span> Ler respostas
-        </button>
-        <button class="hd-btn hd-btn-outline" style="font-size:12px;padding:6px 12px" @click="load">
-          <span class="material-icons" style="font-size:14px">refresh</span> Atualizar
-        </button>
       </div>
-      <div v-if="mailSyncMessage" style="padding:10px 16px;border-bottom:1px solid var(--c-border);font-size:13px;color:var(--c-muted)">
-        {{ mailSyncMessage }}
-      </div>
+
+      <div v-if="mailSyncMessage" class="mail-sync-message">{{ mailSyncMessage }}</div>
 
       <div v-if="selectedIds.length" class="bulk-bar">
         <strong>{{ selectedIds.length }} selecionado{{ selectedIds.length !== 1 ? 's' : '' }}</strong>
@@ -64,94 +66,138 @@
         <button class="hd-btn hd-btn-outline" @click="selectedIds = []">Limpar</button>
       </div>
 
-      <div v-if="loading" style="padding:48px;text-align:center;color:var(--c-muted)">A carregar...</div>
-      <table v-else class="hd-table">
-        <thead>
-          <tr>
-            <th><input type="checkbox" :checked="allVisibleSelected" @change="toggleAllVisible" /></th>
-            <th>ID</th>
-            <th>ASSUNTO</th>
-            <th>CATEGORIA</th>
-            <th>SOLICITANTE</th>
-            <th>PRIORIDADE</th>
-            <th>ESTADO</th>
-            <th>RESPONSÁVEL</th>
-            <th>ATUALIZADO</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="t in tickets" :key="t.id">
-            <td><input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" /></td>
-            <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
-            <td style="font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.title }}</td>
-            <td>
-              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 8px;border-radius:4px"
-                :style="{ background: t.category.color + '22', color: t.category.color }">
-                <span class="material-icons" style="font-size:12px">{{ t.category.icon }}</span>
-                {{ t.category.name }}
-              </span>
-            </td>
-            <td>
-              <div class="hd-row" style="gap:6px">
-                <AvatarCircle :name="t.creator.display_name" size="24" />
-                <span style="font-size:13px">{{ t.creator.display_name }}</span>
-              </div>
-            </td>
-            <td><PriorityBadge :priority="t.priority" /></td>
-            <td>
-              <select
-                class="hd-select"
-                style="font-size:12px;padding:3px 6px;width:auto"
-                :value="t.status"
-                @change="changeStatus(t, ($event.target as HTMLSelectElement).value)"
-              >
-                <option v-for="o in statusOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
-              </select>
-            </td>
-            <td>
-              <select
-                class="hd-select"
-                style="font-size:12px;padding:3px 6px;width:auto"
-                :value="t.assignee?.id ?? ''"
-                @change="changeAssignee(t, ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="">— Nenhum</option>
-                <option v-for="u in staffUsers" :key="u.id" :value="u.id">{{ u.display_name }}</option>
-              </select>
-            </td>
-            <td style="color:var(--c-muted);white-space:nowrap">{{ timeAgo(t.updated_at) }}</td>
-            <td>
-              <router-link :to="`/tickets/${t.id}`">
-                <button class="hd-icon-btn" title="Ver detalhes">
-                  <span class="material-icons" style="font-size:16px">open_in_new</span>
-                </button>
-              </router-link>
-            </td>
-          </tr>
-          <tr v-if="!tickets.length">
-            <td colspan="10" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets.</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-if="loading" class="state-block">A carregar...</div>
 
-      <!-- Pagination -->
-      <div v-if="total > pageSize" class="hd-row" style="padding:12px 16px;border-top:1px solid var(--c-border);justify-content:flex-end;gap:8px">
-        <button class="hd-btn hd-btn-outline" style="padding:4px 10px;font-size:12px" :disabled="page <= 1" @click="page--;load()">‹ Anterior</button>
-        <span style="font-size:13px;color:var(--c-muted)">{{ page }} / {{ Math.ceil(total / pageSize) }}</span>
-        <button class="hd-btn hd-btn-outline" style="padding:4px 10px;font-size:12px" :disabled="page >= Math.ceil(total / pageSize)" @click="page++;load()">Próxima ›</button>
+      <template v-else>
+        <div class="desktop-table-wrap">
+          <table class="hd-table tickets-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" :checked="allVisibleSelected" @change="toggleAllVisible" /></th>
+                <th>Ticket</th>
+                <th>Assunto</th>
+                <th>Categoria</th>
+                <th>Solicitante</th>
+                <th>Prioridade</th>
+                <th>Estado</th>
+                <th>Responsável</th>
+                <th>Atualizado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="t in tickets" :key="t.id">
+                <td><input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" /></td>
+                <td class="ticket-id">T-{{ t.id }}</td>
+                <td class="subject-cell">
+                  <router-link :to="`/tickets/${t.id}`">{{ t.title }}</router-link>
+                  <small>{{ t.school?.short_name || t.school?.name || 'Sem escola' }}</small>
+                </td>
+                <td><CategoryPill :category="t.category" /></td>
+                <td>
+                  <div class="user-cell">
+                    <AvatarCircle :name="t.creator.display_name" size="24" />
+                    <span>{{ t.creator.display_name }}</span>
+                  </div>
+                </td>
+                <td><PriorityBadge :priority="t.priority" /></td>
+                <td><StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></td>
+                <td><AssigneeSelect :value="t.assignee?.id ?? ''" :users="staffUsers" @change="changeAssignee(t, $event)" /></td>
+                <td class="muted-cell">{{ timeAgo(t.updated_at) }}</td>
+                <td>
+                  <router-link :to="`/tickets/${t.id}`">
+                    <button class="hd-icon-btn" title="Ver detalhes">
+                      <span class="material-icons">open_in_new</span>
+                    </button>
+                  </router-link>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mobile-ticket-list">
+          <article v-for="t in tickets" :key="t.id" class="ticket-card">
+            <div class="ticket-card-top">
+              <input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" />
+              <div class="ticket-card-title">
+                <router-link :to="`/tickets/${t.id}`">T-{{ t.id }} · {{ t.title }}</router-link>
+                <small>{{ t.school?.name || 'Sem escola' }} · {{ timeAgo(t.updated_at) }}</small>
+              </div>
+            </div>
+            <div class="ticket-card-meta">
+              <CategoryPill :category="t.category" />
+              <PriorityBadge :priority="t.priority" />
+            </div>
+            <div class="ticket-card-user">
+              <AvatarCircle :name="t.creator.display_name" size="26" />
+              <span>{{ t.creator.display_name }}</span>
+            </div>
+            <div class="ticket-card-controls">
+              <label>Estado<StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></label>
+              <label>Responsável<AssigneeSelect :value="t.assignee?.id ?? ''" :users="staffUsers" @change="changeAssignee(t, $event)" /></label>
+            </div>
+          </article>
+        </div>
+
+        <div v-if="!tickets.length" class="state-block">Sem tickets.</div>
+      </template>
+
+      <div v-if="total > pageSize" class="pagination-row">
+        <button class="hd-btn hd-btn-outline" :disabled="page <= 1" @click="page--;load()">Anterior</button>
+        <span>{{ page }} / {{ Math.ceil(total / pageSize) }}</span>
+        <button class="hd-btn hd-btn-outline" :disabled="page >= Math.ceil(total / pageSize)" @click="page++;load()">Próxima</button>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { getTickets, getCategories, adminUpdateTicket, adminBulkUpdateTickets, syncMailReplies } from '../../api/tickets'
-import { getSchools } from '../../api/tickets'
+import { computed, defineComponent, h, onMounted, ref } from 'vue'
+import { adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies } from '../../api/tickets'
 import { getUsers } from '../../api/users'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
+
+const CategoryPill = defineComponent({
+  props: { category: { type: Object, required: true } },
+  setup(props) {
+    return () => h('span', {
+      class: 'category-pill',
+      style: { background: `${(props.category as any).color}22`, color: (props.category as any).color },
+    }, [
+      h('span', { class: 'material-icons' }, (props.category as any).icon),
+      (props.category as any).name,
+    ])
+  },
+})
+
+const StatusSelect = defineComponent({
+  props: { value: { type: String, required: true }, options: { type: Array, required: true } },
+  emits: ['change'],
+  setup(props, { emit }) {
+    return () => h('select', {
+      class: 'hd-select compact-select',
+      value: props.value,
+      onChange: (e: Event) => emit('change', (e.target as HTMLSelectElement).value),
+    }, (props.options as any[]).map(o => h('option', { value: o.v }, o.l)))
+  },
+})
+
+const AssigneeSelect = defineComponent({
+  props: { value: { type: [String, Number], default: '' }, users: { type: Array, required: true } },
+  emits: ['change'],
+  setup(props, { emit }) {
+    return () => h('select', {
+      class: 'hd-select compact-select',
+      value: props.value,
+      onChange: (e: Event) => emit('change', (e.target as HTMLSelectElement).value),
+    }, [
+      h('option', { value: '' }, '— Nenhum'),
+      ...(props.users as any[]).map(u => h('option', { value: u.id }, u.display_name)),
+    ])
+  },
+})
 
 const tickets = ref<any[]>([])
 const categories = ref<any[]>([])
@@ -166,15 +212,17 @@ const bulkStatus = ref('')
 const bulkAssignee = ref('')
 const bulkPriority = ref('')
 const mailSyncMessage = ref('')
-
 const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 const filterPriority = ref('')
 const filterSchool = ref<number | ''>('')
 
 const statusOpts = [
-  { v: 'open', l: 'Aberto' }, { v: 'assigned', l: 'Atribuído' },
-  { v: 'in_progress', l: 'Em Curso' }, { v: 'resolved', l: 'Resolvido' }, { v: 'closed', l: 'Fechado' },
+  { v: 'open', l: 'Aberto' },
+  { v: 'assigned', l: 'Atribuído' },
+  { v: 'in_progress', l: 'Em Curso' },
+  { v: 'resolved', l: 'Resolvido' },
+  { v: 'closed', l: 'Fechado' },
 ]
 
 const allVisibleSelected = computed(() => tickets.value.length > 0 && tickets.value.every(t => selectedIds.value.includes(t.id)))
@@ -187,40 +235,48 @@ onMounted(async () => {
   await load()
 })
 
+function resetAndLoad() {
+  page.value = 1
+  load()
+}
+
 async function load() {
   loading.value = true
   try {
-    const p: any = { page: page.value, size: pageSize, admin: true }
-    if (filterStatus.value) p.status = filterStatus.value
-    if (filterCat.value) p.category_id = filterCat.value
-    if (filterPriority.value) p.priority = filterPriority.value
-    if (filterSchool.value) p.school_id = filterSchool.value
-    const d = await getTickets(p)
-    tickets.value = d.items
-    total.value = d.total
+    const params: any = { page: page.value, size: pageSize, admin: true }
+    if (filterStatus.value) params.status = filterStatus.value
+    if (filterCat.value) params.category_id = filterCat.value
+    if (filterPriority.value) params.priority = filterPriority.value
+    if (filterSchool.value) params.school_id = filterSchool.value
+    const data = await getTickets(params)
+    tickets.value = data.items
+    total.value = data.total
     selectedIds.value = selectedIds.value.filter(id => tickets.value.some(t => t.id === id))
-  } finally { loading.value = false }
+  } finally {
+    loading.value = false
+  }
 }
 
 async function changeStatus(ticket: any, status: string) {
-  try {
-    const updated = await adminUpdateTicket(ticket.id, { status })
-    const idx = tickets.value.findIndex(t => t.id === ticket.id)
-    if (idx !== -1) tickets.value[idx] = { ...tickets.value[idx], ...updated }
-  } catch { await load() }
+  await updateTicketInList(ticket.id, { status })
 }
 
-async function changeAssignee(ticket: any, val: string) {
-  const assignee_id = val ? Number(val) : null
+async function changeAssignee(ticket: any, value: string) {
+  await updateTicketInList(ticket.id, { assignee_id: value ? Number(value) : null })
+}
+
+async function updateTicketInList(id: number, payload: any) {
   try {
-    const updated = await adminUpdateTicket(ticket.id, { assignee_id })
-    const idx = tickets.value.findIndex(t => t.id === ticket.id)
+    const updated = await adminUpdateTicket(id, payload)
+    const idx = tickets.value.findIndex(t => t.id === id)
     if (idx !== -1) tickets.value[idx] = { ...tickets.value[idx], ...updated }
-  } catch { await load() }
+  } catch {
+    await load()
+  }
 }
 
 function toggleSelected(id: number) {
-  selectedIds.value = selectedIds.value.includes(id) ? selectedIds.value.filter(i => i !== id) : [...selectedIds.value, id]
+  selectedIds.value = selectedIds.value.includes(id) ? selectedIds.value.filter(item => item !== id) : [...selectedIds.value, id]
 }
 
 function toggleAllVisible() {
@@ -273,15 +329,40 @@ async function syncReplies() {
   }
 }
 
-function timeAgo(d: string) {
-  const h = Math.floor((Date.now() - new Date(d).getTime()) / 3600000)
-  if (h < 1) return 'agora'
-  if (h < 24) return `há ${h}h`
-  return `há ${Math.floor(h / 24)} d`
+function timeAgo(date: string) {
+  const hours = Math.floor((Date.now() - new Date(date).getTime()) / 3600000)
+  if (hours < 1) return 'agora'
+  if (hours < 24) return `há ${hours}h`
+  return `há ${Math.floor(hours / 24)} d`
 }
 </script>
 
 <style scoped>
+.admin-tickets-page { max-width: 1400px; }
+.tickets-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.tickets-heading h1 { margin: 0 0 4px; font-size: 24px; }
+.tickets-heading p { margin: 0; color: var(--c-muted); }
+.tickets-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.tickets-panel { overflow: hidden; }
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid var(--c-border);
+}
+.mail-sync-message {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-muted);
+  font-size: 13px;
+}
 .bulk-bar {
   display: flex;
   flex-wrap: wrap;
@@ -291,16 +372,127 @@ function timeAgo(d: string) {
   border-bottom: 1px solid var(--c-border);
   background: var(--c-bg);
 }
-.bulk-bar .hd-select {
+.bulk-bar .hd-select { width: auto; min-width: 150px; }
+.desktop-table-wrap { overflow-x: auto; }
+.tickets-table { min-width: 1120px; }
+.tickets-table th, .tickets-table td { vertical-align: middle; }
+.ticket-id, .muted-cell { color: var(--c-muted); font-size: 12px; white-space: nowrap; }
+.subject-cell { max-width: 260px; }
+.subject-cell a {
+  display: block;
+  color: var(--c-text);
+  font-weight: 700;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.subject-cell small {
+  display: block;
+  margin-top: 3px;
+  color: var(--c-muted);
+}
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 180px;
+}
+:deep(.category-pill) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+:deep(.category-pill .material-icons) { font-size: 13px; }
+:deep(.compact-select) {
   width: auto;
+  min-width: 132px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.state-block {
+  padding: 44px 18px;
+  text-align: center;
+  color: var(--c-muted);
+}
+.pagination-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--c-border);
+  color: var(--c-muted);
+}
+.mobile-ticket-list { display: none; }
+@media (max-width: 980px) {
+  .filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 820px) {
-  .bulk-bar {
+  .tickets-heading { display: grid; grid-template-columns: 1fr; }
+  .tickets-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .tickets-actions .hd-btn { justify-content: center; }
+  .filters-grid { grid-template-columns: 1fr; padding: 12px; }
+  .bulk-bar { display: grid; grid-template-columns: 1fr; }
+  .bulk-bar .hd-select, .bulk-bar .hd-btn { width: 100%; }
+  .desktop-table-wrap { display: none; }
+  .mobile-ticket-list {
+    display: grid;
+    gap: 12px;
+    padding: 12px;
+  }
+  .ticket-card {
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--c-surface);
+  }
+  .ticket-card-top {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    align-items: start;
+  }
+  .ticket-card-title a {
+    display: block;
+    color: var(--c-text);
+    font-weight: 800;
+    text-decoration: none;
+    line-height: 1.3;
+  }
+  .ticket-card-title small {
+    display: block;
+    color: var(--c-muted);
+    margin-top: 3px;
+  }
+  .ticket-card-meta, .ticket-card-user {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .ticket-card-user span { font-size: 13px; color: var(--c-muted); }
+  .ticket-card-controls {
     display: grid;
     grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 12px;
   }
-  .bulk-bar .hd-select {
-    width: 100%;
+  .ticket-card-controls label {
+    display: grid;
+    gap: 5px;
+    color: var(--c-muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
   }
+  :deep(.compact-select) { width: 100%; }
+  .pagination-row { justify-content: center; }
 }
 </style>

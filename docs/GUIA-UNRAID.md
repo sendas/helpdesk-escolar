@@ -161,6 +161,17 @@ IMAP_POLL_SECONDS=120
 
 O sistema procura o numero no assunto do email, por exemplo `[Ticket #123]`, e adiciona a resposta como comentario publico no ticket correspondente.
 
+Para criar copias automaticas, podes configurar isto no `app.env` ou depois no menu **Administracao → Backup & Restauro**:
+
+```
+BACKUP_AUTO_ENABLED=true
+BACKUP_INTERVAL_HOURS=24
+BACKUP_DIRECTORY=/app/data/backups
+BACKUP_RETENTION=14
+```
+
+O campo `BACKUP_DIRECTORY` deve apontar para uma pasta persistente do container. No Unraid, a configuracao atual guarda dentro de `/mnt/cache/appdata/helpdesk/data/backups` atraves do volume `./data:/app/data`.
+
 **Para guardar e sair do nano:**
 - `Ctrl + O` → Enter (guarda)
 - `Ctrl + X` (sai)

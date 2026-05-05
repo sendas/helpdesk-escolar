@@ -44,6 +44,15 @@
   --c-primary-soft: #1E2456;
 }
 
+.hd-login-wrap {
+  --c-bg:           #F4F5F8;
+  --c-surface:      #FFFFFF;
+  --c-border:       #E8E9F0;
+  --c-text:         #1A1B2E;
+  --c-muted:        #6B7280;
+  --c-primary-soft: #EEF1FF;
+}
+
 /* ── Base ───────────────────────────────────────── */
 * { box-sizing: border-box; }
 
@@ -557,6 +566,21 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
   }
   .hd-search {
     width: auto;
+  }
+  .hd-row { align-items: flex-start; }
+  .hd-input, .hd-textarea, .hd-select, .hd-btn {
+    min-height: 42px;
+  }
+  .hd-btn {
+    justify-content: center;
+    white-space: normal;
+  }
+  .hd-sel-card {
+    padding: 12px;
+    min-width: 0;
+  }
+  .hd-sel-title, .hd-sel-sub, .hd-label, .hd-hint {
+    overflow-wrap: anywhere;
   }
 }
 

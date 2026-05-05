@@ -142,6 +142,8 @@ const features = [
 ]
 
 onMounted(async () => {
+  localStorage.setItem('dark', '0')
+  document.documentElement.classList.remove('dark')
   try { settings.value = await getPublicSettings() }
   catch { /* ignore */ }
 })

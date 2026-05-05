@@ -13,6 +13,12 @@
       <tr><td style="padding:8px; font-weight:bold">Autor</td><td style="padding:8px">{{ author }}</td></tr>
       <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Resposta</td><td style="padding:8px">{{ comment }}</td></tr>
     </table>
+    {% if ticket_url %}
+    <p style="margin:24px 0 10px">
+      <a href="{{ ticket_url }}" style="background:#3D52D5;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;display:inline-block;font-weight:bold">Abrir ticket</a>
+    </p>
+    <p style="color:#666;font-size:0.85em;margin:0">Se o botão não funcionar, abra: <a href="{{ ticket_url }}">{{ ticket_url }}</a></p>
+    {% endif %}
     <p style="color:#666; font-size:0.9em; margin-top:20px">Sistema de Tickets — Escola</p>
   </div>
 </body>

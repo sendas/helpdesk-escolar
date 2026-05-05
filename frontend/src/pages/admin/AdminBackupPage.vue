@@ -1,159 +1,179 @@
 <template>
-  <div class="hd-page">
-    <h1 style="font-size:22px;margin-bottom:24px">Backup &amp; Restauro</h1>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;margin-bottom:20px">
-      <!-- Backup card -->
-      <div class="hd-card" style="padding:28px">
-        <div class="hd-row" style="margin-bottom:4px">
-          <span class="material-icons" style="color:#3D52D5;margin-right:8px">cloud_download</span>
-          <div style="font-weight:600;font-size:15px">Exportar dados</div>
-        </div>
-        <div style="font-size:13px;color:var(--c-muted);margin-bottom:20px">
-          Exporta todos os tickets, comentários, utilizadores e categorias para um ficheiro JSON.
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
-          <div style="text-align:center;border:1px solid var(--c-border);border-radius:8px;padding:12px">
-            <div style="font-size:22px;font-weight:700;color:var(--c-primary)">{{ stats.tickets }}</div>
-            <div style="font-size:11px;color:var(--c-muted)">Tickets</div>
-          </div>
-          <div style="text-align:center;border:1px solid var(--c-border);border-radius:8px;padding:12px">
-            <div style="font-size:22px;font-weight:700;color:var(--c-primary)">{{ stats.users }}</div>
-            <div style="font-size:11px;color:var(--c-muted)">Utilizadores</div>
-          </div>
-          <div style="text-align:center;border:1px solid var(--c-border);border-radius:8px;padding:12px">
-            <div style="font-size:22px;font-weight:700;color:var(--c-primary)">{{ stats.categories }}</div>
-            <div style="font-size:11px;color:var(--c-muted)">Categorias</div>
-          </div>
-        </div>
-
-        <button class="hd-btn hd-btn-primary" style="width:100%" :disabled="backing" @click="doBackup">
-          <span class="material-icons" style="font-size:16px">{{ backing ? 'hourglass_empty' : 'download' }}</span>
-          {{ backing ? 'A exportar...' : 'Fazer backup agora' }}
-        </button>
-        <div v-if="lastBackup" style="font-size:12px;color:var(--c-muted);text-align:center;margin-top:8px">
-          Último backup: {{ lastBackup }}
-        </div>
+  <div class="hd-page backup-page">
+    <div class="page-heading">
+      <div>
+        <h1>Backup &amp; Restauro</h1>
+        <p>Cópias de segurança manuais e automáticas dos dados do helpdesk.</p>
       </div>
-
-      <!-- Restore card -->
-      <div class="hd-card" style="padding:28px">
-        <div class="hd-row" style="margin-bottom:4px">
-          <span class="material-icons" style="color:#F59E0B;margin-right:8px">cloud_upload</span>
-          <div style="font-weight:600;font-size:15px">Importar / Restaurar</div>
-        </div>
-        <div style="font-size:13px;color:var(--c-muted);margin-bottom:20px">
-          Restaura dados a partir de um ficheiro JSON exportado anteriormente. Operação irreversível.
-        </div>
-
-        <div
-          class="hd-dropzone"
-          style="margin-bottom:20px;cursor:pointer"
-          @click="fileInput?.click()"
-          @dragover.prevent
-          @drop.prevent="onDrop"
-        >
-          <span class="material-icons" style="font-size:32px;color:var(--c-muted);margin-bottom:8px;display:block">
-            {{ restoreFile ? 'description' : 'upload_file' }}
-          </span>
-          <div style="font-size:13.5px;color:var(--c-muted)">
-            {{ restoreFile ? restoreFile.name : 'Arrastar ficheiro JSON ou clicar para selecionar' }}
-          </div>
-          <div style="font-size:12px;color:var(--c-muted);margin-top:4px">Apenas ficheiros .json</div>
-          <input ref="fileInput" type="file" accept=".json" style="display:none" @change="onFileChange" />
-        </div>
-
-        <div v-if="restoreFile" style="border:1px solid #F59E0B33;background:#FFF9EB;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#92400E">
-          <span class="material-icons" style="font-size:14px;vertical-align:middle;margin-right:4px">warning</span>
-          Esta operação substituirá os dados existentes. Faça um backup antes de continuar.
-        </div>
-
-        <button
-          class="hd-btn"
-          style="width:100%;background:#F59E0B;color:#fff;justify-content:center"
-          :disabled="!restoreFile || restoring"
-          @click="doRestore"
-        >
-          <span class="material-icons" style="font-size:16px">restore</span>
-          {{ restoring ? 'A restaurar...' : 'Restaurar dados' }}
-        </button>
-      </div>
+      <button class="hd-btn hd-btn-primary" :disabled="backing" @click="doServerBackup">
+        <span class="material-icons">{{ backing ? 'hourglass_empty' : 'save' }}</span>
+        {{ backing ? 'A criar...' : 'Criar cópia agora' }}
+      </button>
     </div>
 
-    <!-- Operation log -->
-    <div class="hd-card" style="padding:20px">
-      <div style="font-weight:600;font-size:14px;margin-bottom:4px">Registo de operações</div>
-      <div style="font-size:12px;color:var(--c-muted);margin-bottom:16px">Histórico de backups e restauros</div>
-      <table class="hd-table">
-        <thead><tr><th>DATA</th><th>OPERAÇÃO</th><th>UTILIZADOR</th><th>ESTADO</th><th>DETALHES</th></tr></thead>
-        <tbody>
-          <tr v-for="entry in log" :key="entry.id">
-            <td style="color:var(--c-muted);white-space:nowrap">{{ entry.date }}</td>
-            <td style="font-weight:500">{{ entry.op }}</td>
-            <td>
-              <div class="hd-row" style="gap:6px">
-                <AvatarCircle :name="entry.user" size="22" />
-                <span style="font-size:13px">{{ entry.user }}</span>
-              </div>
-            </td>
-            <td>
-              <span :style="entry.ok ? 'color:#22C55E;font-size:12px' : 'color:#EF4444;font-size:12px'">
-                <span class="material-icons" style="font-size:13px;vertical-align:middle">{{ entry.ok ? 'check_circle' : 'error' }}</span>
-                {{ entry.ok ? 'Sucesso' : 'Erro' }}
-              </span>
-            </td>
-            <td style="font-size:12px;color:var(--c-muted)">{{ entry.detail }}</td>
-          </tr>
-          <tr v-if="!log.length">
-            <td colspan="5" style="text-align:center;color:var(--c-muted);padding:32px">Sem registos.</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="backup-grid">
+      <section class="hd-card backup-card">
+        <div class="card-title">
+          <span class="material-icons">settings_backup_restore</span>
+          Backup automático
+        </div>
+        <p class="card-copy">Define se o servidor deve criar cópias periódicas e onde as deve guardar.</p>
+
+        <label class="backup-toggle">
+          <input type="checkbox" v-model="config.enabled" />
+          <span>Ativar cópias automáticas</span>
+        </label>
+
+        <div class="form-grid">
+          <label>
+            Frequência
+            <select class="hd-select" v-model.number="config.interval_hours">
+              <option :value="1">De hora a hora</option>
+              <option :value="6">A cada 6 horas</option>
+              <option :value="12">A cada 12 horas</option>
+              <option :value="24">Diariamente</option>
+              <option :value="168">Semanalmente</option>
+            </select>
+          </label>
+          <label>
+            Manter últimas
+            <input class="hd-input" type="number" min="1" max="365" v-model.number="config.retention" />
+          </label>
+          <label class="span-2">
+            Local de destino no servidor
+            <input class="hd-input" v-model="config.directory" placeholder="/app/data/backups" />
+          </label>
+        </div>
+
+        <button class="hd-btn hd-btn-outline" :disabled="saving" @click="saveConfig">
+          <span class="material-icons">check</span>
+          {{ saving ? 'A guardar...' : 'Guardar configuração' }}
+        </button>
+        <div v-if="message" class="status-line">{{ message }}</div>
+      </section>
+
+      <section class="hd-card backup-card">
+        <div class="card-title">
+          <span class="material-icons">download</span>
+          Exportar ficheiro
+        </div>
+        <p class="card-copy">Descarrega uma cópia JSON para guardar fora do NAS.</p>
+        <div class="stats-row">
+          <div><strong>{{ stats.tickets }}</strong><span>Tickets</span></div>
+          <div><strong>{{ stats.users }}</strong><span>Utilizadores</span></div>
+          <div><strong>{{ stats.categories }}</strong><span>Categorias</span></div>
+        </div>
+        <button class="hd-btn hd-btn-outline full" :disabled="downloading" @click="doDownloadBackup">
+          <span class="material-icons">{{ downloading ? 'hourglass_empty' : 'file_download' }}</span>
+          {{ downloading ? 'A exportar...' : 'Descarregar backup' }}
+        </button>
+      </section>
     </div>
+
+    <section class="hd-card backup-card">
+      <div class="card-title">
+        <span class="material-icons">cloud_upload</span>
+        Importar / Restaurar
+      </div>
+      <p class="card-copy">A área de importação fica preparada para usar um ficheiro exportado anteriormente. Faz sempre uma cópia antes de restaurar.</p>
+
+      <div
+        class="hd-dropzone"
+        @click="fileInput?.click()"
+        @dragover.prevent
+        @drop.prevent="onDrop"
+      >
+        <span class="material-icons">{{ restoreFile ? 'description' : 'upload_file' }}</span>
+        <div>{{ restoreFile ? restoreFile.name : 'Arrastar ficheiro JSON ou clicar para selecionar' }}</div>
+        <small>Apenas ficheiros .json</small>
+        <input ref="fileInput" type="file" accept=".json" style="display:none" @change="onFileChange" />
+      </div>
+      <div v-if="restoreFile" class="warning-line">Restauro ainda não está ativo nesta versão. O ficheiro foi selecionado, mas nada será substituído.</div>
+    </section>
+
+    <section class="hd-card backup-card">
+      <div class="card-title">
+        <span class="material-icons">history</span>
+        Registo desta sessão
+      </div>
+      <div class="log-list">
+        <div v-for="entry in log" :key="entry.id" class="log-item">
+          <span class="material-icons" :class="{ ok: entry.ok }">{{ entry.ok ? 'check_circle' : 'error' }}</span>
+          <div>
+            <strong>{{ entry.op }}</strong>
+            <small>{{ entry.date }} · {{ entry.detail }}</small>
+          </div>
+        </div>
+        <div v-if="!log.length" class="empty-log">Ainda não há operações nesta sessão.</div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { getAdminStats, downloadBackup } from '../../api/tickets'
-import AvatarCircle from '../../components/AvatarCircle.vue'
+import { onMounted, ref } from 'vue'
+import { downloadBackup, getAdminStats, getBackupConfig, runServerBackup, updateBackupConfig } from '../../api/tickets'
 
 const backing = ref(false)
-const restoring = ref(false)
+const downloading = ref(false)
+const saving = ref(false)
+const message = ref('')
 const restoreFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
-const lastBackup = ref('')
-
 const stats = ref({ tickets: '—', users: '—', categories: '—' })
+const config = ref({ enabled: false, interval_hours: 24, directory: '/app/data/backups', retention: 14 })
 const log = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const s = await getAdminStats()
-    stats.value = {
-      tickets: s.total ?? '—',
-      users: s.user_count ?? '—',
-      categories: s.category_count ?? '—',
+    const [s, cfg] = await Promise.all([getAdminStats(), getBackupConfig()])
+    stats.value = { tickets: s.total ?? '—', users: s.user_count ?? '—', categories: s.category_count ?? '—' }
+    config.value = {
+      enabled: !!cfg.enabled,
+      interval_hours: Number(cfg.interval_hours || 24),
+      directory: cfg.directory || '/app/data/backups',
+      retention: Number(cfg.retention || 14),
     }
-  } catch { /* ignore */ }
+  } catch {
+    message.value = 'Não foi possível carregar a configuração de backup.'
+  }
 })
 
-async function doBackup() {
+async function saveConfig() {
+  saving.value = true
+  message.value = ''
+  try {
+    config.value = await updateBackupConfig(config.value)
+    message.value = 'Configuração guardada.'
+  } catch {
+    message.value = 'Erro ao guardar configuração.'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function doServerBackup() {
   backing.value = true
   try {
-    await downloadBackup()
-    lastBackup.value = new Date().toLocaleString('pt-PT')
-    log.value.unshift({
-      id: Date.now(), date: lastBackup.value, op: 'Exportar backup',
-      user: 'Admin', ok: true, detail: 'helpdesk-backup.json',
-    })
+    const result = await runServerBackup()
+    addLog('Criar cópia no servidor', true, result.path)
   } catch {
-    log.value.unshift({
-      id: Date.now(), date: new Date().toLocaleString('pt-PT'), op: 'Exportar backup',
-      user: 'Admin', ok: false, detail: 'Erro ao exportar',
-    })
-  } finally { backing.value = false }
+    addLog('Criar cópia no servidor', false, 'Erro ao criar backup')
+  } finally {
+    backing.value = false
+  }
+}
+
+async function doDownloadBackup() {
+  downloading.value = true
+  try {
+    await downloadBackup()
+    addLog('Descarregar backup', true, 'Ficheiro JSON descarregado')
+  } catch {
+    addLog('Descarregar backup', false, 'Erro ao descarregar')
+  } finally {
+    downloading.value = false
+  }
 }
 
 function onFileChange(e: Event) {
@@ -166,15 +186,107 @@ function onDrop(e: DragEvent) {
   if (file?.name.endsWith('.json')) restoreFile.value = file
 }
 
-async function doRestore() {
-  if (!restoreFile.value || !confirm('Restaurar dados? Esta operação é irreversível.')) return
-  restoring.value = true
-  await new Promise(r => setTimeout(r, 1500))
-  log.value.unshift({
-    id: Date.now(), date: new Date().toLocaleString('pt-PT'), op: 'Importar backup',
-    user: 'Admin', ok: false, detail: 'Endpoint de restauro não implementado',
-  })
-  restoring.value = false
-  restoreFile.value = null
+function addLog(op: string, ok: boolean, detail: string) {
+  log.value.unshift({ id: Date.now(), op, ok, detail, date: new Date().toLocaleString('pt-PT') })
 }
 </script>
+
+<style scoped>
+.backup-page { max-width: 1180px; }
+.page-heading {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.page-heading h1 { font-size: 24px; margin: 0 0 6px; }
+.page-heading p, .card-copy { color: var(--c-muted); margin: 0; font-size: 14px; }
+.backup-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.backup-card { padding: 22px; margin-bottom: 18px; }
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.card-title .material-icons { color: var(--c-primary); }
+.backup-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+  font-weight: 600;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.form-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--c-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.span-2 { grid-column: 1 / -1; }
+.status-line, .warning-line {
+  margin-top: 12px;
+  color: var(--c-muted);
+  font-size: 13px;
+}
+.warning-line { color: #92400e; }
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+.stats-row div {
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+.stats-row strong { display: block; font-size: 22px; color: var(--c-primary); }
+.stats-row span { font-size: 11px; color: var(--c-muted); }
+.full { width: 100%; justify-content: center; }
+.hd-dropzone { cursor: pointer; }
+.hd-dropzone .material-icons {
+  display: block;
+  font-size: 34px;
+  color: var(--c-muted);
+  margin-bottom: 8px;
+}
+.hd-dropzone small { display: block; margin-top: 4px; color: var(--c-muted); }
+.log-list { display: grid; gap: 10px; }
+.log-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+}
+.log-item .material-icons { color: #ef4444; }
+.log-item .material-icons.ok { color: #22c55e; }
+.log-item small { display: block; color: var(--c-muted); margin-top: 3px; }
+.empty-log { color: var(--c-muted); font-size: 13px; }
+@media (max-width: 820px) {
+  .page-heading, .backup-grid { display: grid; grid-template-columns: 1fr; }
+  .page-heading .hd-btn { width: 100%; justify-content: center; }
+  .backup-card { padding: 18px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: 1fr; }
+}
+</style>

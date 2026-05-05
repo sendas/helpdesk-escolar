@@ -75,5 +75,11 @@ class Settings(BaseSettings):
     imap_folder: str = "INBOX"
     imap_poll_seconds: int = 120
 
+    # Backups
+    backup_auto_enabled: bool = False
+    backup_interval_hours: int = 24
+    backup_directory: str = "/app/data/backups"
+    backup_retention: int = 14
+
 
 settings = Settings()

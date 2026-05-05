@@ -339,7 +339,7 @@ onBeforeUnmount(() => {
   }
   :deep(.hd-nav) {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 8px;
     padding: 12px;
     max-height: calc(100vh - 58px);
@@ -368,6 +368,7 @@ onBeforeUnmount(() => {
     gap: 8px;
     padding: 10px 12px;
     height: auto;
+    flex-wrap: nowrap;
   }
   :deep(.hd-header-title) {
     display: none;
@@ -375,9 +376,15 @@ onBeforeUnmount(() => {
   :deep(.hd-search) {
     flex: 1;
     min-width: 0;
+    max-width: none;
+  }
+  :deep(.hd-search input) {
+    min-width: 0;
+    font-size: 13px;
   }
   :deep(.hd-header-actions) {
     gap: 6px;
+    flex-shrink: 0;
   }
   :deep(.hd-header-actions > .hd-avatar) {
     display: none;

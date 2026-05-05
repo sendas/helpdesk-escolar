@@ -107,3 +107,18 @@ export async function downloadBackup() {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+export async function getBackupConfig() {
+  const { data } = await api.get('/api/v1/admin/backup/config')
+  return data
+}
+
+export async function updateBackupConfig(payload: { enabled: boolean; interval_hours: number; directory: string; retention: number }) {
+  const { data } = await api.patch('/api/v1/admin/backup/config', payload)
+  return data
+}
+
+export async function runServerBackup() {
+  const { data } = await api.post('/api/v1/admin/backup/run')
+  return data as { filename: string; path: string }
+}

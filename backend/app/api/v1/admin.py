@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -6,7 +7,7 @@ from app.api.deps import get_db, require_staff, require_admin
 from app.models.user import User
 from app.models.ticket import Ticket, Comment, TicketStatus
 from app.schemas.ticket import TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets
-from app.services import ticket_service, email_service, email_ingest
+from app.services import ticket_service, email_service, email_ingest, backup_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -204,39 +205,20 @@ async def admin_stats(
 
 @router.get("/backup")
 async def backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
-    from app.models.school import School
-    from app.models.category import Category
-    from app.models.user import User as UserModel
-    from app.models.ticket import Ticket as TicketModel, Comment as CommentModel, Attachment as AttachmentModel
-    import json
-    from datetime import datetime
-
-    schools = (await db.execute(select(School))).scalars().all()
-    cats = (await db.execute(select(Category))).scalars().all()
-    users = (await db.execute(select(UserModel))).scalars().all()
-    tickets = (await db.execute(select(TicketModel))).scalars().all()
-    comments = (await db.execute(select(CommentModel))).scalars().all()
-    attachments = (await db.execute(select(AttachmentModel))).scalars().all()
-
-    def to_dict(obj):
-        d = {}
-        for col in obj.__table__.columns:
-            v = getattr(obj, col.name)
-            if hasattr(v, "isoformat"):
-                v = v.isoformat()
-            elif hasattr(v, "value"):
-                v = v.value
-            d[col.name] = v
-        return d
-
-    data = {
-        "exported_at": datetime.utcnow().isoformat(),
-        "schools": [to_dict(s) for s in schools],
-        "categories": [to_dict(c) for c in cats],
-        "users": [to_dict(u) for u in users],
-        "tickets": [to_dict(t) for t in tickets],
-        "comments": [to_dict(c) for c in comments],
-        "attachments": [to_dict(a) for a in attachments],
-    }
-    from fastapi.responses import JSONResponse
+    data = await backup_service.build_backup(db)
     return JSONResponse(content=data, headers={"Content-Disposition": "attachment; filename=helpdesk-backup.json"})
+
+
+@router.get("/backup/config")
+async def get_backup_config(_: User = Depends(require_admin)):
+    return backup_service.load_config()
+
+
+@router.patch("/backup/config")
+async def update_backup_config(data: dict, _: User = Depends(require_admin)):
+    return backup_service.save_config(data)
+
+
+@router.post("/backup/run")
+async def run_backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    return await backup_service.write_backup(db)

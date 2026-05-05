@@ -26,11 +26,13 @@ async def lifespan(app: FastAPI):
     mail_task = None
     if settings.mail_reply_enabled:
         mail_task = asyncio.create_task(_sync_mail_replies_periodically())
+    backup_task = asyncio.create_task(_backup_periodically())
     yield
     if sync_task:
         sync_task.cancel()
     if mail_task:
         mail_task.cancel()
+    backup_task.cancel()
 
 
 async def _sync_azure_periodically() -> None:
@@ -57,6 +59,23 @@ async def _sync_mail_replies_periodically() -> None:
         async with AsyncSessionLocal() as db:
             try:
                 await email_ingest.sync_inbound_replies(db)
+            except Exception:
+                pass
+
+
+async def _backup_periodically() -> None:
+    from app.database import AsyncSessionLocal
+    from app.services import backup_service
+
+    while True:
+        config = backup_service.load_config()
+        if not config["enabled"]:
+            await asyncio.sleep(300)
+            continue
+        await asyncio.sleep(max(config["interval_hours"], 1) * 3600)
+        async with AsyncSessionLocal() as db:
+            try:
+                await backup_service.write_backup(db)
             except Exception:
                 pass
 

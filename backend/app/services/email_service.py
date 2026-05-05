@@ -22,9 +22,16 @@ def _get_conf() -> ConnectionConfig:
     )
 
 
+def build_ticket_url(ticket_id: int | str) -> str:
+    return f"{settings.frontend_url.rstrip('/')}/tickets/{ticket_id}"
+
+
 async def send_ticket_notification(to_email: str, event: str, ticket_data: dict) -> None:
     if not settings.mail_server:
         return
+    ticket_data = dict(ticket_data)
+    if ticket_data.get("id") and not ticket_data.get("ticket_url"):
+        ticket_data["ticket_url"] = build_ticket_url(ticket_data["id"])
 
     try:
         template = jinja_env.get_template(f"ticket_{event}.html")
