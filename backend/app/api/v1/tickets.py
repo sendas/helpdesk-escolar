@@ -6,11 +6,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, get_current_user
 from app.models.user import User, UserRole
-from app.models.ticket import Attachment, Comment, TicketStatus
+from app.models.ticket import Attachment, Comment, TicketEvent, TicketStatus
 from app.models.category import Category
 from app.models.school import School
 from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, CommentCreate, CommentRead, CommentUpdate
 from app.services import ticket_service, email_service
+from app.api.v1.settings import _read_settings
+from app.config import settings
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -178,6 +180,48 @@ async def update_ticket(
         {"id": updated.id, "title": updated.title, "status": updated.status.value},
     )
     return updated
+
+
+@router.post("/{ticket_id}/escalate", response_model=TicketRead)
+async def escalate_ticket(
+    ticket_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+
+    app_settings = _read_settings()
+    provider_email = (app_settings.get("support_provider_email") or "").strip()
+    provider_name = (app_settings.get("support_provider_name") or "Fornecedor externo").strip()
+    if not provider_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email do fornecedor não configurado")
+    if not settings.mail_server:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envio de email não configurado")
+
+    await email_service.send_ticket_notification(
+        provider_email,
+        "escalated",
+        {
+            "id": ticket.id,
+            "title": ticket.title,
+            "description": ticket.description,
+            "requester": ticket.creator.display_name,
+            "requester_email": ticket.creator.email,
+            "category": ticket.category.name,
+            "priority": ticket.priority.value,
+            "school": ticket.school.name if ticket.school else "",
+            "provider": provider_name,
+            "escalated_by": current_user.display_name,
+        },
+    )
+    db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated", message=f"Ticket escalado para {provider_name} ({provider_email})"))
+    await db.commit()
+    return await ticket_service.get_ticket(db, ticket_id)
 
 
 @router.post("/{ticket_id}/comments", response_model=CommentRead, status_code=status.HTTP_201_CREATED)

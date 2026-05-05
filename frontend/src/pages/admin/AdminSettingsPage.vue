@@ -58,6 +58,20 @@
         <input class="hd-input" type="number" v-model="general.jwt_expire" style="max-width:140px" />
         <p class="hd-hint">Tempo até o token JWT expirar e o utilizador ter de iniciar sessão novamente.</p>
       </div>
+      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px">Fornecedor externo de suporte</div>
+        <div class="hd-grid-2">
+          <div class="hd-field">
+            <label class="hd-label">Nome da empresa</label>
+            <input class="hd-input" v-model="general.support_provider_name" placeholder="Controlink" />
+          </div>
+          <div class="hd-field">
+            <label class="hd-label">Email de suporte</label>
+            <input class="hd-input" v-model="general.support_provider_email" placeholder="suporte@controlink.com" />
+          </div>
+        </div>
+        <p class="hd-hint">Este email é usado quando um técnico/admin escala um ticket para a empresa de apoio.</p>
+      </div>
       <button class="hd-btn hd-btn-primary" @click="saveGeneral">
         <span class="material-icons" style="font-size:16px">save</span> Guardar
       </button>
@@ -421,7 +435,7 @@ const routingRules = ref<any[]>([])
 const articles = ref<any[]>([])
 const logoFile = ref<File | null>(null)
 
-const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480 })
+const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Fornecedor externo', support_provider_email: '' })
 const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
 const email = ref({ server: '', port: 587, from: '', username: '', password: '' })
 
@@ -444,6 +458,8 @@ onMounted(async () => {
     const [settings, cats, schs, grps, users, routes, kb] = await Promise.all([getPublicSettings(), getCategories(), getSchools(), getGroups(), getUsers(), getRoutingRules(), getKnowledgeArticles(true)])
     general.value.org_name = settings.org_name
     general.value.logo_url = settings.logo_url
+    general.value.support_provider_name = settings.support_provider_name || 'Fornecedor externo'
+    general.value.support_provider_email = settings.support_provider_email || ''
     categories.value = cats
     schools.value = schs
     groups.value = grps
@@ -463,9 +479,16 @@ function onLogoPicked(event: Event) {
 
 async function saveGeneral() {
   try {
-    const settings = await updateSettings({ org_name: general.value.org_name, logo: logoFile.value })
+    const settings = await updateSettings({
+      org_name: general.value.org_name,
+      support_provider_name: general.value.support_provider_name,
+      support_provider_email: general.value.support_provider_email,
+      logo: logoFile.value,
+    })
     general.value.org_name = settings.org_name
     general.value.logo_url = settings.logo_url
+    general.value.support_provider_name = settings.support_provider_name || 'Fornecedor externo'
+    general.value.support_provider_email = settings.support_provider_email || ''
     logoFile.value = null
     saved.value = true
   } catch { /* ignore */ }

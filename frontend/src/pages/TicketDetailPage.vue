@@ -199,6 +199,14 @@
               <div class="hd-detail-label">SLA</div>
               <span style="font-size:13px">{{ ticket.category.sla_hours }}h</span>
             </div>
+
+            <div v-if="auth.isStaff" class="provider-escalation">
+              <button class="hd-btn hd-btn-outline" style="width:100%;justify-content:center" :disabled="escalating" @click="onEscalateTicket">
+                <span class="material-icons" style="font-size:16px">outgoing_mail</span>
+                {{ escalating ? 'A escalar...' : 'Escalar para fornecedor' }}
+              </button>
+              <p v-if="escalationMessage" :class="{ error: escalationError }">{{ escalationMessage }}</p>
+            </div>
           </div>
 
           <!-- Timeline -->
@@ -235,7 +243,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTicket, addComment, adminUpdateTicket, updateComment, deleteComment } from '../api/tickets'
+import { getTicket, addComment, adminUpdateTicket, updateComment, deleteComment, escalateTicket } from '../api/tickets'
 import { getGroups, getUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -257,6 +265,9 @@ const groupId = ref('')
 const ticketStatus = ref('')
 const editingCommentId = ref<number | null>(null)
 const editingCommentBody = ref('')
+const escalating = ref(false)
+const escalationMessage = ref('')
+const escalationError = ref(false)
 
 const statusOpts = [
   { v: 'open', l: 'Aberto' }, { v: 'assigned', l: 'Atribuído' },
@@ -385,6 +396,22 @@ async function onDeleteComment(comment: any) {
   await load()
 }
 
+async function onEscalateTicket() {
+  if (!confirm('Escalar este ticket para o fornecedor externo configurado?')) return
+  escalating.value = true
+  escalationMessage.value = ''
+  escalationError.value = false
+  try {
+    ticket.value = await escalateTicket(ticket.value.id)
+    escalationMessage.value = 'Ticket escalado e email enviado ao fornecedor.'
+  } catch (error: any) {
+    escalationError.value = true
+    escalationMessage.value = error?.response?.data?.detail || 'Não foi possível escalar o ticket. Verifica o email do fornecedor nas configurações.'
+  } finally {
+    escalating.value = false
+  }
+}
+
 function userOptionLabel(u: any) {
   const role = u.role === 'admin' ? 'Administrador' : 'Técnico'
   return `${u.display_name} — ${u.email} (${role})`
@@ -456,6 +483,22 @@ function formatSize(size: number) {
 .quick-reply:hover {
   border-color: var(--c-primary);
   color: var(--c-primary);
+}
+
+.provider-escalation {
+  border-top: 1px solid var(--c-border);
+  margin-top: 4px;
+  padding-top: 16px;
+}
+
+.provider-escalation p {
+  color: #16A34A;
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+.provider-escalation p.error {
+  color: #DC2626;
 }
 
 .event-list {

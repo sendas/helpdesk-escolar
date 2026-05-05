@@ -17,6 +17,8 @@ DEFAULT_SETTINGS = {
     "org_name": "Agrupamento de Escolas Eça de Queirós",
     "logo_url": "",
     "favicon_url": "",
+    "support_provider_name": "Fornecedor externo",
+    "support_provider_email": "",
 }
 
 
@@ -28,11 +30,15 @@ async def public_settings():
 @router.put("")
 async def update_settings(
     org_name: str = Form(...),
+    support_provider_name: str = Form("Fornecedor externo"),
+    support_provider_email: str = Form(""),
     logo: UploadFile | None = File(None),
     _: User = Depends(require_admin),
 ):
     data = _read_settings()
     data["org_name"] = org_name.strip() or DEFAULT_SETTINGS["org_name"]
+    data["support_provider_name"] = support_provider_name.strip() or DEFAULT_SETTINGS["support_provider_name"]
+    data["support_provider_email"] = support_provider_email.strip()
 
     if logo and logo.filename:
         if logo.content_type not in ALLOWED_LOGO_TYPES:

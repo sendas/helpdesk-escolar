@@ -52,6 +52,11 @@ export async function adminUpdateTicket(id: number, payload: Partial<{ status: s
   return data
 }
 
+export async function escalateTicket(id: number) {
+  const { data } = await api.post<TicketDetail>(`/api/v1/tickets/${id}/escalate`)
+  return data
+}
+
 export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: string; assignee_id?: number | null; group_id?: number | null; priority?: string }) {
   const { data } = await api.patch<TicketDetail[]>('/api/v1/admin/tickets/bulk', payload)
   return data

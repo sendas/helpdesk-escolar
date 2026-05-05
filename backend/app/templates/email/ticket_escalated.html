@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt">
+<body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
+  <h2 style="margin:0 0 12px">Pedido escalado para {{ provider }}</h2>
+  <p>Foi escalado um pedido de suporte do helpdesk escolar.</p>
+  <p>
+    <strong>Ticket:</strong> #{{ id }} - {{ title }}<br>
+    <strong>Solicitante:</strong> {{ requester }} &lt;{{ requester_email }}&gt;<br>
+    <strong>Escola:</strong> {{ school or "Nao indicada" }}<br>
+    <strong>Categoria:</strong> {{ category }}<br>
+    <strong>Prioridade:</strong> {{ priority }}<br>
+    <strong>Escalado por:</strong> {{ escalated_by }}
+  </p>
+  <div style="border:1px solid #E5E7EB;border-radius:8px;padding:14px;margin:16px 0;background:#F9FAFB">
+    <strong>Descricao do pedido</strong>
+    <p style="white-space:pre-wrap;margin:8px 0 0">{{ description }}</p>
+  </div>
+  <p>
+    <a href="{{ ticket_url }}" style="display:inline-block;background:#3D52D5;color:#fff;text-decoration:none;padding:10px 14px;border-radius:6px">
+      Abrir ticket
+    </a>
+  </p>
+</body>
+</html>
