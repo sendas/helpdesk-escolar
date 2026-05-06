@@ -378,7 +378,7 @@
           </div>
 
           <div class="group-member-toolbar">
-            <input class="hd-input" v-model="groupUserSearch" placeholder="Pesquisar docente ou utilizador..." />
+            <input class="hd-input" v-model="groupUserSearch" placeholder="Pesquisar por nome, email ou utilizador..." />
             <button class="hd-btn hd-btn-primary" @click="saveGroupMembers">
               <span class="material-icons" style="font-size:16px">save</span> Guardar membros
             </button>
@@ -493,7 +493,7 @@ const groupCandidateUsers = computed(() => {
   const q = groupUserSearch.value.trim().toLowerCase()
   return users.value
     .filter(u => u.is_active)
-    .filter(u => !q || `${u.display_name} ${u.email} ${u.department || ''}`.toLowerCase().includes(q))
+    .filter(u => !q || `${u.display_name} ${u.email} ${u.username} ${u.department || ''}`.toLowerCase().includes(q))
 })
 
 const roleDefinitions = [
