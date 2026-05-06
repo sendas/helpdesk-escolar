@@ -144,15 +144,39 @@
               </button>
             </div>
 
-            <div class="hd-detail-row">
+            <div class="hd-detail-row" style="flex-direction:column;align-items:flex-start;gap:8px">
               <div class="hd-detail-label">Em conhecimento</div>
-              <div v-if="ticket.watchers?.length" class="watcher-list">
+              <div v-if="ticket.watchers?.length" class="watcher-list" style="width:100%">
                 <div v-for="user in ticket.watchers" :key="user.id" class="watcher-mini">
                   <AvatarCircle :name="user.display_name" size="22" />
                   <span>{{ user.display_name }}</span>
+                  <button
+                    v-if="canEditWatchers"
+                    class="watcher-remove-btn"
+                    @click="onRemoveWatcher(user.id)"
+                    title="Remover"
+                  >
+                    <span class="material-icons" style="font-size:14px">close</span>
+                  </button>
                 </div>
               </div>
-              <span v-else style="font-size:13px">—</span>
+              <span v-else style="font-size:13px;color:var(--c-muted)">Nenhuma pessoa adicionada.</span>
+              <div v-if="canEditWatchers" class="watcher-add-row">
+                <select class="hd-select" style="flex:1;font-size:12px;padding:5px 8px" v-model="watcherToAdd">
+                  <option :value="null">Adicionar pessoa...</option>
+                  <option v-for="u in availableWatcherUsers" :key="u.id" :value="u.id">
+                    {{ u.display_name }}
+                  </option>
+                </select>
+                <button
+                  class="hd-btn hd-btn-primary"
+                  style="padding:5px 12px;font-size:12px;white-space:nowrap"
+                  :disabled="!watcherToAdd || addingWatcher"
+                  @click="onAddWatcher"
+                >
+                  Adicionar
+                </button>
+              </div>
             </div>
 
             <div class="hd-detail-row">
@@ -270,7 +294,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket } from '../api/tickets'
+import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, addWatcher, removeWatcher } from '../api/tickets'
 import { getGroups, getUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -296,10 +320,23 @@ const escalating = ref(false)
 const escalationMessage = ref('')
 const escalationError = ref(false)
 const savingEmailPreference = ref(false)
+const watcherToAdd = ref<number | null>(null)
+const addingWatcher = ref(false)
+const allUsers = ref<any[]>([])
 
 const canManageEmailNotifications = computed(() => {
   if (!ticket.value || !auth.user) return false
   return auth.isAdmin || ticket.value.creator?.id === auth.user.id
+})
+
+const canEditWatchers = computed(() => {
+  if (!ticket.value || !auth.user) return false
+  return auth.isStaff || ticket.value.creator?.id === auth.user.id
+})
+
+const availableWatcherUsers = computed(() => {
+  const addedIds = new Set((ticket.value?.watchers ?? []).map((w: any) => w.id))
+  return allUsers.value.filter(u => !addedIds.has(u.id) && u.id !== ticket.value?.creator?.id)
 })
 
 const statusOpts = [
@@ -331,10 +368,14 @@ function isStatusDone(status: string) {
 
 onMounted(async () => {
   await load()
+  const isCreator = ticket.value?.creator?.id === auth.user?.id
   if (auth.isStaff) {
     const [users, grps] = await Promise.all([getUsers(), getGroups()])
     staffUsers.value = users.filter((u: any) => u.is_active && u.role === 'technician')
     groups.value = grps
+    allUsers.value = users.filter((u: any) => u.is_active)
+  } else if (isCreator) {
+    allUsers.value = (await getUsers()).filter((u: any) => u.is_active)
   }
 })
 
@@ -442,6 +483,21 @@ async function onDeleteComment(comment: any) {
   await load()
 }
 
+async function onAddWatcher() {
+  if (!watcherToAdd.value || addingWatcher.value) return
+  addingWatcher.value = true
+  try {
+    ticket.value = await addWatcher(ticket.value.id, watcherToAdd.value)
+    watcherToAdd.value = null
+  } finally {
+    addingWatcher.value = false
+  }
+}
+
+async function onRemoveWatcher(userId: number) {
+  ticket.value = await removeWatcher(ticket.value.id, userId)
+}
+
 async function onEscalateTicket() {
   if (!confirm('Escalar este ticket para o fornecedor externo configurado?')) return
   escalating.value = true
@@ -541,7 +597,7 @@ function formatSize(size: number) {
   align-items: center;
   display: grid;
   gap: 6px;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: 22px minmax(0, 1fr) auto;
 }
 
 .watcher-mini span {
@@ -549,6 +605,31 @@ function formatSize(size: number) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.watcher-remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--c-muted);
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+  transition: background .15s, color .15s;
+}
+
+.watcher-remove-btn:hover {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.watcher-add-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
 }
 
 .provider-escalation {

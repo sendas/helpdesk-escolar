@@ -6,6 +6,10 @@ from app.schemas.category import CategoryRead
 from app.schemas.school import SchoolRead
 
 
+class WatcherAdd(BaseModel):
+    user_id: int
+
+
 class TicketCreate(BaseModel):
     title: str
     description: str

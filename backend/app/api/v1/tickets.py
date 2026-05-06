@@ -10,7 +10,7 @@ from app.models.user import User, UserRole
 from app.models.ticket import Attachment, Comment, TicketEvent, TicketStatus
 from app.models.category import Category
 from app.models.school import School
-from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, CommentCreate, CommentRead, CommentUpdate
+from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, CommentCreate, CommentRead, CommentUpdate, WatcherAdd
 from app.services import ticket_service, email_service
 from app.api.v1.settings import _read_settings
 from app.config import settings
@@ -263,6 +263,66 @@ async def escalate_ticket(
     db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated", message=f"Ticket escalado para {provider_name} ({provider_email})"))
     await db.commit()
     return await ticket_service.get_ticket(db, ticket_id)
+
+
+@router.post("/{ticket_id}/watchers", response_model=TicketRead)
+async def add_watcher(
+    ticket_id: int,
+    data: WatcherAdd,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    is_creator = ticket.creator_id == current_user.id
+    is_staff = current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN}
+    if not is_creator and not is_staff:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    person = await db.get(User, data.user_id)
+    if not person:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilizador não encontrado")
+    if not any(w.id == person.id for w in ticket.watchers):
+        ticket.watchers.append(person)
+        ticket.updated_at = datetime.utcnow()
+        db.add(TicketEvent(
+            ticket_id=ticket_id,
+            actor_id=current_user.id,
+            event_type="watcher_added",
+            message=f"{person.display_name} adicionado(a) em conhecimento",
+        ))
+        await db.commit()
+        await db.refresh(ticket)
+    return ticket
+
+
+@router.delete("/{ticket_id}/watchers/{user_id}", response_model=TicketRead)
+async def remove_watcher(
+    ticket_id: int,
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    is_creator = ticket.creator_id == current_user.id
+    is_staff = current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN}
+    if not is_creator and not is_staff:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    person = next((w for w in ticket.watchers if w.id == user_id), None)
+    if person:
+        ticket.watchers.remove(person)
+        ticket.updated_at = datetime.utcnow()
+        db.add(TicketEvent(
+            ticket_id=ticket_id,
+            actor_id=current_user.id,
+            event_type="watcher_removed",
+            message=f"{person.display_name} removido(a) do conhecimento",
+        ))
+        await db.commit()
+        await db.refresh(ticket)
+    return ticket
 
 
 @router.post("/{ticket_id}/comments", response_model=CommentRead, status_code=status.HTTP_201_CREATED)

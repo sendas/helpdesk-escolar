@@ -57,6 +57,16 @@ export async function escalateTicket(id: number) {
   return data
 }
 
+export async function addWatcher(ticketId: number, userId: number) {
+  const { data } = await api.post<TicketDetail>(`/api/v1/tickets/${ticketId}/watchers`, { user_id: userId })
+  return data
+}
+
+export async function removeWatcher(ticketId: number, userId: number) {
+  const { data } = await api.delete<TicketDetail>(`/api/v1/tickets/${ticketId}/watchers/${userId}`)
+  return data
+}
+
 export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: string; assignee_id?: number | null; group_id?: number | null; priority?: string; creator_email_notifications?: boolean }) {
   const { data } = await api.patch<TicketDetail[]>('/api/v1/admin/tickets/bulk', payload)
   return data
