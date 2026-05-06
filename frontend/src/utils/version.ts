@@ -1,7 +1,17 @@
-export const APP_VERSION = '1.7.5'
+export const APP_VERSION = '1.7.6'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.6',
+    date: '2026-05-06',
+    title: 'Gestão de pessoas em conhecimento no ticket',
+    changes: [
+      'O autor do ticket e qualquer técnico ou administrador podem agora adicionar e remover pessoas em conhecimento diretamente na página de detalhe, sem ser necessário recriar o ticket.',
+      'Campo de pesquisa por nome substitui a lista fixa: basta escrever parte do nome para filtrar os utilizadores disponíveis.',
+      'Cada adição ou remoção fica registada no histórico do ticket com o nome da pessoa e quem fez a alteração.',
+    ],
+  },
   {
     version: '1.7.5',
     date: '2026-05-06',
