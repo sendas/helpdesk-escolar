@@ -1,7 +1,16 @@
-export const APP_VERSION = '1.7.4'
+export const APP_VERSION = '1.7.5'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.5',
+    date: '2026-05-06',
+    title: 'Correção do modo escuro no login',
+    changes: [
+      'Quando o modo escuro é ativado no ecrã de login, toda a área de entrada passa a usar fundo, cartões, bordas e texto escuros coerentes.',
+      'Melhorado o contraste dos textos no login escuro para evitar letras cinzentas sobre fundo claro.',
+    ],
+  },
   {
     version: '1.7.4',
     date: '2026-05-06',

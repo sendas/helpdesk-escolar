@@ -54,6 +54,15 @@
   --c-primary-soft: #EEF1FF;
 }
 
+.dark .hd-login-wrap {
+  --c-bg:           #0F1117;
+  --c-surface:      #1A1D27;
+  --c-border:       #2D3048;
+  --c-text:         #F4F5F8;
+  --c-muted:        #C5CAD6;
+  --c-primary-soft: #1E2456;
+}
+
 /* ── Base ───────────────────────────────────────── */
 * { box-sizing: border-box; }
 
@@ -527,6 +536,9 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
   position: relative;
   overflow: hidden;
 }
+.dark .hd-login-right {
+  background: #121622;
+}
 .hd-login-right::before {
   content: '';
   position: absolute;
@@ -534,6 +546,9 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
   width: 280px; height: 280px;
   border-radius: 50%;
   background: rgba(61, 82, 213, .08);
+}
+.dark .hd-login-right::before {
+  background: rgba(107, 125, 255, .14);
 }
 
 /* ── Drop zone ───────────────────────────────────── */
