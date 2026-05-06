@@ -162,16 +162,21 @@
               </div>
               <span v-else style="font-size:13px;color:var(--c-muted)">Nenhuma pessoa adicionada.</span>
               <div v-if="canEditWatchers" class="watcher-add-row">
-                <select class="hd-select" style="flex:1;font-size:12px;padding:5px 8px" v-model="watcherToAdd">
-                  <option :value="null">Adicionar pessoa...</option>
-                  <option v-for="u in availableWatcherUsers" :key="u.id" :value="u.id">
-                    {{ u.display_name }}
-                  </option>
-                </select>
+                <input
+                  class="hd-input"
+                  style="flex:1;font-size:12px;padding:5px 8px"
+                  v-model="watcherSearch"
+                  list="watcher-users-list"
+                  placeholder="Pesquisar pessoa..."
+                  autocomplete="off"
+                />
+                <datalist id="watcher-users-list">
+                  <option v-for="u in availableWatcherUsers" :key="u.id" :value="u.display_name" />
+                </datalist>
                 <button
                   class="hd-btn hd-btn-primary"
                   style="padding:5px 12px;font-size:12px;white-space:nowrap"
-                  :disabled="!watcherToAdd || addingWatcher"
+                  :disabled="!resolvedWatcherId || addingWatcher"
                   @click="onAddWatcher"
                 >
                   Adicionar
@@ -320,7 +325,7 @@ const escalating = ref(false)
 const escalationMessage = ref('')
 const escalationError = ref(false)
 const savingEmailPreference = ref(false)
-const watcherToAdd = ref<number | null>(null)
+const watcherSearch = ref('')
 const addingWatcher = ref(false)
 const allUsers = ref<any[]>([])
 
@@ -337,6 +342,13 @@ const canEditWatchers = computed(() => {
 const availableWatcherUsers = computed(() => {
   const addedIds = new Set((ticket.value?.watchers ?? []).map((w: any) => w.id))
   return allUsers.value.filter(u => !addedIds.has(u.id) && u.id !== ticket.value?.creator?.id)
+})
+
+const resolvedWatcherId = computed(() => {
+  const match = availableWatcherUsers.value.find(
+    u => u.display_name.toLowerCase() === watcherSearch.value.trim().toLowerCase()
+  )
+  return match?.id ?? null
 })
 
 const statusOpts = [
@@ -484,11 +496,11 @@ async function onDeleteComment(comment: any) {
 }
 
 async function onAddWatcher() {
-  if (!watcherToAdd.value || addingWatcher.value) return
+  if (!resolvedWatcherId.value || addingWatcher.value) return
   addingWatcher.value = true
   try {
-    ticket.value = await addWatcher(ticket.value.id, watcherToAdd.value)
-    watcherToAdd.value = null
+    ticket.value = await addWatcher(ticket.value.id, resolvedWatcherId.value)
+    watcherSearch.value = ''
   } finally {
     addingWatcher.value = false
   }
