@@ -1,7 +1,17 @@
-export const APP_VERSION = '1.7.8'
+export const APP_VERSION = '1.7.9'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.9',
+    date: '2026-05-06',
+    title: 'Respostas por email atualizam o ticket',
+    changes: [
+      'Quando a caixa IMAP de respostas está configurada, respostas a emails com o assunto [Ticket #ID] passam a ser importadas automaticamente como comentários públicos no ticket.',
+      'Cada resposta recebida por email atualiza a data do ticket, cria um registo no histórico e evita duplicados através do Message-ID.',
+      'Os restantes participantes do ticket são notificados quando chega uma nova resposta por email.',
+    ],
+  },
   {
     version: '1.7.8',
     date: '2026-05-06',
