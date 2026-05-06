@@ -167,11 +167,11 @@
                   style="flex:1;font-size:12px;padding:5px 8px"
                   v-model="watcherSearch"
                   list="watcher-users-list"
-                  placeholder="Pesquisar por nome, email ou utilizador..."
+                  placeholder="Pesquisar por email..."
                   autocomplete="off"
                 />
                 <datalist id="watcher-users-list">
-                  <option v-for="u in filteredWatcherUsers" :key="u.id" :value="watcherOptionLabel(u)" />
+                  <option v-for="u in filteredWatcherUsers" :key="u.id" :value="u.email" :label="u.display_name" />
                 </datalist>
                 <button
                   class="hd-btn hd-btn-primary"
@@ -347,18 +347,12 @@ const availableWatcherUsers = computed(() => {
 const filteredWatcherUsers = computed(() => {
   const term = watcherSearch.value.trim().toLowerCase()
   if (!term) return availableWatcherUsers.value
-  return availableWatcherUsers.value.filter(u => watcherSearchText(u).includes(term))
+  return availableWatcherUsers.value.filter(u => String(u.email || '').toLowerCase().includes(term))
 })
 
 const resolvedWatcherId = computed(() => {
   const term = watcherSearch.value.trim().toLowerCase()
-  const exactMatch = availableWatcherUsers.value.find(
-    u => watcherOptionLabel(u).toLowerCase() === term
-      || String(u.username || '').toLowerCase() === term
-      || String(u.email || '').toLowerCase() === term
-      || String(u.email || '').split('@')[0].toLowerCase() === term
-      || String(u.display_name || '').toLowerCase() === term
-  )
+  const exactMatch = availableWatcherUsers.value.find(u => String(u.email || '').toLowerCase() === term)
   if (exactMatch) return exactMatch.id
   if (filteredWatcherUsers.value.length === 1) return filteredWatcherUsers.value[0].id
   return null
