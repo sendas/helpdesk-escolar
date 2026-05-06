@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import email
 import imaplib
+import logging
 import re
 from datetime import datetime
 from email.header import decode_header, make_header
@@ -20,22 +21,30 @@ from app.models.user import User
 from app.services import email_service
 
 TICKET_RE = re.compile(r"\[Ticket\s+#(\d+)\]", re.IGNORECASE)
+logger = logging.getLogger(__name__)
 
 
 async def sync_inbound_replies(db: AsyncSession, limit: int = 25) -> dict:
-    if not settings.mail_reply_enabled or not settings.imap_server:
+    if not settings.mail_reply_enabled:
+        logger.info("Mail reply sync disabled: MAIL_REPLY_ENABLED is false")
+        return {"processed": 0, "skipped": 0}
+    if not settings.imap_server:
+        logger.warning("Mail reply sync disabled: IMAP_SERVER is empty")
         return {"processed": 0, "skipped": 0}
 
     messages = await asyncio.to_thread(_fetch_unseen_messages, limit)
+    logger.info("Mail reply sync fetched %s candidate message(s)", len(messages))
     processed = 0
     skipped = 0
 
     for msg in messages:
         if not msg["message_id"]:
+            logger.info("Mail reply skipped: missing Message-ID for ticket #%s", msg.get("ticket_id"))
             skipped += 1
             continue
         exists = await db.execute(select(ProcessedEmail).where(ProcessedEmail.message_id == msg["message_id"]))
         if exists.scalar_one_or_none():
+            logger.info("Mail reply skipped: duplicate Message-ID %s", msg["message_id"])
             skipped += 1
             continue
 
@@ -52,7 +61,16 @@ async def sync_inbound_replies(db: AsyncSession, limit: int = 25) -> dict:
             )
         ).scalar_one_or_none()
         user = (await db.execute(select(User).where(User.email.ilike(msg["sender_email"])))).scalar_one_or_none()
-        if not ticket or not user or not msg["body"]:
+        if not ticket:
+            logger.info("Mail reply skipped: ticket #%s not found", msg["ticket_id"])
+            skipped += 1
+            continue
+        if not user:
+            logger.info("Mail reply skipped: sender %s is not a helpdesk user", msg["sender_email"])
+            skipped += 1
+            continue
+        if not msg["body"]:
+            logger.info("Mail reply skipped: empty body for ticket #%s from %s", msg["ticket_id"], msg["sender_email"])
             skipped += 1
             continue
 
@@ -62,6 +80,7 @@ async def sync_inbound_replies(db: AsyncSession, limit: int = 25) -> dict:
         ticket.updated_at = datetime.utcnow()
         msg["processed"] = True
         processed += 1
+        logger.info("Mail reply imported: ticket #%s from %s", ticket.id, msg["sender_email"])
 
     await db.commit()
     for msg in messages:
@@ -77,19 +96,33 @@ def _fetch_unseen_messages(limit: int) -> list[dict]:
         return []
 
     client_cls = imaplib.IMAP4_SSL if settings.imap_ssl else imaplib.IMAP4
+    logger.info(
+        "Connecting to IMAP server %s:%s ssl=%s user=%s folder=%s",
+        settings.imap_server,
+        settings.imap_port,
+        settings.imap_ssl,
+        username,
+        settings.imap_folder,
+    )
     client = client_cls(settings.imap_server, settings.imap_port)
     try:
         client.login(username, password)
-        client.select(settings.imap_folder)
+        status, _ = client.select(settings.imap_folder)
+        if status != "OK":
+            logger.warning("IMAP folder select failed for folder %s with status %s", settings.imap_folder, status)
+            return []
         status, data = client.search(None, "UNSEEN")
         if status != "OK" or not data or not data[0]:
+            logger.info("IMAP search found no unseen messages")
             return []
 
         results: list[dict] = []
         ids = data[0].split()[-limit:]
+        logger.info("IMAP search found %s unseen message(s), checking last %s", len(data[0].split()), len(ids))
         for msg_id in ids:
             status, fetched = client.fetch(msg_id, "(RFC822)")
             if status != "OK" or not fetched:
+                logger.warning("IMAP fetch failed for message id %s with status %s", msg_id, status)
                 continue
             raw = fetched[0][1]
             parsed = email.message_from_bytes(raw)
@@ -97,7 +130,12 @@ def _fetch_unseen_messages(limit: int) -> list[dict]:
             if item:
                 results.append(item)
                 client.store(msg_id, "+FLAGS", "\\Seen")
+            else:
+                logger.info("IMAP message ignored: subject does not contain ticket marker")
         return results
+    except Exception:
+        logger.exception("IMAP reply sync failed")
+        return []
     finally:
         try:
             client.logout()

@@ -1,7 +1,17 @@
-export const APP_VERSION = '1.7.9'
+export const APP_VERSION = '1.7.10'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.10',
+    date: '2026-05-06',
+    title: 'Diagnóstico das respostas por email',
+    changes: [
+      'Os emails enviados passam a definir explicitamente o Reply-To para a caixa configurada em MAIL_FROM.',
+      'A sincronização IMAP passa a registar nos logs se encontrou emails não lidos, se ignorou mensagens sem marcador de ticket e se importou respostas com sucesso.',
+      'Erros de ligação, autenticação ou seleção da pasta IMAP passam a ficar visíveis nos logs do backend.',
+    ],
+  },
   {
     version: '1.7.9',
     date: '2026-05-06',

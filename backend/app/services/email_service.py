@@ -45,6 +45,7 @@ async def send_ticket_notification(to_email: str, event: str, ticket_data: dict)
             recipients=[to_email],
             body=html_body,
             subtype=MessageType.html,
+            headers={"Reply-To": settings.mail_from},
         )
         fm = FastMail(_get_conf())
         await fm.send_message(message)
