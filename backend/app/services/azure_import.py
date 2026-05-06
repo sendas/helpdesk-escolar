@@ -28,6 +28,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
 
     existing = (await db.execute(select(User))).scalars().all()
     by_email = {u.email.lower(): u for u in existing if u.email}
+    by_username = {u.username.lower(): u for u in existing if u.username}
     usernames = {u.username.lower() for u in existing if u.username}
 
     created = 0
@@ -61,21 +62,31 @@ async def import_azure_users(db: AsyncSession) -> dict:
             skipped += 1
             continue
 
-        email = item.get("mail") or item.get("userPrincipalName")
+        email = _preferred_email(item)
         if not email:
             skipped_without_email += 1
             skipped += 1
             continue
 
         email = email.strip()
+        user_principal_name = (item.get("userPrincipalName") or "").strip()
         display_name = item.get("displayName") or email
         imported_role = azure_access.role_from_onprem_user(onprem_dn)
         onprem_path = azure_access.dn_to_path(onprem_dn) or None
         department = item.get("department") or onprem_path or None
         user = by_email.get(email.lower())
+        if not user and user_principal_name:
+            user = by_email.get(user_principal_name.lower())
+        if not user and user_principal_name:
+            user = by_username.get(user_principal_name.split("@", 1)[0].lower())
 
         if user:
             changed = False
+            if user.email.lower() != email.lower() and _email_available(by_email, email, user):
+                by_email.pop(user.email.lower(), None)
+                user.email = email
+                by_email[email.lower()] = user
+                changed = True
             if user.display_name != display_name:
                 user.display_name = display_name
                 changed = True
@@ -99,7 +110,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
                 updated += 1
             continue
 
-        username = _unique_username(item.get("userPrincipalName") or email, usernames)
+        username = _unique_username(user_principal_name or email, usernames)
         user = User(
             username=username,
             email=email,
@@ -149,7 +160,7 @@ def _get_graph_token() -> str:
 async def _fetch_graph_users(access_token: str) -> list[dict]:
     headers = {"Authorization": f"Bearer {access_token}"}
     params = {
-        "$select": "id,displayName,mail,userPrincipalName,department,accountEnabled,userType,onPremisesDistinguishedName",
+        "$select": "id,displayName,mail,userPrincipalName,proxyAddresses,otherMails,department,accountEnabled,userType,onPremisesDistinguishedName",
         "$top": "999",
     }
     users: list[dict] = []
@@ -176,3 +187,41 @@ def _unique_username(upn_or_email: str, usernames: set[str]) -> str:
         counter += 1
     usernames.add(candidate.lower())
     return candidate
+
+
+def _preferred_email(item: dict) -> str:
+    candidates: list[str] = []
+    for value in [item.get("mail")]:
+        if value:
+            candidates.append(value)
+    proxy_addresses = item.get("proxyAddresses") or []
+    primary_proxy = [addr[5:] for addr in proxy_addresses if isinstance(addr, str) and addr.startswith("SMTP:")]
+    secondary_proxy = [addr[5:] for addr in proxy_addresses if isinstance(addr, str) and addr.startswith("smtp:")]
+    candidates.extend(primary_proxy)
+    candidates.extend(secondary_proxy)
+    candidates.extend(item.get("otherMails") or [])
+    if item.get("userPrincipalName"):
+        candidates.append(item["userPrincipalName"])
+
+    normalized = []
+    seen = set()
+    for candidate in candidates:
+        email = str(candidate).strip().lower()
+        if "@" not in email or email in seen:
+            continue
+        seen.add(email)
+        normalized.append(email)
+    if not normalized:
+        return ""
+    for email in normalized:
+        if email.endswith("@queiroz.pt"):
+            return email
+    for email in normalized:
+        if ".onmicrosoft.com" not in email:
+            return email
+    return normalized[0]
+
+
+def _email_available(by_email: dict[str, User], email: str, user: User) -> bool:
+    existing = by_email.get(email.lower())
+    return existing is None or existing.id == user.id

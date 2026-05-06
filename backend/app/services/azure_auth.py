@@ -35,14 +35,14 @@ async def exchange_code_for_user(code: str) -> dict | None:
 
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            "https://graph.microsoft.com/v1.0/me?$select=displayName,mail,userPrincipalName,onPremisesDistinguishedName",
+            "https://graph.microsoft.com/v1.0/me?$select=displayName,mail,userPrincipalName,proxyAddresses,otherMails,onPremisesDistinguishedName",
             headers={"Authorization": f"Bearer {access_token}"},
         )
         if resp.status_code != 200:
             return None
         profile = resp.json()
 
-    email = profile.get("mail") or profile.get("userPrincipalName", "")
+    email = _preferred_email(profile)
     onprem_dn = profile.get("onPremisesDistinguishedName")
     if not azure_access.is_allowed_onprem_user(onprem_dn):
         return None
@@ -71,3 +71,33 @@ async def _check_admin_group(access_token: str) -> bool:
             headers={"Authorization": f"Bearer {access_token}"},
         )
         return resp.status_code == 200
+
+
+def _preferred_email(profile: dict) -> str:
+    candidates: list[str] = []
+    if profile.get("mail"):
+        candidates.append(profile["mail"])
+    proxy_addresses = profile.get("proxyAddresses") or []
+    candidates.extend(addr[5:] for addr in proxy_addresses if isinstance(addr, str) and addr.startswith("SMTP:"))
+    candidates.extend(addr[5:] for addr in proxy_addresses if isinstance(addr, str) and addr.startswith("smtp:"))
+    candidates.extend(profile.get("otherMails") or [])
+    if profile.get("userPrincipalName"):
+        candidates.append(profile["userPrincipalName"])
+
+    normalized = []
+    seen = set()
+    for candidate in candidates:
+        email = str(candidate).strip().lower()
+        if "@" not in email or email in seen:
+            continue
+        seen.add(email)
+        normalized.append(email)
+    if not normalized:
+        return ""
+    for email in normalized:
+        if email.endswith("@queiroz.pt"):
+            return email
+    for email in normalized:
+        if ".onmicrosoft.com" not in email:
+            return email
+    return normalized[0]
