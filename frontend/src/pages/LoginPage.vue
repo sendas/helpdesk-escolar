@@ -21,7 +21,15 @@
         <div style="border:1px solid var(--c-border);border-radius:10px;padding:10px 12px;margin-bottom:14px;background:var(--c-surface);font-size:12px;color:var(--c-muted);line-height:1.4">
           <strong style="display:block;color:var(--c-text);margin-bottom:4px">Instruções de acesso</strong>
           A autenticação deve ser feita com as mesmas credenciais de acesso ao mail institucional.
-          O ecrã de entrada abre sempre em modo claro; depois de entrar pode mudar para modo escuro no topo da aplicação.
+          O ecrã de entrada abre sempre em modo claro; se preferir, pode ativar modo escuro abaixo.
+        </div>
+
+        <div class="login-theme-choice">
+          <span>Modo escuro</span>
+          <div class="login-theme-toggle" role="group" aria-label="Escolher modo escuro no login">
+            <button type="button" :class="{ selected: !loginDark }" @click="setLoginDark(false)">Não</button>
+            <button type="button" :class="{ selected: loginDark }" @click="setLoginDark(true)">Sim</button>
+          </div>
         </div>
 
         <div v-if="error" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:13px;color:#DC2626;margin-bottom:16px">
@@ -154,6 +162,7 @@ const password = ref('')
 const demoRole = ref('teacher')
 const showDemoOptions = ref(false)
 const showLocalLogin = ref(false)
+const loginDark = ref(false)
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
 const versionLabelText = versionLabel()
 
@@ -172,14 +181,19 @@ const features = [
 ]
 
 onMounted(async () => {
-  localStorage.setItem('dark', '0')
-  document.documentElement.classList.remove('dark')
+  setLoginDark(false)
   try {
     settings.value = await getPublicSettings()
     applyFavicon(settings.value.favicon_url || settings.value.logo_url)
   }
   catch { /* ignore */ }
 })
+
+function setLoginDark(enabled: boolean) {
+  loginDark.value = enabled
+  localStorage.setItem('dark', enabled ? '1' : '0')
+  document.documentElement.classList.toggle('dark', enabled)
+}
 
 function onMicrosoftLogin() {
   error.value = ''
@@ -212,3 +226,57 @@ async function onDemoLogin() {
   }
 }
 </script>
+
+<style scoped>
+.login-theme-choice {
+  align-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 8px 10px;
+}
+
+.login-theme-choice > span {
+  color: var(--c-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.login-theme-toggle {
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  display: inline-flex;
+  overflow: hidden;
+}
+
+.login-theme-toggle button {
+  background: transparent;
+  border: 0;
+  color: var(--c-muted);
+  cursor: pointer;
+  font: 700 12px var(--font-sans);
+  min-width: 54px;
+  padding: 7px 10px;
+}
+
+.login-theme-toggle button.selected {
+  background: var(--c-text);
+  color: var(--c-surface);
+}
+
+@media (max-width: 640px) {
+  .login-theme-choice {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .login-theme-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+</style>

@@ -1,7 +1,17 @@
-export const APP_VERSION = '1.7.3'
+export const APP_VERSION = '1.7.4'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.4',
+    date: '2026-05-06',
+    title: 'Escolha de tema no login',
+    changes: [
+      'Página de login continua a abrir em modo claro por defeito.',
+      'Adicionada opção visível Modo escuro com escolha Sim / Não no ecrã de entrada.',
+      'A escolha de modo escuro no login deixa de prender o ecrã de entrada em escuro nas visitas seguintes.',
+    ],
+  },
   {
     version: '1.7.3',
     date: '2026-05-06',
