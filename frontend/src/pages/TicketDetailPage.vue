@@ -167,11 +167,11 @@
                   style="flex:1;font-size:12px;padding:5px 8px"
                   v-model="watcherSearch"
                   list="watcher-users-list"
-                  placeholder="Pesquisar pessoa..."
+                  placeholder="Pesquisar por nome, email ou utilizador..."
                   autocomplete="off"
                 />
                 <datalist id="watcher-users-list">
-                  <option v-for="u in availableWatcherUsers" :key="u.id" :value="u.display_name" />
+                  <option v-for="u in availableWatcherUsers" :key="u.id" :value="watcherOptionLabel(u)" />
                 </datalist>
                 <button
                   class="hd-btn hd-btn-primary"
@@ -346,7 +346,7 @@ const availableWatcherUsers = computed(() => {
 
 const resolvedWatcherId = computed(() => {
   const match = availableWatcherUsers.value.find(
-    u => u.display_name.toLowerCase() === watcherSearch.value.trim().toLowerCase()
+    u => watcherOptionLabel(u).toLowerCase() === watcherSearch.value.trim().toLowerCase()
   )
   return match?.id ?? null
 })
@@ -528,6 +528,10 @@ async function onEscalateTicket() {
 
 function userOptionLabel(u: any) {
   return `${u.display_name} — ${u.email} (Técnico)`
+}
+
+function watcherOptionLabel(u: any) {
+  return `${u.display_name} — ${u.email} (@${u.username})`
 }
 
 function statusLabel(s: string) {

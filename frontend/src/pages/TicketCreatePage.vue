@@ -119,7 +119,7 @@
           <span class="material-icons">search</span>
           <input
             v-model="watcherSearch"
-            placeholder="Pesquisar por nome ou email"
+            placeholder="Pesquisar por nome, email ou utilizador"
             @input="onWatcherSearch"
             @focus="onWatcherSearch"
           />
@@ -135,7 +135,7 @@
             <span>{{ initials(user.display_name) }}</span>
             <div>
               <strong>{{ user.display_name }}</strong>
-              <small>{{ user.email }}</small>
+              <small>{{ user.email }} · @{{ user.username }}</small>
             </div>
           </button>
         </div>
