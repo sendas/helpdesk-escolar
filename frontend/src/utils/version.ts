@@ -1,7 +1,21 @@
-export const APP_VERSION = '1.7.0'
-export const APP_VERSION_DATE = '2026-05-05'
+export const APP_VERSION = '1.7.1'
+export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.1',
+    date: '2026-05-06',
+    title: 'Utilizadores manuais e emails institucionais',
+    changes: [
+      'Adição manual de utilizadores com nome, email, papel, departamento, estado e palavra-passe definida pelo administrador.',
+      'Autenticação local para utilizadores que não existam no Entra ID.',
+      'Sincronização Entra passa a preferir aliases institucionais @queiroz.pt em vez de endereços @onmicrosoft.com.',
+      'Botões de cancelar e guardar da sincronização Entra colocados também no topo da janela.',
+      'Página de entrada com instruções de login e aviso sobre modo escuro.',
+      'Ao ativar modo escuro, a aplicação pergunta se deve manter esse modo no ecrã de login.',
+      'Regra de manutenção: cada atualização enviada para GitHub deve acrescentar versão e alterações nesta página.',
+    ],
+  },
   {
     version: '1.7.0',
     date: '2026-05-05',
