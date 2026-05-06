@@ -19,7 +19,8 @@ router = APIRouter(prefix="/tickets", tags=["tickets"])
 
 UPLOAD_DIR = "/app/data/uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "application/pdf"}
+ALLOWED_MIME_PREFIXES = ("image/",)
+ALLOWED_CONTENT_TYPES_EXACT = {"application/pdf", "application/octet-stream"}
 
 
 def _can_access_ticket(ticket, user: User, *, allow_watcher: bool = True) -> bool:
@@ -125,8 +126,9 @@ async def upload_attachment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     if not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    if file.content_type not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato inválido. Use PNG, JPG ou PDF.")
+    ct = (file.content_type or "").lower()
+    if not (any(ct.startswith(p) for p in ALLOWED_MIME_PREFIXES) or ct in ALLOWED_CONTENT_TYPES_EXACT):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato inválido. Use imagem ou PDF.")
 
     content = await file.read()
     if len(content) > MAX_UPLOAD_BYTES:

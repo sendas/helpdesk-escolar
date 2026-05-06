@@ -179,7 +179,7 @@
       <!-- Attachments -->
       <div class="hd-field" style="margin-bottom:32px">
         <label class="hd-label">Anexos <span class="hd-label-hint">(opcional)</span></label>
-        <input ref="fileInput" type="file" multiple accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf" style="display:none" @change="onFilesPicked" />
+        <input ref="fileInput" type="file" multiple accept="image/*,application/pdf,.pdf" style="display:none" @change="onFilesPicked" />
         <div class="hd-dropzone" style="margin-top:8px" @dragover.prevent @drop.prevent="onDrop">
           <span class="material-icons" style="font-size:28px;color:var(--c-muted);margin-bottom:8px;display:block">attach_file</span>
           <div style="font-size:13.5px;color:var(--c-muted)">
@@ -273,10 +273,18 @@ async function onSubmit() {
       group_ids: selectedGroupIds.value,
       creator_email_notifications: form.value.creator_email_notifications === true,
     })
+    const attachErrors: string[] = []
     for (const file of files.value) {
-      await uploadTicketAttachment(t.id, file)
+      try {
+        await uploadTicketAttachment(t.id, file)
+      } catch (e: any) {
+        attachErrors.push(file.name)
+      }
     }
     router.push(`/tickets/${t.id}`)
+    if (attachErrors.length) {
+      error.value = `Ticket criado, mas os seguintes anexos falharam: ${attachErrors.join(', ')}`
+    }
   } catch (e: any) {
     error.value = e?.response?.data?.detail || 'Erro ao criar ticket'
   } finally {

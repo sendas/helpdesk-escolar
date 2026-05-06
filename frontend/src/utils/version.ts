@@ -1,7 +1,18 @@
-export const APP_VERSION = '1.7.11'
+export const APP_VERSION = '1.7.12'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.12',
+    date: '2026-05-06',
+    title: 'Correções de upload e download de anexos',
+    changes: [
+      'O backend passa a aceitar qualquer formato de imagem (incluindo HEIC e WebP de dispositivos iOS/Android) além de PDF.',
+      'A opção de anexar ficheiro no formulário de novo ticket passa a abrir a galeria completa do dispositivo móvel.',
+      'Se um anexo falhar no upload, o ticket é criado na mesma e o utilizador é avisado do ficheiro que falhou.',
+      'O download de anexos ficou mais fiável: o link temporário permanece válido durante 10 segundos para compatibilidade com todos os browsers.',
+    ],
+  },
   {
     version: '1.7.11',
     date: '2026-05-06',
