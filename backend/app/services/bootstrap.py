@@ -90,6 +90,7 @@ async def ensure_schema(db: AsyncSession) -> None:
         ("role_locked", "ALTER TABLE users ADD COLUMN role_locked BOOLEAN DEFAULT 0"),
         ("onprem_dn", "ALTER TABLE users ADD COLUMN onprem_dn VARCHAR(500)"),
         ("onprem_path", "ALTER TABLE users ADD COLUMN onprem_path VARCHAR(500)"),
+        ("password_hash", "ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)"),
     ]
     changed = False
     for column, statement in user_migrations:

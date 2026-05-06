@@ -2,12 +2,12 @@ import secrets
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db
 from app.models.user import User, UserRole
 from app.schemas.auth import LdapLoginRequest, TokenResponse
-from app.services import ldap_auth, azure_auth, jwt_service
+from app.services import ldap_auth, azure_auth, jwt_service, passwords
 from app.config import settings
 from pydantic import BaseModel
 
@@ -64,12 +64,36 @@ async def get_or_create_user(db: AsyncSession, info: dict) -> User:
 
 @router.post("/ldap-login", response_model=TokenResponse)
 async def ldap_login(data: LdapLoginRequest, db: AsyncSession = Depends(get_db)):
+    local_user = await authenticate_manual_user(db, data.username, data.password)
+    if local_user:
+        token = jwt_service.create_access_token({"sub": str(local_user.id), "role": local_user.role})
+        return {"access_token": token, "token_type": "bearer"}
+
     user_info = ldap_auth.authenticate_ldap(data.username, data.password)
     if not user_info:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
     user = await get_or_create_user(db, user_info)
     token = jwt_service.create_access_token({"sub": str(user.id), "role": user.role})
     return {"access_token": token, "token_type": "bearer"}
+
+
+async def authenticate_manual_user(db: AsyncSession, username_or_email: str, password: str) -> User | None:
+    identifier = username_or_email.strip().lower()
+    if not identifier:
+        return None
+    result = await db.execute(
+        select(User).where(
+            User.auth_provider == "manual",
+            User.is_active.is_(True),
+            or_(User.email.ilike(identifier), User.username == identifier),
+        )
+    )
+    user = result.scalar_one_or_none()
+    if not user or not passwords.verify_password(password, user.password_hash):
+        return None
+    user.last_login = datetime.utcnow()
+    await db.commit()
+    return user
 
 
 @router.get("/azure-login")

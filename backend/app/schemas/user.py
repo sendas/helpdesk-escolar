@@ -28,6 +28,16 @@ class UserUpdate(BaseModel):
     role_locked: bool | None = None
 
 
+class UserCreate(BaseModel):
+    display_name: str
+    email: str
+    password: str
+    role: UserRole = UserRole.TEACHER
+    department: str | None = None
+    is_active: bool = True
+    username: str | None = None
+
+
 class UserBulkUpdate(BaseModel):
     ids: list[int]
     role: UserRole | None = None

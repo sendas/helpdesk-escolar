@@ -39,6 +39,19 @@ export async function updateUser(id: number, payload: { role?: string; is_active
   return data
 }
 
+export async function createUser(payload: {
+  display_name: string
+  email: string
+  password: string
+  role: string
+  department?: string
+  is_active: boolean
+  username?: string
+}) {
+  const { data } = await api.post<UserFull>('/api/v1/users', payload)
+  return data
+}
+
 export async function importAzureUsers() {
   const { data } = await api.post<{
     created: number; updated: number; skipped: number; total: number; role_changes: number; manual_locked: number

@@ -11,10 +11,11 @@ from app.schemas.user import (
     HelpdeskGroupRead,
     HelpdeskGroupUpdate,
     UserBulkUpdate,
+    UserCreate,
     UserRead,
     UserUpdate,
 )
-from app.services import azure_import
+from app.services import azure_import, passwords
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -53,6 +54,49 @@ async def search_users(
         )
     result = await db.execute(query.order_by(User.display_name).limit(limit))
     return result.scalars().all()
+
+
+@router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+async def create_manual_user(
+    data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    display_name = data.display_name.strip()
+    email = data.email.strip().lower()
+    password = data.password.strip()
+    if not display_name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nome é obrigatório")
+    if "@" not in email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email inválido")
+    if len(password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A palavra-passe deve ter pelo menos 8 caracteres")
+
+    exists = await db.execute(select(User).where(User.email.ilike(email)))
+    if exists.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Já existe um utilizador com esse email")
+
+    username = (data.username or email.split("@", 1)[0]).strip().lower()
+    if not username:
+        username = email.split("@", 1)[0]
+    username = await _unique_username(db, username)
+
+    user = User(
+        username=username,
+        email=email,
+        display_name=display_name,
+        department=(data.department or "").strip() or None,
+        role=data.role,
+        role_source="manual",
+        role_locked=True,
+        auth_provider="manual",
+        password_hash=passwords.hash_password(password),
+        is_active=data.is_active,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 
 @router.post("/import-azure")
@@ -221,3 +265,14 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+async def _unique_username(db: AsyncSession, base: str) -> str:
+    candidate = base
+    suffix = 2
+    while True:
+        exists = await db.execute(select(User).where(User.username == candidate))
+        if not exists.scalar_one_or_none():
+            return candidate
+        candidate = f"{base}{suffix}"
+        suffix += 1

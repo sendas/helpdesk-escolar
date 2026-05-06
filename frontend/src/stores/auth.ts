@@ -29,6 +29,12 @@ export const useAuthStore = defineStore('auth', () => {
   function toggleDark() {
     isDark.value = !isDark.value
     localStorage.setItem('dark', isDark.value ? '1' : '0')
+    if (isDark.value) {
+      const keepOnLogin = window.confirm('Pretende fazer o login sempre em modo escuro?')
+      localStorage.setItem('darkLoginPreference', keepOnLogin ? '1' : '0')
+    } else {
+      localStorage.setItem('darkLoginPreference', '0')
+    }
     applyDark()
   }
 

@@ -36,9 +36,16 @@
             <h2>Sincronizar Entra ID</h2>
             <p>Escolha as OUs que pretende importar. Os alunos são sempre ignorados automaticamente.</p>
           </div>
-          <button class="hd-icon-btn" @click="showSyncDialog = false" title="Fechar">
-            <span class="material-icons">close</span>
-          </button>
+          <div class="sync-modal-actions sync-modal-actions-top">
+            <button class="hd-btn hd-btn-outline" @click="showSyncDialog = false">Cancelar</button>
+            <button class="hd-btn hd-btn-primary" @click="runSyncWithOus" :disabled="syncing || (!syncAllOus && !selectedSyncOus.length)">
+              <span class="material-icons" style="font-size:16px">sync</span>
+              {{ syncing ? 'A sincronizar...' : 'Guardar e sincronizar' }}
+            </button>
+            <button class="hd-icon-btn" @click="showSyncDialog = false" title="Fechar">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
         </div>
 
         <label class="sync-all-option">
@@ -79,6 +86,59 @@
       </section>
     </div>
 
+    <div v-if="showCreateUserDialog" class="sync-modal-backdrop" @click.self="closeCreateUserDialog">
+      <section class="sync-modal hd-card">
+        <div class="sync-modal-head">
+          <div>
+            <h2>Adicionar utilizador manual</h2>
+            <p>Crie um utilizador fora do Entra ID, com autenticação local por email e palavra-passe.</p>
+          </div>
+          <button class="hd-icon-btn" @click="closeCreateUserDialog" title="Fechar">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+
+        <div class="manual-user-form">
+          <label>
+            Nome
+            <input class="hd-input" v-model="manualUserForm.display_name" placeholder="Ex: Controlink Suporte" />
+          </label>
+          <label>
+            Email de login
+            <input class="hd-input" v-model="manualUserForm.email" type="email" placeholder="controlink@queiroz.pt" />
+          </label>
+          <label>
+            Papel
+            <select class="hd-select" v-model="manualUserForm.role">
+              <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
+            </select>
+          </label>
+          <label>
+            Departamento / OU
+            <input class="hd-input" v-model="manualUserForm.department" placeholder="Fornecedor externo, TIC..." />
+          </label>
+          <label class="full">
+            Palavra-passe inicial
+            <input class="hd-input" v-model="manualUserForm.password" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" />
+          </label>
+          <label class="manual-active-option full">
+            <input type="checkbox" v-model="manualUserForm.is_active" />
+            <span>Utilizador ativo</span>
+          </label>
+        </div>
+
+        <div v-if="manualUserError" class="form-error">{{ manualUserError }}</div>
+
+        <div class="sync-modal-actions">
+          <button class="hd-btn hd-btn-outline" @click="closeCreateUserDialog">Cancelar</button>
+          <button class="hd-btn hd-btn-primary" @click="addManualUser" :disabled="creatingManualUser">
+            <span class="material-icons" style="font-size:16px">person_add</span>
+            {{ creatingManualUser ? 'A criar...' : 'Criar utilizador' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
     <div class="hd-tabs" style="margin-bottom:20px">
       <button class="hd-tab" :class="{ active: tab === 'users' }" @click="tab = 'users'">
         <span class="material-icons" style="font-size:15px">people</span> Utilizadores
@@ -96,6 +156,10 @@
 
     <div v-if="tab === 'users'" class="hd-card users-card">
       <div class="users-toolbar">
+        <button class="hd-btn hd-btn-primary" @click="showCreateUserDialog = true">
+          <span class="material-icons" style="font-size:16px">person_add</span>
+          Adicionar utilizador
+        </button>
         <input class="hd-input" placeholder="Pesquisar por nome, email ou utilizador..." v-model="search" />
         <select class="hd-select" v-model="filterRole">
           <option value="">Todos os papéis</option>
@@ -341,7 +405,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { bulkUpdateUsers, createGroup, deleteGroup, getGroups, getUsers, importAzureUsers, updateGroupMembers, updateUser } from '../../api/users'
+import { bulkUpdateUsers, createGroup, createUser, deleteGroup, getGroups, getUsers, importAzureUsers, updateGroupMembers, updateUser } from '../../api/users'
 import { getAzureSyncSettings, updateAzureSyncSettings } from '../../api/settings'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 
@@ -364,6 +428,17 @@ const selectedGroupId = ref<number | null>(null)
 const groupMemberIds = ref<number[]>([])
 const groupUserSearch = ref('')
 const showSyncDialog = ref(false)
+const showCreateUserDialog = ref(false)
+const creatingManualUser = ref(false)
+const manualUserError = ref('')
+const manualUserForm = ref({
+  display_name: '',
+  email: '',
+  password: '',
+  role: 'teacher',
+  department: '',
+  is_active: true,
+})
 const syncAllOus = ref(true)
 const selectedSyncOus = ref<string[]>([])
 const newSyncOu = ref('')
@@ -458,6 +533,57 @@ async function loadAzureSyncSettings() {
 async function openSyncDialog() {
   if (!azureSyncSettingsLoaded.value) await loadAzureSyncSettings()
   showSyncDialog.value = true
+}
+
+function resetManualUserForm() {
+  manualUserForm.value = {
+    display_name: '',
+    email: '',
+    password: '',
+    role: 'teacher',
+    department: '',
+    is_active: true,
+  }
+  manualUserError.value = ''
+}
+
+function closeCreateUserDialog() {
+  if (creatingManualUser.value) return
+  showCreateUserDialog.value = false
+  resetManualUserForm()
+}
+
+async function addManualUser() {
+  manualUserError.value = ''
+  const displayName = manualUserForm.value.display_name.trim()
+  const email = manualUserForm.value.email.trim().toLowerCase()
+  const password = manualUserForm.value.password.trim()
+  if (!displayName || !email || !password) {
+    manualUserError.value = 'Preencha nome, email e palavra-passe.'
+    return
+  }
+  if (password.length < 8) {
+    manualUserError.value = 'A palavra-passe deve ter pelo menos 8 caracteres.'
+    return
+  }
+  creatingManualUser.value = true
+  try {
+    const created = await createUser({
+      display_name: displayName,
+      email,
+      password,
+      role: manualUserForm.value.role,
+      department: manualUserForm.value.department.trim(),
+      is_active: manualUserForm.value.is_active,
+    })
+    users.value = [...users.value, created].sort((a, b) => a.display_name.localeCompare(b.display_name))
+    creatingManualUser.value = false
+    closeCreateUserDialog()
+  } catch (e: any) {
+    manualUserError.value = e?.response?.data?.detail || 'Não foi possível criar o utilizador.'
+  } finally {
+    creatingManualUser.value = false
+  }
 }
 
 function addSyncOu() {
@@ -658,12 +784,19 @@ function replaceUser(updated: any) {
 .sync-modal {
   width: min(720px, 100%);
   padding: 22px;
+  max-height: calc(100vh - 40px);
+  overflow: auto;
 }
 .sync-modal-head {
   display: flex;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 18px;
+  position: sticky;
+  top: -22px;
+  z-index: 2;
+  background: var(--c-surface);
+  padding: 0 0 12px;
 }
 .sync-modal h2 {
   margin: 0 0 4px;
@@ -725,6 +858,36 @@ function replaceUser(updated: any) {
 .sync-modal-actions {
   justify-content: flex-end;
   margin-top: 18px;
+}
+.sync-modal-actions-top {
+  flex-wrap: nowrap;
+  margin-top: 0;
+  align-self: flex-start;
+}
+.manual-user-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.manual-user-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--c-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.manual-user-form .full {
+  grid-column: 1 / -1;
+}
+.manual-active-option {
+  grid-template-columns: auto 1fr !important;
+  align-items: center;
+  color: var(--c-text) !important;
+}
+.form-error {
+  margin-top: 12px;
+  color: #DC2626;
+  font-size: 13px;
 }
 .watcher-chip {
   display: inline-flex;
@@ -1021,9 +1184,20 @@ function replaceUser(updated: any) {
   .sync-modal {
     padding: 18px;
   }
+  .sync-modal-head {
+    top: -18px;
+    flex-direction: column;
+  }
   .sync-modal-actions,
   .sync-ou-add {
     display: grid;
+    grid-template-columns: 1fr;
+  }
+  .sync-modal-actions-top {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+  .manual-user-form {
     grid-template-columns: 1fr;
   }
 }

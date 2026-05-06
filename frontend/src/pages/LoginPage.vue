@@ -18,6 +18,11 @@
         <p style="color:var(--c-muted);font-size:14px;margin-bottom:32px;line-height:1.5">
           Entre com a sua conta institucional para<br>abrir e gerir pedidos de apoio.
         </p>
+        <div style="border:1px solid var(--c-border);border-radius:10px;padding:12px 14px;margin-bottom:18px;background:var(--c-surface);font-size:12.5px;color:var(--c-muted);line-height:1.45">
+          <strong style="display:block;color:var(--c-text);margin-bottom:4px">Instruções de acesso</strong>
+          A autenticação deve ser feita com as mesmas credenciais de acesso ao mail institucional.
+          Pode mudar para modo escuro depois de entrar, no botão de tema no topo da aplicação.
+        </div>
 
         <div v-if="error" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:13px;color:#DC2626;margin-bottom:16px">
           {{ error }}
@@ -32,11 +37,11 @@
           Autenticação via Microsoft Entra ID
         </p>
 
-        <template v-if="ldapEnabled">
+        <template v-if="showLocalLogin">
           <!-- AD Login form -->
           <div style="display:flex;align-items:center;gap:12px;margin:24px 0 16px">
             <div style="height:1px;background:var(--c-border);flex:1"></div>
-            <span style="font-size:12px;color:var(--c-muted)">ou Active Directory local</span>
+            <span style="font-size:12px;color:var(--c-muted)">ou conta local / Active Directory</span>
             <div style="height:1px;background:var(--c-border);flex:1"></div>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px">
@@ -44,7 +49,7 @@
               class="hd-input"
               v-model="username"
               autocomplete="username"
-              placeholder="Utilizador do domínio"
+              placeholder="Email ou utilizador"
               @keyup.enter="onAdLogin"
             />
             <input
@@ -58,10 +63,10 @@
           </div>
           <button class="hd-btn hd-btn-dark hd-btn-lg" style="width:100%;justify-content:center;gap:10px;margin-top:12px" :disabled="loading || !username || !password" @click="onAdLogin">
             <span class="material-icons" style="font-size:18px">shield</span>
-            {{ loading ? 'A autenticar...' : 'Entrar com a conta da escola' }}
+            {{ loading ? 'A autenticar...' : 'Entrar com email ou conta da escola' }}
           </button>
           <p style="text-align:center;font-size:12px;color:var(--c-muted);margin-top:10px">
-            Autenticação via Active Directory/LDAP
+            Autenticação local ou via Active Directory/LDAP
           </p>
         </template>
 
@@ -140,7 +145,7 @@ const username = ref('')
 const password = ref('')
 const demoRole = ref('teacher')
 const showDemoOptions = ref(false)
-const ldapEnabled = import.meta.env.VITE_LDAP_ENABLED === 'true'
+const showLocalLogin = true
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
 const versionLabelText = versionLabel()
 
@@ -159,8 +164,9 @@ const features = [
 ]
 
 onMounted(async () => {
-  localStorage.setItem('dark', '0')
-  document.documentElement.classList.remove('dark')
+  const keepDarkOnLogin = localStorage.getItem('darkLoginPreference') === '1'
+  localStorage.setItem('dark', keepDarkOnLogin ? '1' : '0')
+  document.documentElement.classList.toggle('dark', keepDarkOnLogin)
   try {
     settings.value = await getPublicSettings()
     applyFavicon(settings.value.favicon_url || settings.value.logo_url)
