@@ -4,16 +4,20 @@ import asyncio
 import email
 import imaplib
 import re
+from datetime import datetime
 from email.header import decode_header, make_header
 from email.message import Message
 from email.utils import parseaddr
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.models.ticket import Comment, ProcessedEmail, Ticket
+from app.models.group import HelpdeskGroup
+from app.models.ticket import Comment, ProcessedEmail, Ticket, TicketEvent
 from app.models.user import User
+from app.services import email_service
 
 TICKET_RE = re.compile(r"\[Ticket\s+#(\d+)\]", re.IGNORECASE)
 
@@ -35,17 +39,34 @@ async def sync_inbound_replies(db: AsyncSession, limit: int = 25) -> dict:
             skipped += 1
             continue
 
-        ticket = (await db.execute(select(Ticket).where(Ticket.id == msg["ticket_id"]))).scalar_one_or_none()
+        ticket = (
+            await db.execute(
+                select(Ticket)
+                .where(Ticket.id == msg["ticket_id"])
+                .options(
+                    selectinload(Ticket.creator),
+                    selectinload(Ticket.assignee),
+                    selectinload(Ticket.watchers),
+                    selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
+                )
+            )
+        ).scalar_one_or_none()
         user = (await db.execute(select(User).where(User.email.ilike(msg["sender_email"])))).scalar_one_or_none()
         if not ticket or not user or not msg["body"]:
             skipped += 1
             continue
 
         db.add(Comment(body=msg["body"], is_internal=False, ticket_id=ticket.id, author_id=user.id))
+        db.add(TicketEvent(ticket_id=ticket.id, actor_id=user.id, event_type="email_reply", message="Resposta recebida por email"))
         db.add(ProcessedEmail(message_id=msg["message_id"], ticket_id=ticket.id, sender_email=msg["sender_email"]))
+        ticket.updated_at = datetime.utcnow()
+        msg["processed"] = True
         processed += 1
 
     await db.commit()
+    for msg in messages:
+        if msg.get("processed"):
+            await _notify_ticket_recipients(db, msg["ticket_id"], msg["sender_email"])
     return {"processed": processed, "skipped": skipped}
 
 
@@ -114,6 +135,11 @@ def _extract_text_body(msg: Message) -> str:
                 continue
             if part.get_content_type() == "text/plain" and not part.get("Content-Disposition"):
                 return _decode_payload(part)
+        for part in msg.walk():
+            if part.get_content_maintype() == "multipart":
+                continue
+            if part.get_content_type() == "text/html" and not part.get("Content-Disposition"):
+                return _html_to_text(_decode_payload(part))
         return ""
     return _decode_payload(msg)
 
@@ -138,3 +164,48 @@ def _clean_reply_body(body: str) -> str:
             break
         lines.append(line.rstrip())
     return "\n".join(lines).strip()[:10000]
+
+
+def _html_to_text(body: str) -> str:
+    body = re.sub(r"(?is)<(br|/p|/div|/li)\b[^>]*>", "\n", body)
+    body = re.sub(r"(?is)<style\b.*?</style>|<script\b.*?</script>", "", body)
+    body = re.sub(r"(?s)<[^>]+>", "", body)
+    return body.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+
+
+async def _notify_ticket_recipients(db: AsyncSession, ticket_id: int, sender_email: str) -> None:
+    result = await db.execute(
+        select(Ticket)
+        .where(Ticket.id == ticket_id)
+        .options(
+            selectinload(Ticket.creator),
+            selectinload(Ticket.assignee),
+            selectinload(Ticket.watchers),
+            selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
+        )
+    )
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        return
+
+    sender = sender_email.lower()
+    recipients: set[str] = set()
+    if ticket.creator_email_notifications and ticket.creator.email:
+        recipients.add(ticket.creator.email.lower())
+    if ticket.assignee and ticket.assignee.email:
+        recipients.add(ticket.assignee.email.lower())
+    for watcher in ticket.watchers:
+        if watcher.email:
+            recipients.add(watcher.email.lower())
+    if ticket.group:
+        for member in ticket.group.members:
+            if member.email:
+                recipients.add(member.email.lower())
+    recipients.discard(sender)
+
+    for recipient in recipients:
+        await email_service.send_ticket_notification(
+            recipient,
+            "updated",
+            {"id": ticket.id, "title": ticket.title, "status": ticket.status.value, "message": "Foi recebida uma nova resposta por email."},
+        )
