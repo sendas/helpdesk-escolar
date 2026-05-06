@@ -171,7 +171,7 @@
                   autocomplete="off"
                 />
                 <datalist id="watcher-users-list">
-                  <option v-for="u in availableWatcherUsers" :key="u.id" :value="watcherOptionLabel(u)" />
+                  <option v-for="u in filteredWatcherUsers" :key="u.id" :value="watcherOptionLabel(u)" />
                 </datalist>
                 <button
                   class="hd-btn hd-btn-primary"
@@ -344,11 +344,24 @@ const availableWatcherUsers = computed(() => {
   return allUsers.value.filter(u => !addedIds.has(u.id) && u.id !== ticket.value?.creator?.id)
 })
 
+const filteredWatcherUsers = computed(() => {
+  const term = watcherSearch.value.trim().toLowerCase()
+  if (!term) return availableWatcherUsers.value
+  return availableWatcherUsers.value.filter(u => watcherSearchText(u).includes(term))
+})
+
 const resolvedWatcherId = computed(() => {
-  const match = availableWatcherUsers.value.find(
-    u => watcherOptionLabel(u).toLowerCase() === watcherSearch.value.trim().toLowerCase()
+  const term = watcherSearch.value.trim().toLowerCase()
+  const exactMatch = availableWatcherUsers.value.find(
+    u => watcherOptionLabel(u).toLowerCase() === term
+      || String(u.username || '').toLowerCase() === term
+      || String(u.email || '').toLowerCase() === term
+      || String(u.email || '').split('@')[0].toLowerCase() === term
+      || String(u.display_name || '').toLowerCase() === term
   )
-  return match?.id ?? null
+  if (exactMatch) return exactMatch.id
+  if (filteredWatcherUsers.value.length === 1) return filteredWatcherUsers.value[0].id
+  return null
 })
 
 const statusOpts = [
@@ -532,6 +545,11 @@ function userOptionLabel(u: any) {
 
 function watcherOptionLabel(u: any) {
   return `${u.display_name} — ${u.email} (@${u.username})`
+}
+
+function watcherSearchText(u: any) {
+  const emailPrefix = String(u.email || '').split('@')[0]
+  return `${u.display_name} ${u.email} ${emailPrefix} ${u.username}`.toLowerCase()
 }
 
 function statusLabel(s: string) {

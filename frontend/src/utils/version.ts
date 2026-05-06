@@ -1,7 +1,16 @@
-export const APP_VERSION = '1.7.7'
+export const APP_VERSION = '1.7.8'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.8',
+    date: '2026-05-06',
+    title: 'Correção da pesquisa em conhecimento por utilizador',
+    changes: [
+      'No detalhe do ticket, o campo Em conhecimento passa a filtrar sugestões pelo nome, email, prefixo do email e nome de utilizador.',
+      'Ao escrever diretamente um utilizador como pedropereira, o botão Adicionar passa a identificar esse utilizador quando a correspondência é exata ou única.',
+    ],
+  },
   {
     version: '1.7.7',
     date: '2026-05-06',
