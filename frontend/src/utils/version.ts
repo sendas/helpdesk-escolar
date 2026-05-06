@@ -1,7 +1,17 @@
-export const APP_VERSION = '1.7.6'
+export const APP_VERSION = '1.7.7'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.7',
+    date: '2026-05-06',
+    title: 'Pesquisa por utilizador nas pessoas em conhecimento',
+    changes: [
+      'A gestão de membros dos grupos internos passa a permitir pesquisar utilizadores por nome, email ou nome de utilizador.',
+      'Ao criar um novo ticket, o campo Dar conhecimento a mostra também o nome de utilizador nos resultados.',
+      'Na página de detalhe do ticket, a secção Em conhecimento passa a aceitar seleção por nome, email ou nome de utilizador.',
+    ],
+  },
   {
     version: '1.7.6',
     date: '2026-05-06',
