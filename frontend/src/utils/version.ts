@@ -1,7 +1,17 @@
-export const APP_VERSION = '1.7.12'
+export const APP_VERSION = '1.7.13'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.13',
+    date: '2026-05-06',
+    title: 'Pré-visualização de imagens e PDFs nos tickets',
+    changes: [
+      'Imagens anexadas aparecem como miniaturas diretamente no ticket — clicar abre a imagem em popup a ecrã inteiro.',
+      'PDFs e outros ficheiros abrem num novo separador do browser ao clicar.',
+      'As miniaturas são carregadas automaticamente quando o ticket é aberto.',
+    ],
+  },
   {
     version: '1.7.12',
     date: '2026-05-06',

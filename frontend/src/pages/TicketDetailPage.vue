@@ -33,18 +33,33 @@
                 <span class="hd-msg-time">{{ formatDate(ticket.created_at) }}</span>
               </div>
               <div class="hd-msg-bubble">{{ ticket.description }}</div>
-              <div v-if="ticket.attachments?.length" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
-                <button
-                  v-for="a in ticket.attachments"
-                  :key="a.id"
-                  type="button"
-                  class="hd-row"
-                  style="gap:6px;color:var(--c-primary);font-size:12.5px;background:none;border:none;cursor:pointer;padding:0;text-align:left"
-                  @click="onDownloadAttachment(a)"
-                >
-                  <span class="material-icons" style="font-size:15px">attach_file</span>
-                  {{ a.original_name }} · {{ formatSize(a.size) }}
-                </button>
+              <div v-if="ticket.attachments?.length" style="margin-top:10px">
+                <!-- image thumbnails -->
+                <div v-if="imageAttachments.length" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+                  <button
+                    v-for="a in imageAttachments"
+                    :key="a.id"
+                    type="button"
+                    class="attach-thumb"
+                    :title="a.original_name"
+                    @click="openLightbox(a)"
+                  >
+                    <img v-if="attachBlobUrls[a.id]" :src="attachBlobUrls[a.id]" :alt="a.original_name" style="width:100%;height:100%;object-fit:cover" />
+                    <span v-else class="material-icons" style="color:var(--c-muted);font-size:28px">image</span>
+                  </button>
+                </div>
+                <!-- pdf / other files -->
+                <div v-for="a in fileAttachments" :key="a.id" style="margin-bottom:4px">
+                  <button
+                    type="button"
+                    class="hd-row"
+                    style="gap:6px;color:var(--c-primary);font-size:12.5px;background:none;border:none;cursor:pointer;padding:0;text-align:left"
+                    @click="openFile(a)"
+                  >
+                    <span class="material-icons" style="font-size:15px">picture_as_pdf</span>
+                    {{ a.original_name }} · {{ formatSize(a.size) }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -294,12 +309,22 @@
       </div>
     </template>
   </div>
+
+  <!-- Lightbox -->
+  <Teleport to="body">
+    <div v-if="lightboxSrc" class="hd-lightbox" @click="lightboxSrc = null">
+      <button class="hd-lightbox-close" @click="lightboxSrc = null">
+        <span class="material-icons">close</span>
+      </button>
+      <img :src="lightboxSrc" class="hd-lightbox-img" @click.stop />
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, addWatcher, removeWatcher, downloadAttachment } from '../api/tickets'
+import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob } from '../api/tickets'
 import { getGroups, getUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -328,6 +353,15 @@ const savingEmailPreference = ref(false)
 const watcherSearch = ref('')
 const addingWatcher = ref(false)
 const allUsers = ref<any[]>([])
+const attachBlobUrls = ref<Record<number, string>>({})
+const lightboxSrc = ref<string | null>(null)
+
+const imageAttachments = computed(() =>
+  (ticket.value?.attachments ?? []).filter((a: any) => (a.content_type as string).startsWith('image/'))
+)
+const fileAttachments = computed(() =>
+  (ticket.value?.attachments ?? []).filter((a: any) => !(a.content_type as string).startsWith('image/'))
+)
 
 const canManageEmailNotifications = computed(() => {
   if (!ticket.value || !auth.user) return false
@@ -387,6 +421,7 @@ function isStatusDone(status: string) {
 
 onMounted(async () => {
   await load()
+  loadImageBlobs()
   const isCreator = ticket.value?.creator?.id === auth.user?.id
   if (auth.isStaff) {
     const [users, grps] = await Promise.all([getUsers(), getGroups()])
@@ -398,6 +433,10 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(() => {
+  Object.values(attachBlobUrls.value).forEach(url => URL.revokeObjectURL(url))
+})
+
 async function load() {
   const t = await getTicket(Number(route.params.id))
   ticket.value = t
@@ -405,6 +444,32 @@ async function load() {
   assigneeSearch.value = t.assignee ? userOptionLabel(t.assignee) : ''
   groupId.value = t.group?.id ? String(t.group.id) : ''
   ticketStatus.value = t.status
+}
+
+function loadImageBlobs() {
+  const attachments: any[] = ticket.value?.attachments ?? []
+  for (const a of attachments) {
+    if ((a.content_type as string).startsWith('image/') && !attachBlobUrls.value[a.id]) {
+      fetchAttachmentBlob(ticket.value.id, a.id)
+        .then(url => { attachBlobUrls.value[a.id] = url })
+        .catch(() => {})
+    }
+  }
+}
+
+async function openLightbox(a: { id: number; content_type: string }) {
+  let url = attachBlobUrls.value[a.id]
+  if (!url) {
+    url = await fetchAttachmentBlob(ticket.value.id, a.id)
+    attachBlobUrls.value[a.id] = url
+  }
+  lightboxSrc.value = url
+}
+
+async function openFile(a: { id: number; original_name: string }) {
+  const url = await fetchAttachmentBlob(ticket.value.id, a.id)
+  window.open(url, '_blank')
+  setTimeout(() => URL.revokeObjectURL(url), 30000)
 }
 
 async function onAddComment() {
@@ -784,5 +849,66 @@ function formatSize(size: number) {
     flex-wrap: wrap;
     gap: 6px;
   }
+}
+
+.attach-thumb {
+  width: 80px;
+  height: 80px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--c-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: opacity .15s;
+}
+
+.attach-thumb:hover {
+  opacity: .85;
+}
+
+</style>
+
+<style>
+.hd-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, .88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hd-lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 6px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, .5);
+  object-fit: contain;
+}
+
+.hd-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, .15);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: background .15s;
+}
+
+.hd-lightbox-close:hover {
+  background: rgba(255, 255, 255, .25);
 }
 </style>

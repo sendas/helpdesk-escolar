@@ -47,9 +47,13 @@ export async function updateTicket(id: number, payload: Partial<{ status: string
   return data
 }
 
-export async function downloadAttachment(ticketId: number, attachmentId: number, filename: string) {
+export async function fetchAttachmentBlob(ticketId: number, attachmentId: number): Promise<string> {
   const resp = await api.get(`/api/v1/tickets/${ticketId}/attachments/${attachmentId}/download`, { responseType: 'blob' })
-  const url = URL.createObjectURL(resp.data)
+  return URL.createObjectURL(resp.data)
+}
+
+export async function downloadAttachment(ticketId: number, attachmentId: number, filename: string) {
+  const url = await fetchAttachmentBlob(ticketId, attachmentId)
   const a = document.createElement('a')
   a.href = url
   a.download = filename
