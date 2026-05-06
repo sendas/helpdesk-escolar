@@ -13,6 +13,7 @@ class TicketCreate(BaseModel):
     school_id: int
     priority: TicketPriority = TicketPriority.MEDIUM
     watcher_ids: list[int] = []
+    group_ids: list[int] = []
     creator_email_notifications: bool = True
 
 

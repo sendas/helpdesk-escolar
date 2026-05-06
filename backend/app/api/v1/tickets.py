@@ -57,12 +57,14 @@ async def create_ticket(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escola obrigatória ou inválida")
 
     ticket = await ticket_service.create_ticket(db, data, current_user)
+    notified: set[str] = set()
     if ticket.creator_email_notifications:
         await email_service.send_ticket_notification(
             current_user.email,
             "created",
             {"id": ticket.id, "title": ticket.title, "category": ticket.category.name, "priority": ticket.priority.value},
         )
+        notified.add(current_user.email.lower())
     if ticket.category.email_to:
         await email_service.send_ticket_notification(
             ticket.category.email_to,
@@ -76,22 +78,27 @@ async def create_ticket(
                 "school": ticket.school.name if ticket.school else "",
             },
         )
+        notified.add(ticket.category.email_to.lower())
     if ticket.assignee and ticket.assignee.email:
         await email_service.send_ticket_notification(
             ticket.assignee.email,
             "assigned",
             {"id": ticket.id, "title": ticket.title, "assignee": ticket.assignee.display_name},
         )
+        notified.add(ticket.assignee.email.lower())
     if ticket.group:
         for member in ticket.group.members:
-            if member.email and member.email != current_user.email:
+            email = member.email.lower() if member.email else ""
+            if email and email not in notified:
                 await email_service.send_ticket_notification(
                     member.email,
                     "assigned",
                     {"id": ticket.id, "title": ticket.title, "assignee": ticket.group.name},
                 )
+                notified.add(email)
     for watcher in ticket.watchers:
-        if watcher.email and watcher.id != current_user.id:
+        email = watcher.email.lower() if watcher.email else ""
+        if email and email not in notified:
             await email_service.send_ticket_notification(
                 watcher.email,
                 "updated",
@@ -102,6 +109,7 @@ async def create_ticket(
                     "message": f"{current_user.display_name} deu-lhe conhecimento deste ticket.",
                 },
             )
+            notified.add(email)
     return ticket
 
 

@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 import asyncio
 import os
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -39,14 +41,24 @@ async def _sync_azure_periodically() -> None:
     from app.database import AsyncSessionLocal
     from app.services import azure_import
 
-    interval = max(settings.azure_sync_interval_minutes, 5) * 60
     while True:
-        await asyncio.sleep(interval)
+        if settings.azure_sync_interval_minutes >= 1440:
+            await asyncio.sleep(_seconds_until_next_nightly_sync())
+        else:
+            await asyncio.sleep(max(settings.azure_sync_interval_minutes, 5) * 60)
         async with AsyncSessionLocal() as db:
             try:
                 await azure_import.import_azure_users(db)
             except Exception:
                 pass
+
+
+def _seconds_until_next_nightly_sync() -> float:
+    now = datetime.now(ZoneInfo("Europe/Lisbon"))
+    target = now.replace(hour=3, minute=0, second=0, microsecond=0)
+    if target <= now:
+        target += timedelta(days=1)
+    return max((target - now).total_seconds(), 60)
 
 
 async def _sync_mail_replies_periodically() -> None:

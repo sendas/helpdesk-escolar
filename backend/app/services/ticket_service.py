@@ -14,6 +14,18 @@ class TicketValidationError(ValueError):
 
 async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> Ticket:
     group_id, assignee_id = await _resolve_route(db, data.category_id, data.school_id)
+    selected_groups: list[HelpdeskGroup] = []
+    if creator.role == UserRole.ADMIN and data.group_ids:
+        group_ids = list(dict.fromkeys(data.group_ids))
+        selected_groups = (
+            await db.execute(
+                select(HelpdeskGroup)
+                .where(HelpdeskGroup.id.in_(group_ids))
+                .options(selectinload(HelpdeskGroup.members))
+            )
+        ).scalars().all()
+        if selected_groups and group_id is None:
+            group_id = selected_groups[0].id
     ticket = Ticket(
         title=data.title,
         description=data.description,
@@ -26,15 +38,19 @@ async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> 
         assignee_id=assignee_id,
         status=TicketStatus.ASSIGNED if group_id or assignee_id else TicketStatus.OPEN,
     )
-    if data.watcher_ids:
-        watcher_ids = [uid for uid in dict.fromkeys(data.watcher_ids) if uid != creator.id]
-        if watcher_ids:
-            watchers = (
-                await db.execute(
-                    select(User).where(User.id.in_(watcher_ids), User.is_active.is_(True))
-                )
-            ).scalars().all()
-            ticket.watchers = list(watchers)
+    watcher_ids = [uid for uid in dict.fromkeys(data.watcher_ids) if uid != creator.id]
+    if selected_groups:
+        for group in selected_groups:
+            for member in group.members:
+                if member.id != creator.id and member.id not in watcher_ids:
+                    watcher_ids.append(member.id)
+    if watcher_ids:
+        watchers = (
+            await db.execute(
+                select(User).where(User.id.in_(watcher_ids), User.is_active.is_(True))
+            )
+        ).scalars().all()
+        ticket.watchers = list(watchers)
     db.add(ticket)
     db.add(TicketEvent(ticket=ticket, actor_id=creator.id, event_type="created", message="Ticket criado"))
     if ticket.watchers:
@@ -44,6 +60,15 @@ async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> 
                 actor_id=creator.id,
                 event_type="watchers_added",
                 message=f"Adicionado conhecimento a {len(ticket.watchers)} pessoa(s)",
+            )
+        )
+    if selected_groups:
+        db.add(
+            TicketEvent(
+                ticket=ticket,
+                actor_id=creator.id,
+                event_type="groups_added",
+                message=f"Encaminhado para {len(selected_groups)} equipa(s) interna(s)",
             )
         )
     await db.commit()

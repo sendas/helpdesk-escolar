@@ -1,7 +1,21 @@
-export const APP_VERSION = '1.7.2'
+export const APP_VERSION = '1.7.3'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.3',
+    date: '2026-05-06',
+    title: 'Criação de tickets e login claro',
+    changes: [
+      'Administradores podem atribuir logo um novo ticket a pessoas em conhecimento e a equipas internas.',
+      'Ao escolher equipas internas na criação do ticket, os membros passam a acompanhar o pedido e recebem notificações.',
+      'A sincronização Entra passa a correr automaticamente durante a noite por defeito.',
+      'A página de login abre sempre em modo claro, independentemente da preferência usada dentro da aplicação.',
+      'Ecrã de entrada mais compacto, com menos espaço vazio no topo e logotipo do agrupamento maior.',
+      'Botão principal de entrada renomeado para email ou conta da escola e login local escondido numa opção secundária.',
+      'Referências a Active Directory removidas da área visível do login.',
+    ],
+  },
   {
     version: '1.7.2',
     date: '2026-05-06',

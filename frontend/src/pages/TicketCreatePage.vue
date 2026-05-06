@@ -111,7 +111,7 @@
 
       <!-- Watchers -->
       <div class="hd-field" style="margin-bottom:24px">
-        <label class="hd-label">Dar conhecimento a <span class="hd-label-hint">(opcional)</span></label>
+        <label class="hd-label">{{ auth.isAdmin ? 'Atribuir ou dar conhecimento a pessoas' : 'Dar conhecimento a' }} <span class="hd-label-hint">(opcional)</span></label>
         <p class="hd-hint" style="margin-bottom:8px">
           Estas pessoas recebem atualizações por email e podem acompanhar, responder e anexar informação ao pedido.
         </p>
@@ -149,6 +149,29 @@
           >
             {{ user.display_name }}
             <span class="material-icons">close</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-if="auth.isAdmin && groups.length" class="hd-field" style="margin-bottom:24px">
+        <label class="hd-label">Atribuir a equipas internas <span class="hd-label-hint">(opcional)</span></label>
+        <p class="hd-hint" style="margin-bottom:8px">
+          A primeira equipa escolhida fica como grupo principal do ticket. Todos os membros das equipas escolhidas recebem notificação e podem acompanhar o pedido.
+        </p>
+        <div class="group-picker-grid">
+          <button
+            v-for="group in groups"
+            :key="group.id"
+            type="button"
+            class="group-pick-card"
+            :class="{ selected: selectedGroupIds.includes(group.id) }"
+            @click="toggleGroup(group.id)"
+          >
+            <span class="material-icons">groups</span>
+            <div>
+              <strong>{{ group.name }}</strong>
+              <small>{{ group.members?.length || 0 }} membro{{ (group.members?.length || 0) === 1 ? '' : 's' }}</small>
+            </div>
           </button>
         </div>
       </div>
@@ -193,10 +216,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import { createTicket, getCategories, getSchools, uploadTicketAttachment } from '../api/tickets'
-import { searchUsers, type UserFull } from '../api/users'
+import { getGroups, searchUsers, type HelpdeskGroup, type UserFull } from '../api/users'
 
 const router = useRouter()
+const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
 const categories = ref<any[]>([])
@@ -206,6 +231,8 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const watcherSearch = ref('')
 const watcherResults = ref<UserFull[]>([])
 const selectedWatchers = ref<UserFull[]>([])
+const groups = ref<HelpdeskGroup[]>([])
+const selectedGroupIds = ref<number[]>([])
 
 const form = ref({
   title: '',
@@ -225,9 +252,10 @@ const canSubmit = computed(() =>
 )
 
 onMounted(async () => {
-  const [cats, schs] = await Promise.all([getCategories(), getSchools()])
+  const [cats, schs, grps] = await Promise.all([getCategories(), getSchools(), auth.isAdmin ? getGroups() : Promise.resolve([])])
   categories.value = cats
   schools.value = schs
+  groups.value = grps as HelpdeskGroup[]
 })
 
 async function onSubmit() {
@@ -242,6 +270,7 @@ async function onSubmit() {
       school_id: form.value.school_id,
       priority: form.value.priority,
       watcher_ids: selectedWatchers.value.map(user => user.id),
+      group_ids: selectedGroupIds.value,
       creator_email_notifications: form.value.creator_email_notifications === true,
     })
     for (const file of files.value) {
@@ -300,6 +329,12 @@ function addWatcher(user: UserFull) {
 
 function removeWatcher(userId: number) {
   selectedWatchers.value = selectedWatchers.value.filter(user => user.id !== userId)
+}
+
+function toggleGroup(groupId: number) {
+  selectedGroupIds.value = selectedGroupIds.value.includes(groupId)
+    ? selectedGroupIds.value.filter(id => id !== groupId)
+    : [...selectedGroupIds.value, groupId]
 }
 
 function initials(name: string) {
@@ -485,6 +520,55 @@ function formatSize(size: number) {
   font-size: 14px;
 }
 
+.group-picker-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.group-pick-card {
+  align-items: center;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  color: var(--c-text);
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 34px minmax(0, 1fr);
+  padding: 12px;
+  text-align: left;
+}
+
+.group-pick-card.selected {
+  border-color: var(--c-primary);
+  box-shadow: inset 0 0 0 1px var(--c-primary);
+}
+
+.group-pick-card .material-icons {
+  align-items: center;
+  background: rgba(61, 82, 213, 0.1);
+  border-radius: 8px;
+  color: var(--c-primary);
+  display: flex;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.group-pick-card strong,
+.group-pick-card small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-pick-card small {
+  color: var(--c-muted);
+  font-size: 12px;
+}
+
 @media (max-width: 820px) {
   .ticket-create-card {
     padding: 18px;
@@ -506,6 +590,9 @@ function formatSize(size: number) {
   }
   .email-choice-actions {
     width: 100%;
+  }
+  .group-picker-grid {
+    grid-template-columns: 1fr;
   }
   .ticket-actions {
     display: grid;

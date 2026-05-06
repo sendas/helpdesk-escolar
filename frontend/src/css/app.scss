@@ -352,6 +352,19 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
 .hd-btn-outline { background: transparent; border: 1px solid var(--c-border); color: var(--c-text); }
 .hd-btn-sm { padding: 5px 12px; font-size: 12.5px; }
 .hd-btn-lg { padding: 12px 24px; font-size: 15px; }
+.hd-link-btn {
+  display: block;
+  margin: 12px auto 0;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--c-muted);
+  font: 500 12px var(--font-sans);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.hd-link-btn:hover { color: var(--c-text); }
 
 /* ── Form inputs ─────────────────────────────────── */
 .hd-field { display: flex; flex-direction: column; gap: 5px; }
@@ -499,7 +512,7 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
 .hd-login-wrap { display: flex; min-height: 100vh; }
 .hd-login-left {
   width: 44%;
-  padding: 40px 56px;
+  padding: 28px 56px;
   display: flex;
   flex-direction: column;
   background: var(--c-surface);
@@ -510,7 +523,7 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 56px;
+  padding: 44px 56px;
   position: relative;
   overflow: hidden;
 }
@@ -518,7 +531,7 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
   content: '';
   position: absolute;
   top: -80px; right: -80px;
-  width: 320px; height: 320px;
+  width: 280px; height: 280px;
   border-radius: 50%;
   background: rgba(61, 82, 213, .08);
 }

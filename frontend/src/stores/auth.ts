@@ -17,7 +17,6 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('token'))
   const user = ref<User | null>(null)
   const isDark = ref(localStorage.getItem('dark') === '1')
-  const keepDarkOnLogin = ref(localStorage.getItem('darkLoginPreference') === '1')
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
@@ -35,11 +34,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   function toggleDark() {
     setDark(!isDark.value)
-  }
-
-  function setKeepDarkOnLogin(enabled: boolean) {
-    keepDarkOnLogin.value = enabled
-    localStorage.setItem('darkLoginPreference', enabled ? '1' : '0')
   }
 
   async function loginLdap(username: string, password: string) {
@@ -95,10 +89,10 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     localStorage.removeItem('token')
-    setDark(keepDarkOnLogin.value)
+    setDark(false)
     applyDark()
     window.location.href = '/login'
   }
 
-  return { token, user, isDark, keepDarkOnLogin, isAuthenticated, isAdmin, isStaff, loginLdap, loginDemo, loginAzure, handleAzureCallback, fetchMe, init, setDark, toggleDark, setKeepDarkOnLogin, logout }
+  return { token, user, isDark, isAuthenticated, isAdmin, isStaff, loginLdap, loginDemo, loginAzure, handleAzureCallback, fetchMe, init, setDark, toggleDark, logout }
 })

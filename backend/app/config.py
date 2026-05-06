@@ -48,8 +48,9 @@ class Settings(BaseSettings):
     azure_technician_onprem_ous: str = ""
     azure_secretary_onprem_ous: str = ""
     azure_non_teaching_onprem_ous: str = ""
-    # 0 disables automatic background import. Use e.g. 60 to sync hourly.
-    azure_sync_interval_minutes: int = 0
+    # By default, refresh Entra users once per night.
+    # Use a lower value (e.g. 60) to sync periodically, or 0 to disable.
+    azure_sync_interval_minutes: int = 1440
 
     # JWT
     jwt_algorithm: str = "HS256"
