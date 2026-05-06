@@ -1,7 +1,22 @@
-export const APP_VERSION = '1.7.10'
+export const APP_VERSION = '1.7.11'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.11',
+    date: '2026-05-06',
+    title: 'Correções de anexos, mobile e branding do login',
+    changes: [
+      'Clicar num anexo já não devolve "Not authenticated" — o download é agora feito com o token de sessão.',
+      'O botão "Submeter ticket" deixou de ficar bloqueado após escolher um ficheiro da galeria no telemóvel.',
+      'A opção de receber atualizações por email fica ativa por defeito ao criar um ticket.',
+      'Ficheiros da galeria iOS (HEIC e outros formatos móveis) passam a ser aceites como anexos.',
+      'Página de login: título alterado para "Centro de Apoio Digital do Agrupamento".',
+      'Painel lateral do login mostra agora o nome do agrupamento e o endereço www.queiroz.pt de forma destacada.',
+      'Cada funcionalidade destacada no login tem agora uma cor e ícone distintos.',
+      'Pesquisa de pessoas em conhecimento no detalhe do ticket passa a filtrar por endereço de email.',
+    ],
+  },
   {
     version: '1.7.10',
     date: '2026-05-06',
