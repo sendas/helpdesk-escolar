@@ -34,17 +34,17 @@
               </div>
               <div class="hd-msg-bubble">{{ ticket.description }}</div>
               <div v-if="ticket.attachments?.length" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
-                <a
+                <button
                   v-for="a in ticket.attachments"
                   :key="a.id"
+                  type="button"
                   class="hd-row"
-                  :href="`/api/v1/tickets/${ticket.id}/attachments/${a.id}/download`"
-                  target="_blank"
-                  style="gap:6px;color:var(--c-primary);font-size:12.5px;text-decoration:none"
+                  style="gap:6px;color:var(--c-primary);font-size:12.5px;background:none;border:none;cursor:pointer;padding:0;text-align:left"
+                  @click="onDownloadAttachment(a)"
                 >
                   <span class="material-icons" style="font-size:15px">attach_file</span>
                   {{ a.original_name }} · {{ formatSize(a.size) }}
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -299,7 +299,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, addWatcher, removeWatcher } from '../api/tickets'
+import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, addWatcher, removeWatcher, downloadAttachment } from '../api/tickets'
 import { getGroups, getUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -552,6 +552,10 @@ function statusLabel(s: string) {
 
 function formatDate(d: string) {
   return formatDateTime(d)
+}
+
+async function onDownloadAttachment(a: { id: number; original_name: string }) {
+  await downloadAttachment(ticket.value.id, a.id, a.original_name)
 }
 
 function formatSize(size: number) {

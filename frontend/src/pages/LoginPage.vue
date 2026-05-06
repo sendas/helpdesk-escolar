@@ -14,7 +14,7 @@
 
       <!-- Main content -->
       <div style="margin:auto 0;padding:26px 0 18px">
-        <h1 style="font-size:30px;font-weight:500;line-height:1.1;margin-bottom:10px">Bem-vindo<br>de volta.</h1>
+        <h1 style="font-size:30px;font-weight:500;line-height:1.1;margin-bottom:10px">Centro de Apoio Digital<br>do Agrupamento</h1>
         <p style="color:var(--c-muted);font-size:13px;margin-bottom:18px;line-height:1.45">
           Entre com a sua conta institucional para<br>abrir e gerir pedidos de apoio.
         </p>
@@ -124,18 +124,18 @@
 
     <!-- Right panel -->
     <div class="hd-login-right">
-      <div style="background:var(--c-surface);border:1px solid var(--c-border);border-radius:16px;padding:20px 24px;width:72px;margin-bottom:28px;box-shadow:var(--shadow-sm)">
-        <div style="height:10px;background:var(--c-border);border-radius:4px;margin-bottom:8px"></div>
-        <div style="height:10px;background:var(--c-border);border-radius:4px;width:60%"></div>
+      <div style="margin-bottom:24px">
+        <div style="font-size:22px;font-weight:600;color:var(--c-text);line-height:1.2;margin-bottom:4px">Agrupamento de Escolas<br>Eça de Queirós</div>
+        <a href="https://www.queiroz.pt" target="_blank" rel="noopener" style="font-size:13px;color:var(--c-primary);text-decoration:none;opacity:.85">www.queiroz.pt</a>
       </div>
-      <h2 style="font-size:26px;line-height:1.2;color:var(--c-text);margin-bottom:14px">
+      <h2 style="font-size:22px;line-height:1.3;color:var(--c-text);margin-bottom:10px">
         Um sistema simples para que o tempo dos docentes seja gasto com os alunos — não com pedidos perdidos.
       </h2>
       <p style="color:var(--c-muted);font-size:13px;margin-bottom:24px">— Direção Pedagógica</p>
       <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px">
         <li v-for="f in features" :key="f.title" style="display:flex;align-items:flex-start;gap:12px">
-          <div style="width:22px;height:22px;background:var(--c-primary);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">
-            <span class="material-icons" style="font-size:13px;color:#fff">check</span>
+          <div :style="{ width:'22px', height:'22px', background: f.color, borderRadius:'6px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:'1px' }">
+            <span class="material-icons" style="font-size:13px;color:#fff">{{ f.icon }}</span>
           </div>
           <div>
             <div style="font-weight:600;font-size:13.5px">{{ f.title }}</div>
@@ -175,9 +175,9 @@ const demoProfiles = [
 const selectedDemoLabel = computed(() => demoProfiles.find(profile => profile.role === demoRole.value)?.label ?? 'demo')
 
 const features = [
-  { title: 'Aberto → Atribuído → Em Curso → Resolvido', sub: 'Estados claros e auditáveis' },
-  { title: 'Integração com Microsoft Entra ID', sub: 'Login institucional com a conta Microsoft' },
-  { title: 'Notificações e SLAs configuráveis', sub: 'Cada categoria com o seu prazo' },
+  { title: 'Aberto → Atribuído → Em Curso → Resolvido', sub: 'Estados claros e auditáveis', color: '#0D9488', icon: 'task_alt' },
+  { title: 'Integração com Microsoft Entra ID', sub: 'Login institucional com a conta Microsoft', color: '#0078D4', icon: 'shield' },
+  { title: 'Notificações e SLAs configuráveis', sub: 'Cada categoria com o seu prazo', color: '#D97706', icon: 'notifications_active' },
 ]
 
 onMounted(async () => {

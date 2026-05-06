@@ -47,6 +47,16 @@ export async function updateTicket(id: number, payload: Partial<{ status: string
   return data
 }
 
+export async function downloadAttachment(ticketId: number, attachmentId: number, filename: string) {
+  const resp = await api.get(`/api/v1/tickets/${ticketId}/attachments/${attachmentId}/download`, { responseType: 'blob' })
+  const url = URL.createObjectURL(resp.data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export async function adminUpdateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string; creator_email_notifications: boolean }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/admin/tickets/${id}`, payload)
   return data

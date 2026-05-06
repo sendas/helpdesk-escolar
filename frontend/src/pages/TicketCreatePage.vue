@@ -202,7 +202,7 @@
         <router-link to="/tickets">
           <button class="hd-btn hd-btn-outline">Cancelar</button>
         </router-link>
-        <button class="hd-btn hd-btn-primary" :disabled="!canSubmit || loading" @click="onSubmit">
+        <button type="button" class="hd-btn hd-btn-primary" :disabled="!canSubmit || loading" @click="onSubmit">
           <span class="material-icons" style="font-size:16px">send</span>
           {{ loading ? 'A enviar...' : 'Submeter ticket' }}
         </button>
@@ -240,7 +240,7 @@ const form = ref({
   category_id: null as number | null,
   school_id: null as number | null,
   priority: 'medium',
-  creator_email_notifications: null as boolean | null,
+  creator_email_notifications: true as boolean | null,
 })
 
 const canSubmit = computed(() =>
@@ -297,7 +297,7 @@ function onDrop(event: DragEvent) {
 function addFiles(list: FileList | null) {
   if (!list) return
   const next = Array.from(list).filter(f => {
-    const allowed = ['image/png', 'image/jpeg', 'application/pdf'].includes(f.type)
+    const allowed = f.type.startsWith('image/') || f.type === 'application/pdf' || f.name.match(/\.(png|jpe?g|pdf)$/i)
     return allowed && f.size <= 10 * 1024 * 1024
   })
   files.value.push(...next)
