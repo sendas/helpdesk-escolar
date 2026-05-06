@@ -5,6 +5,7 @@ from app.models.category import Category
 from app.models.group import HelpdeskGroup
 from app.models.knowledge import KnowledgeArticle
 from app.models.school import School
+from app.models.ticket import Ticket
 
 
 DEFAULT_SCHOOLS = [
@@ -18,16 +19,64 @@ DEFAULT_CATEGORIES = [
         "name": "Inovar",
         "description": "Pedidos relacionados com a plataforma Inovar",
         "email_to": "",
-        "color": "#3D52D5",
+        "color": "#4F46E5",
         "icon": "school",
         "sla_hours": 24,
     },
     {
-        "name": "Apoio Técnico",
-        "description": "Equipamentos, rede, contas e suporte informático",
+        "name": "Mail e Teams",
+        "description": "Correio institucional, Teams, calendário e colaboração Microsoft",
         "email_to": "",
-        "color": "#0D9488",
-        "icon": "build",
+        "color": "#2563EB",
+        "icon": "mail",
+        "sla_hours": 24,
+    },
+    {
+        "name": "Internet e Wi-Fi",
+        "description": "Rede, acesso à Internet, Wi-Fi e conectividade",
+        "email_to": "",
+        "color": "#0891B2",
+        "icon": "wifi",
+        "sla_hours": 24,
+    },
+    {
+        "name": "Computadores",
+        "description": "Computadores, portáteis, periféricos e postos de trabalho",
+        "email_to": "",
+        "color": "#0F766E",
+        "icon": "computer",
+        "sla_hours": 24,
+    },
+    {
+        "name": "Impressoras",
+        "description": "Impressoras, digitalização, toner e filas de impressão",
+        "email_to": "",
+        "color": "#16A34A",
+        "icon": "print",
+        "sla_hours": 24,
+    },
+    {
+        "name": "Projetores",
+        "description": "Projetores, quadros interativos, imagem e som em sala",
+        "email_to": "",
+        "color": "#D97706",
+        "icon": "videocam",
+        "sla_hours": 24,
+    },
+    {
+        "name": "Passwords",
+        "description": "Reposição de palavra-passe e problemas de acesso",
+        "email_to": "",
+        "color": "#DC2626",
+        "icon": "key",
+        "sla_hours": 24,
+    },
+    {
+        "name": "Outros",
+        "description": "Pedidos que não se enquadram nas restantes categorias",
+        "email_to": "",
+        "color": "#64748B",
+        "icon": "help_outline",
         "sla_hours": 24,
     },
 ]
@@ -62,6 +111,14 @@ async def ensure_defaults(db: AsyncSession) -> None:
         exists = await db.execute(select(Category).where(Category.name == data["name"]))
         if not exists.scalar_one_or_none():
             db.add(Category(**data))
+
+    old_support = (await db.execute(select(Category).where(Category.name == "Apoio Técnico"))).scalar_one_or_none()
+    if old_support:
+        has_tickets = (
+            await db.execute(select(Ticket.id).where(Ticket.category_id == old_support.id).limit(1))
+        ).scalar_one_or_none()
+        if has_tickets is None:
+            await db.delete(old_support)
 
     for data in DEFAULT_GROUPS:
         exists = await db.execute(select(HelpdeskGroup).where(HelpdeskGroup.name == data["name"]))

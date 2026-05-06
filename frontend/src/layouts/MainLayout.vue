@@ -93,6 +93,14 @@
           <button class="hd-icon-btn" @click="auth.toggleDark()" :title="auth.isDark ? 'Modo claro' : 'Modo escuro'">
             <span class="material-icons">{{ auth.isDark ? 'light_mode' : 'dark_mode' }}</span>
           </button>
+          <label class="theme-persist-toggle" title="Guardar preferência para o ecrã de login">
+            <input
+              type="checkbox"
+              :checked="auth.keepDarkOnLogin"
+              @change="onKeepDarkOnLoginChange"
+            />
+            Login escuro
+          </label>
           <div class="notif-wrap" @click.stop>
             <button class="hd-icon-btn" @click="showNotifications = !showNotifications" title="Notificações" type="button">
               <span class="material-icons">notifications</span>
@@ -188,6 +196,10 @@ function closeNotifications() {
   showNotifications.value = false
 }
 
+function onKeepDarkOnLoginChange(event: Event) {
+  auth.setKeepDarkOnLogin((event.target as HTMLInputElement).checked)
+}
+
 onMounted(async () => {
   document.addEventListener('click', closeNotifications)
   try {
@@ -271,6 +283,25 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: calc(100vw - 112px);
+}
+
+.theme-persist-toggle {
+  align-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  color: var(--c-muted);
+  cursor: pointer;
+  display: flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.theme-persist-toggle input {
+  accent-color: var(--c-primary);
 }
 .mobile-subtitle {
   color: var(--c-muted);

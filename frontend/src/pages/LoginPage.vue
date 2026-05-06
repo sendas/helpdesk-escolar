@@ -21,7 +21,17 @@
         <div style="border:1px solid var(--c-border);border-radius:10px;padding:12px 14px;margin-bottom:18px;background:var(--c-surface);font-size:12.5px;color:var(--c-muted);line-height:1.45">
           <strong style="display:block;color:var(--c-text);margin-bottom:4px">Instruções de acesso</strong>
           A autenticação deve ser feita com as mesmas credenciais de acesso ao mail institucional.
-          Pode mudar para modo escuro depois de entrar, no botão de tema no topo da aplicação.
+          Pode usar modo claro ou escuro antes e depois de entrar.
+        </div>
+        <div class="login-theme-panel">
+          <button class="hd-btn hd-btn-outline" type="button" @click="toggleLoginDark">
+            <span class="material-icons" style="font-size:17px">{{ loginDark ? 'light_mode' : 'dark_mode' }}</span>
+            {{ loginDark ? 'Usar modo claro' : 'Usar modo escuro' }}
+          </button>
+          <label class="login-theme-check">
+            <input type="checkbox" :checked="keepDarkOnLogin" @change="onKeepDarkOnLoginChange" />
+            Abrir sempre o login em modo escuro
+          </label>
         </div>
 
         <div v-if="error" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:13px;color:#DC2626;margin-bottom:16px">
@@ -148,6 +158,8 @@ const showDemoOptions = ref(false)
 const showLocalLogin = true
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
 const versionLabelText = versionLabel()
+const loginDark = ref(false)
+const keepDarkOnLogin = ref(false)
 
 const demoProfiles = [
   { role: 'teacher', label: 'Docente' },
@@ -164,15 +176,38 @@ const features = [
 ]
 
 onMounted(async () => {
-  const keepDarkOnLogin = localStorage.getItem('darkLoginPreference') === '1'
-  localStorage.setItem('dark', keepDarkOnLogin ? '1' : '0')
-  document.documentElement.classList.toggle('dark', keepDarkOnLogin)
+  keepDarkOnLogin.value = localStorage.getItem('darkLoginPreference') === '1'
+  loginDark.value = keepDarkOnLogin.value
+  applyLoginDark()
   try {
     settings.value = await getPublicSettings()
     applyFavicon(settings.value.favicon_url || settings.value.logo_url)
   }
   catch { /* ignore */ }
 })
+
+function applyLoginDark() {
+  localStorage.setItem('dark', loginDark.value ? '1' : '0')
+  document.documentElement.classList.toggle('dark', loginDark.value)
+}
+
+function toggleLoginDark() {
+  loginDark.value = !loginDark.value
+  applyLoginDark()
+}
+
+function setKeepDarkOnLogin(enabled: boolean) {
+  keepDarkOnLogin.value = enabled
+  localStorage.setItem('darkLoginPreference', enabled ? '1' : '0')
+  if (enabled) {
+    loginDark.value = true
+    applyLoginDark()
+  }
+}
+
+function onKeepDarkOnLoginChange(event: Event) {
+  setKeepDarkOnLogin((event.target as HTMLInputElement).checked)
+}
 
 function onMicrosoftLogin() {
   error.value = ''
@@ -205,3 +240,38 @@ async function onDemoLogin() {
   }
 }
 </script>
+
+<style scoped>
+.login-theme-panel {
+  align-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 10px;
+}
+
+.login-theme-check {
+  align-items: center;
+  color: var(--c-muted);
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 7px;
+  line-height: 1.25;
+}
+
+.login-theme-check input {
+  accent-color: var(--c-primary);
+}
+
+@media (max-width: 640px) {
+  .login-theme-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+</style>

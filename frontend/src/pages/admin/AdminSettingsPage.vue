@@ -463,7 +463,7 @@ onMounted(async () => {
     categories.value = cats
     schools.value = schs
     groups.value = grps
-    staffUsers.value = users.filter((u: any) => u.is_active && (u.role === 'technician' || u.role === 'admin'))
+    staffUsers.value = users.filter((u: any) => u.is_active && u.role === 'technician')
     routingRules.value = routes
     articles.value = kb
   } finally {

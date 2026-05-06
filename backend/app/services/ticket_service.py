@@ -8,6 +8,10 @@ from app.models.user import User, UserRole
 from app.schemas.ticket import TicketCreate, TicketUpdate, CommentCreate
 
 
+class TicketValidationError(ValueError):
+    pass
+
+
 async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> Ticket:
     group_id, assignee_id = await _resolve_route(db, data.category_id, data.school_id)
     ticket = Ticket(
@@ -103,6 +107,7 @@ async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) ->
         changes.append(f"Estado alterado para {data.status.value}")
         ticket.status = data.status
     if "assignee_id" in data.model_fields_set:
+        await validate_active_technician(db, data.assignee_id)
         ticket.assignee_id = data.assignee_id
         if data.assignee_id is not None and ticket.status == TicketStatus.OPEN:
             ticket.status = TicketStatus.ASSIGNED
@@ -173,4 +178,18 @@ async def _resolve_route(db: AsyncSession, category_id: int, school_id: int | No
     rule = result.scalars().first()
     if not rule:
         return None, None
+    if rule.assignee_id:
+        try:
+            await validate_active_technician(db, rule.assignee_id)
+        except TicketValidationError:
+            return rule.group_id, None
     return rule.group_id, rule.assignee_id
+
+
+async def validate_active_technician(db: AsyncSession, assignee_id: int | None) -> None:
+    if assignee_id is None:
+        return
+    result = await db.execute(select(User).where(User.id == assignee_id))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active or user.role != UserRole.TECHNICIAN:
+        raise TicketValidationError("O responsável tem de ser um técnico ativo.")

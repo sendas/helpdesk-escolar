@@ -1,7 +1,20 @@
-export const APP_VERSION = '1.7.1'
+export const APP_VERSION = '1.7.2'
 export const APP_VERSION_DATE = '2026-05-06'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.2',
+    date: '2026-05-06',
+    title: 'Categorias, técnicos ativos e tema',
+    changes: [
+      'Categorias padrão atualizadas para Inovar, Mail e Teams, Internet e Wi-Fi, Computadores, Impressoras, Projetores, Passwords e Outros.',
+      'Cada categoria padrão recebe um ícone simples e uma cor distinta.',
+      'A categoria genérica Apoio Técnico deixa de ser criada por defeito e é removida automaticamente quando não tem tickets associados.',
+      'O campo Atribuído a passa a mostrar apenas técnicos ativos; administradores, direção e docentes deixam de aparecer como responsáveis diretos.',
+      'Regras de encaminhamento automático só aceitam responsáveis que sejam técnicos ativos.',
+      'Opção de manter o modo escuro no login tornada visível no ecrã de entrada e no topo da aplicação.',
+    ],
+  },
   {
     version: '1.7.1',
     date: '2026-05-06',

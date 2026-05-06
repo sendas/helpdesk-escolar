@@ -6,7 +6,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, require_staff, require_admin
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.group import HelpdeskGroup
 from app.models.ticket import Ticket, Comment, TicketEvent, TicketRoutingRule, TicketStatus
 from app.schemas.ticket import TicketBulkAction, TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets, TicketRoutingRuleCreate, TicketRoutingRuleRead, TicketRoutingRuleUpdate
@@ -32,6 +32,7 @@ async def list_routing_rules(db: AsyncSession = Depends(get_db), _: User = Depen
 
 @router.post("/routing-rules", response_model=TicketRoutingRuleRead, status_code=status.HTTP_201_CREATED)
 async def create_routing_rule(data: TicketRoutingRuleCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    await _validate_routing_assignee(db, data.assignee_id)
     rule = TicketRoutingRule(**data.model_dump())
     db.add(rule)
     await db.commit()
@@ -49,6 +50,8 @@ async def update_routing_rule(rule_id: int, data: TicketRoutingRuleUpdate, db: A
     rule = (await db.execute(select(TicketRoutingRule).where(TicketRoutingRule.id == rule_id))).scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routing rule not found")
+    if "assignee_id" in data.model_fields_set:
+        await _validate_routing_assignee(db, data.assignee_id)
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(rule, key, value)
     await db.commit()
@@ -137,7 +140,10 @@ async def admin_bulk_update_tickets(
     only_email_preference = data.model_fields_set == {"ids", "creator_email_notifications"}
     for ticket in tickets:
         prev_assignee_id = ticket.assignee_id
-        updated = await ticket_service.update_ticket(db, ticket, data)
+        try:
+            updated = await ticket_service.update_ticket(db, ticket, data)
+        except ticket_service.TicketValidationError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         updated_tickets.append(updated)
         if only_email_preference:
             continue
@@ -214,7 +220,10 @@ async def admin_update_ticket(
 
     prev_assignee_id = ticket.assignee_id
     only_email_preference = data.model_fields_set == {"creator_email_notifications"}
-    updated = await ticket_service.update_ticket(db, ticket, data)
+    try:
+        updated = await ticket_service.update_ticket(db, ticket, data)
+    except ticket_service.TicketValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     if only_email_preference:
         return updated
@@ -246,6 +255,18 @@ async def admin_update_ticket(
                     {"id": updated.id, "title": updated.title, "assignee": updated.group.name},
                 )
     return updated
+
+
+async def _validate_routing_assignee(db: AsyncSession, assignee_id: int | None) -> None:
+    if assignee_id is None:
+        return
+    result = await db.execute(select(User).where(User.id == assignee_id))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active or user.role != UserRole.TECHNICIAN:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O responsável da regra tem de ser um técnico ativo.",
+        )
 
 
 @router.post("/mail/sync")

@@ -163,7 +163,7 @@
                   style="font-size:12px;padding:5px 8px;min-width:220px"
                   v-model="assigneeSearch"
                   list="ticket-assignees"
-                  placeholder="Pesquisar técnico ou administrador"
+                  placeholder="Pesquisar técnico"
                   @change="onAssigneeSearchChange"
                 />
                 <datalist id="ticket-assignees">
@@ -333,7 +333,7 @@ onMounted(async () => {
   await load()
   if (auth.isStaff) {
     const [users, grps] = await Promise.all([getUsers(), getGroups()])
-    staffUsers.value = users.filter((u: any) => u.is_active && (u.role === 'technician' || u.role === 'admin'))
+    staffUsers.value = users.filter((u: any) => u.is_active && u.role === 'technician')
     groups.value = grps
   }
 })
@@ -459,8 +459,7 @@ async function onEscalateTicket() {
 }
 
 function userOptionLabel(u: any) {
-  const role = u.role === 'admin' ? 'Administrador' : 'Técnico'
-  return `${u.display_name} — ${u.email} (${role})`
+  return `${u.display_name} — ${u.email} (Técnico)`
 }
 
 function statusLabel(s: string) {
