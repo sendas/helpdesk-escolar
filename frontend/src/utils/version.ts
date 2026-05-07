@@ -1,7 +1,16 @@
-export const APP_VERSION = '1.7.14'
+export const APP_VERSION = '1.7.15'
 export const APP_VERSION_DATE = '2026-05-07'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.15',
+    date: '2026-05-07',
+    title: 'Notificações automáticas para quem responde a um ticket',
+    changes: [
+      'Quem responde a um ticket passa a ser automaticamente adicionado às pessoas em conhecimento, ficando assim a receber todas as notificações seguintes (novas respostas, alterações de estado, fecho do ticket).',
+      'Este comportamento aplica-se a qualquer utilizador que não seja já o autor, o técnico atribuído ou esteja explicitamente em conhecimento.',
+    ],
+  },
   {
     version: '1.7.14',
     date: '2026-05-07',

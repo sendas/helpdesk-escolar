@@ -342,6 +342,23 @@ async def add_comment(
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
         data.is_internal = False
     comment = await ticket_service.add_comment(db, ticket, data, current_user)
+
+    # Auto-subscribe the commenter as watcher so they receive future updates
+    is_linked = (
+        current_user.id == ticket.creator_id
+        or current_user.id == ticket.assignee_id
+        or any(w.id == current_user.id for w in ticket.watchers)
+    )
+    if not is_linked:
+        ticket.watchers.append(current_user)
+        db.add(TicketEvent(
+            ticket_id=ticket_id,
+            actor_id=current_user.id,
+            event_type="watcher_added",
+            message=f"{current_user.display_name} passou a seguir o ticket ao responder",
+        ))
+        await db.commit()
+
     if not data.is_internal:
         recipients = _ticket_update_recipients(ticket, current_user)
         for recipient in recipients:
