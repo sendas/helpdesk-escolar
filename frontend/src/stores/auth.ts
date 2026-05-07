@@ -21,6 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
   const isStaff = computed(() => user.value?.role === 'technician' || user.value?.role === 'admin')
+  const isDemo = computed(() => user.value?.auth_provider === 'demo')
 
   function applyDark() {
     document.documentElement.classList.toggle('dark', isDark.value)
@@ -94,5 +95,5 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = '/login'
   }
 
-  return { token, user, isDark, isAuthenticated, isAdmin, isStaff, loginLdap, loginDemo, loginAzure, handleAzureCallback, fetchMe, init, setDark, toggleDark, logout }
+  return { token, user, isDark, isAuthenticated, isAdmin, isStaff, isDemo, loginLdap, loginDemo, loginAzure, handleAzureCallback, fetchMe, init, setDark, toggleDark, logout }
 })

@@ -1,7 +1,17 @@
-export const APP_VERSION = '1.7.13'
-export const APP_VERSION_DATE = '2026-05-06'
+export const APP_VERSION = '1.7.14'
+export const APP_VERSION_DATE = '2026-05-07'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.14',
+    date: '2026-05-07',
+    title: 'Aviso de modo de demonstração',
+    changes: [
+      'Quando o utilizador entra em modo de demonstração, aparece um aviso persistente no topo de todas as páginas a informar que os pedidos não serão processados e a indicar como entrar com a conta da escola.',
+      'O aviso inclui um botão "Entrar" que redireciona diretamente para o ecrã de login.',
+      'O aviso adapta-se ao modo escuro.',
+    ],
+  },
   {
     version: '1.7.13',
     date: '2026-05-06',
