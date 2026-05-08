@@ -87,7 +87,7 @@ async def _backup_periodically() -> None:
         await asyncio.sleep(max(config["interval_hours"], 1) * 3600)
         async with AsyncSessionLocal() as db:
             try:
-                await backup_service.write_backup(db)
+                await backup_service.write_backup_auto(db)
             except Exception:
                 pass
 

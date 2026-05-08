@@ -384,6 +384,11 @@ async def backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_a
     return JSONResponse(content=data, headers={"Content-Disposition": "attachment; filename=helpdesk-backup.json"})
 
 
+@router.get("/backup/history")
+async def get_backup_history(_: User = Depends(require_admin)):
+    return backup_service.load_history()
+
+
 @router.get("/backup/config")
 async def get_backup_config(_: User = Depends(require_admin)):
     return backup_service.load_config()

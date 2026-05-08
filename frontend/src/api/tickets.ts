@@ -175,14 +175,30 @@ export async function getBackupConfig() {
   return data
 }
 
-export async function updateBackupConfig(payload: { enabled: boolean; interval_hours: number; directory: string; retention: number }) {
+export async function updateBackupConfig(payload: { enabled: boolean; interval_hours: number; directory: string; retention: number; secondary_directory?: string }) {
   const { data } = await api.patch('/api/v1/admin/backup/config', payload)
   return data
 }
 
 export async function runServerBackup() {
   const { data } = await api.post('/api/v1/admin/backup/run')
-  return data as { filename: string; path: string }
+  return data as { filename: string; path: string; locations: string[]; secondary_error?: string }
+}
+
+export interface BackupHistoryEntry {
+  id: number
+  filename: string
+  path: string
+  locations: string[]
+  date: string
+  ok: boolean
+  source: 'manual' | 'auto'
+  secondary_error?: string
+}
+
+export async function getBackupHistory() {
+  const { data } = await api.get<BackupHistoryEntry[]>('/api/v1/admin/backup/history')
+  return data
 }
 
 export async function getKnowledgeArticles(admin = false) {

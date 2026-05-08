@@ -40,8 +40,13 @@
             <input class="hd-input" type="number" min="1" max="365" v-model.number="config.retention" />
           </label>
           <label class="span-2">
-            Local de destino no servidor
+            Destino principal
             <input class="hd-input" v-model="config.directory" placeholder="/app/data/backups" />
+          </label>
+          <label class="span-2">
+            Destino secundário <span class="optional-tag">opcional</span>
+            <input class="hd-input" v-model="config.secondary_directory" placeholder="ex: /mnt/nas/backups ou \\\\servidor\\pasta" />
+            <span class="field-hint">Partilha de rede montada, disco externo ou outro caminho acessível pelo servidor. Deixar vazio para não usar.</span>
           </label>
         </div>
 
@@ -49,7 +54,7 @@
           <span class="material-icons">check</span>
           {{ saving ? 'A guardar...' : 'Guardar configuração' }}
         </button>
-        <div v-if="message" class="status-line">{{ message }}</div>
+        <div v-if="message" class="status-line" :class="{ error: messageError }">{{ message }}</div>
       </section>
 
       <section class="hd-card backup-card">
@@ -57,7 +62,7 @@
           <span class="material-icons">download</span>
           Exportar ficheiro
         </div>
-        <p class="card-copy">Descarrega uma cópia JSON para guardar fora do NAS.</p>
+        <p class="card-copy">Descarrega uma cópia JSON para guardar fora do servidor.</p>
         <div class="stats-row">
           <div><strong>{{ stats.tickets }}</strong><span>Tickets</span></div>
           <div><strong>{{ stats.users }}</strong><span>Utilizadores</span></div>
@@ -75,7 +80,7 @@
         <span class="material-icons">cloud_upload</span>
         Importar / Restaurar
       </div>
-      <p class="card-copy">A área de importação fica preparada para usar um ficheiro exportado anteriormente. Faz sempre uma cópia antes de restaurar.</p>
+      <p class="card-copy">Faz sempre uma cópia antes de restaurar.</p>
 
       <div
         class="hd-dropzone"
@@ -94,17 +99,33 @@
     <section class="hd-card backup-card">
       <div class="card-title">
         <span class="material-icons">history</span>
-        Registo desta sessão
+        Registo de cópias
+        <button class="hd-icon-btn refresh-btn" title="Atualizar" @click="loadHistory">
+          <span class="material-icons" style="font-size:18px">refresh</span>
+        </button>
       </div>
-      <div class="log-list">
-        <div v-for="entry in log" :key="entry.id" class="log-item">
-          <span class="material-icons" :class="{ ok: entry.ok }">{{ entry.ok ? 'check_circle' : 'error' }}</span>
+      <div v-if="loadingHistory" class="empty-log">A carregar…</div>
+      <div v-else class="log-list">
+        <div v-for="entry in history" :key="entry.id" class="log-item">
+          <span class="material-icons" :class="{ ok: entry.ok, warn: !entry.ok && entry.secondary_error }">
+            {{ entry.ok ? 'check_circle' : entry.secondary_error ? 'warning' : 'error' }}
+          </span>
           <div>
-            <strong>{{ entry.op }}</strong>
-            <small>{{ entry.date }} · {{ entry.detail }}</small>
+            <strong>{{ entry.filename }}</strong>
+            <span class="log-badge" :class="entry.source">{{ entry.source === 'auto' ? 'automático' : 'manual' }}</span>
+            <small class="log-date">{{ formatDate(entry.date) }}</small>
+            <div class="log-locations">
+              <span v-for="loc in entry.locations" :key="loc" class="log-loc">
+                <span class="material-icons" style="font-size:13px;vertical-align:middle">folder</span> {{ loc }}
+              </span>
+            </div>
+            <div v-if="entry.secondary_error" class="log-sec-error">
+              <span class="material-icons" style="font-size:13px;vertical-align:middle">warning</span>
+              Destino secundário: {{ entry.secondary_error }}
+            </div>
           </div>
         </div>
-        <div v-if="!log.length" class="empty-log">Ainda não há operações nesta sessão.</div>
+        <div v-if="!history.length" class="empty-log">Ainda não há cópias de segurança registadas.</div>
       </div>
     </section>
   </div>
@@ -112,17 +133,20 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { downloadBackup, getAdminStats, getBackupConfig, runServerBackup, updateBackupConfig } from '../../api/tickets'
+import { downloadBackup, getAdminStats, getBackupConfig, getBackupHistory, runServerBackup, updateBackupConfig } from '../../api/tickets'
+import type { BackupHistoryEntry } from '../../api/tickets'
 
 const backing = ref(false)
 const downloading = ref(false)
 const saving = ref(false)
+const loadingHistory = ref(false)
 const message = ref('')
+const messageError = ref(false)
 const restoreFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const stats = ref({ tickets: '—', users: '—', categories: '—' })
-const config = ref({ enabled: false, interval_hours: 24, directory: '/app/data/backups', retention: 14 })
-const log = ref<any[]>([])
+const config = ref({ enabled: false, interval_hours: 24, directory: '/app/data/backups', retention: 14, secondary_directory: '' })
+const history = ref<BackupHistoryEntry[]>([])
 
 onMounted(async () => {
   try {
@@ -133,20 +157,33 @@ onMounted(async () => {
       interval_hours: Number(cfg.interval_hours || 24),
       directory: cfg.directory || '/app/data/backups',
       retention: Number(cfg.retention || 14),
+      secondary_directory: cfg.secondary_directory || '',
     }
   } catch {
-    message.value = 'Não foi possível carregar a configuração de backup.'
+    showMessage('Não foi possível carregar a configuração de backup.', true)
   }
+  await loadHistory()
 })
+
+async function loadHistory() {
+  loadingHistory.value = true
+  try {
+    history.value = await getBackupHistory()
+  } catch {
+    history.value = []
+  } finally {
+    loadingHistory.value = false
+  }
+}
 
 async function saveConfig() {
   saving.value = true
   message.value = ''
   try {
     config.value = await updateBackupConfig(config.value)
-    message.value = 'Configuração guardada.'
+    showMessage('Configuração guardada.', false)
   } catch {
-    message.value = 'Erro ao guardar configuração.'
+    showMessage('Erro ao guardar configuração.', true)
   } finally {
     saving.value = false
   }
@@ -156,9 +193,14 @@ async function doServerBackup() {
   backing.value = true
   try {
     const result = await runServerBackup()
-    addLog('Criar cópia no servidor', true, result.path)
+    if (result.secondary_error) {
+      showMessage(`Cópia criada em ${result.path}. Aviso no destino secundário: ${result.secondary_error}`, true)
+    } else {
+      showMessage(`Cópia criada com sucesso${result.locations.length > 1 ? ' em ' + result.locations.length + ' destinos' : ''}.`, false)
+    }
+    await loadHistory()
   } catch {
-    addLog('Criar cópia no servidor', false, 'Erro ao criar backup')
+    showMessage('Erro ao criar cópia de segurança.', true)
   } finally {
     backing.value = false
   }
@@ -168,12 +210,17 @@ async function doDownloadBackup() {
   downloading.value = true
   try {
     await downloadBackup()
-    addLog('Descarregar backup', true, 'Ficheiro JSON descarregado')
   } catch {
-    addLog('Descarregar backup', false, 'Erro ao descarregar')
+    showMessage('Erro ao descarregar backup.', true)
   } finally {
     downloading.value = false
   }
+}
+
+function showMessage(text: string, isError: boolean) {
+  message.value = text
+  messageError.value = isError
+  setTimeout(() => { if (message.value === text) message.value = '' }, 6000)
 }
 
 function onFileChange(e: Event) {
@@ -186,8 +233,10 @@ function onDrop(e: DragEvent) {
   if (file?.name.endsWith('.json')) restoreFile.value = file
 }
 
-function addLog(op: string, ok: boolean, detail: string) {
-  log.value.unshift({ id: Date.now(), op, ok, detail, date: new Date().toLocaleString('pt-PT') })
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' })
+  } catch { return iso }
 }
 </script>
 
@@ -217,6 +266,7 @@ function addLog(op: string, ok: boolean, detail: string) {
   margin-bottom: 6px;
 }
 .card-title .material-icons { color: var(--c-primary); }
+.refresh-btn { margin-left: auto; }
 .backup-toggle {
   display: flex;
   align-items: center;
@@ -239,11 +289,29 @@ function addLog(op: string, ok: boolean, detail: string) {
   text-transform: uppercase;
 }
 .span-2 { grid-column: 1 / -1; }
+.optional-tag {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: none;
+  background: var(--c-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.field-hint {
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+  color: var(--c-muted);
+  margin-top: 2px;
+}
 .status-line, .warning-line {
   margin-top: 12px;
   color: var(--c-muted);
   font-size: 13px;
 }
+.status-line.error { color: #dc2626; }
 .warning-line { color: #92400e; }
 .stats-row {
   display: grid;
@@ -280,7 +348,22 @@ function addLog(op: string, ok: boolean, detail: string) {
 }
 .log-item .material-icons { color: #ef4444; }
 .log-item .material-icons.ok { color: #22c55e; }
-.log-item small { display: block; color: var(--c-muted); margin-top: 3px; }
+.log-item .material-icons.warn { color: #f59e0b; }
+.log-item strong { display: inline; margin-right: 8px; }
+.log-badge {
+  font-size: 10px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.log-badge.manual { background: #dbeafe; color: #1e40af; }
+.log-badge.auto { background: #dcfce7; color: #166534; }
+.log-date { display: block; color: var(--c-muted); margin-top: 3px; }
+.log-locations { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+.log-loc { font-size: 11px; color: var(--c-muted); }
+.log-sec-error { font-size: 11px; color: #dc2626; margin-top: 4px; }
 .empty-log { color: var(--c-muted); font-size: 13px; }
 @media (max-width: 820px) {
   .page-heading, .backup-grid { display: grid; grid-template-columns: 1fr; }

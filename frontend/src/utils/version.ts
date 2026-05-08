@@ -1,7 +1,17 @@
-export const APP_VERSION = '1.7.17'
+export const APP_VERSION = '1.7.18'
 export const APP_VERSION_DATE = '2026-05-08'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.18',
+    date: '2026-05-08',
+    title: 'Registo persistente de backups e destino secundário',
+    changes: [
+      'O registo de cópias de segurança é agora persistente no servidor — as entradas mantêm-se entre sessões e recarregamentos da página.',
+      'Adicionado campo "Destino secundário": após criar a cópia no local principal, o servidor copia automaticamente o ficheiro para um segundo caminho (partilha de rede, disco externo, etc.).',
+      'O registo indica se a cópia foi manual ou automática, os locais onde foi guardada e eventuais erros no destino secundário.',
+    ],
+  },
   {
     version: '1.7.17',
     date: '2026-05-08',
