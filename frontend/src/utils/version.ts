@@ -1,7 +1,26 @@
-export const APP_VERSION = '1.7.19'
+export const APP_VERSION = '1.7.20'
 export const APP_VERSION_DATE = '2026-05-08'
+export const APP_VERSION_TIME = '10:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.20',
+    date: '2026-05-08',
+    title: 'Melhorias de backup, pesquisa, SLA e de-escalação',
+    changes: [
+      'Pesquisa de tickets por título e descrição nas listas do utilizador e do administrador.',
+      'Indicador de SLA visível nas listas de tickets — mostra tempo restante ou excedido com código de cor (verde/amarelo/laranja/vermelho).',
+      'Botão "Fornecedor resolveu" no detalhe do ticket para marcar de-escalação quando o fornecedor externo resolve o problema.',
+      'Botão de teste de SMTP nas configurações — envia email de teste diretamente para o administrador.',
+      'Restauro de dados a partir de ficheiro JSON na página de backup — com confirmação em dois passos e resumo dos registos restaurados.',
+      'Diálogo de confirmação antes de descarregar o ZIP completo, que inclui o .env com credenciais sensíveis.',
+      'Correção: cópias automáticas eram registadas como "manual" em vez de "auto".',
+      'Correção: agendador aguardava o intervalo completo antes da primeira cópia automática — passa a executar imediatamente ao arrancar.',
+      'Correção: geração do ZIP completo deixa de carregar todos os ficheiros em memória RAM — usa ficheiro temporário em disco.',
+      'Sincronização Entra ID: utilizadores removidos do Entra são agora automaticamente desativados.',
+      'Hora de atualização adicionada ao rótulo de versão.',
+    ],
+  },
   {
     version: '1.7.19',
     date: '2026-05-08',
@@ -243,5 +262,5 @@ export const RELEASE_NOTES = [
 ]
 
 export function versionLabel() {
-  return `v${APP_VERSION} · ${APP_VERSION_DATE}`
+  return `v${APP_VERSION} · ${APP_VERSION_DATE} ${APP_VERSION_TIME}`
 }

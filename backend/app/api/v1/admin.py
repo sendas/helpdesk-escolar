@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -83,9 +84,11 @@ async def admin_list_tickets(
     school_id: int | None = None,
     assignee_id: int | None = None,
     priority: str | None = None,
+    search: str | None = Query(None, max_length=200),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
+    from sqlalchemy import or_
     query = select(Ticket).options(
         selectinload(Ticket.creator),
         selectinload(Ticket.assignee),
@@ -104,6 +107,9 @@ async def admin_list_tickets(
         query = query.where(Ticket.assignee_id == assignee_id)
     if priority:
         query = query.where(Ticket.priority == priority)
+    if search:
+        term = f"%{search}%"
+        query = query.where(or_(Ticket.title.ilike(term), Ticket.description.ilike(term)))
 
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar_one()
@@ -386,9 +392,22 @@ async def backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_a
 
 @router.get("/backup/full")
 async def backup_full(_: User = Depends(require_admin)):
-    buf, filename = backup_service.build_full_zip()
+    import os
+    tmp_path, filename = backup_service.build_full_zip()
+
+    def _iter_and_cleanup():
+        try:
+            with open(tmp_path, "rb") as f:
+                while chunk := f.read(1024 * 1024):
+                    yield chunk
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+
     return StreamingResponse(
-        buf,
+        _iter_and_cleanup(),
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
@@ -418,3 +437,56 @@ async def update_backup_config(data: dict, _: User = Depends(require_admin)):
 @router.post("/backup/run")
 async def run_backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
     return await backup_service.write_backup(db)
+
+
+@router.post("/backup/restore")
+async def restore_backup(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    from fastapi import Request
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Use POST /admin/backup/restore com Content-Type: application/json")
+
+
+@router.post("/backup/restore/upload")
+async def restore_backup_upload(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    from fastapi import UploadFile, File as FastAPIFile
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envie o ficheiro no corpo da requisição")
+
+
+from fastapi import UploadFile, File as FastAPIFile  # noqa: E402
+
+
+@router.post("/backup/restore/json")
+async def restore_backup_json(
+    file: UploadFile = FastAPIFile(...),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    try:
+        content = await file.read()
+        data = json.loads(content)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ficheiro inválido: {exc}") from exc
+    if not isinstance(data, dict) or "tickets" not in data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ficheiro não parece um backup válido")
+    counts = await backup_service.restore_backup(db, data)
+    return {"restored": True, "counts": counts}
+
+
+@router.post("/mail/test")
+async def test_mail(current_admin: User = Depends(require_admin)):
+    if not current_admin.email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O utilizador não tem email configurado")
+    try:
+        await email_service.send_ticket_notification(
+            current_admin.email,
+            "updated",
+            {"id": 0, "title": "Teste de email do helpdesk", "status": "open"},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao enviar email: {exc}") from exc
+    return {"sent_to": current_admin.email}

@@ -73,6 +73,10 @@
             <span class="full-badge"><span class="material-icons" style="font-size:13px">settings</span> Configurações</span>
             <span class="full-badge"><span class="material-icons" style="font-size:13px">key</span> .env</span>
           </div>
+          <div class="secret-warning">
+            <span class="material-icons" style="font-size:16px;flex-shrink:0">warning</span>
+            <span>O ZIP inclui o ficheiro <strong>.env</strong> com credenciais sensíveis (senhas, chaves JWT, secrets do Azure/LDAP). Será pedida confirmação antes do download.</span>
+          </div>
           <div class="full-actions">
             <button class="hd-btn hd-btn-primary full" :disabled="downloadingFull" @click="doDownloadFull">
               <span class="material-icons">{{ downloadingFull ? 'hourglass_empty' : 'download' }}</span>
@@ -83,9 +87,6 @@
               {{ savingFull ? 'A guardar...' : 'Guardar ZIP no destino secundário' }}
             </button>
           </div>
-          <p class="card-copy" style="margin-top:10px">
-            <strong>Atenção:</strong> O ZIP inclui o ficheiro <code>.env</code> com credenciais sensíveis. Guarda-o num local seguro e não o partilhes por canais não cifrados.
-          </p>
         </section>
 
         <section class="hd-card backup-card">
@@ -116,16 +117,40 @@
 
       <div
         class="hd-dropzone"
+        :class="{ 'has-file': !!restoreFile }"
         @click="fileInput?.click()"
         @dragover.prevent
         @drop.prevent="onDrop"
       >
         <span class="material-icons">{{ restoreFile ? 'description' : 'upload_file' }}</span>
         <div>{{ restoreFile ? restoreFile.name : 'Arrastar ficheiro JSON ou clicar para selecionar' }}</div>
-        <small>Apenas ficheiros .json</small>
+        <small>Apenas ficheiros .json exportados por esta aplicação</small>
         <input ref="fileInput" type="file" accept=".json" style="display:none" @change="onFileChange" />
       </div>
-      <div v-if="restoreFile" class="warning-line">Restauro ainda não está ativo nesta versão. O ficheiro foi selecionado, mas nada será substituído.</div>
+
+      <div v-if="restoreFile && !restoreResult" class="restore-confirm-box">
+        <span class="material-icons" style="color:#dc2626;font-size:20px;flex-shrink:0">warning</span>
+        <div>
+          <strong>Atenção: esta operação é irreversível.</strong><br>
+          Todos os dados atuais (tickets, comentários, utilizadores, categorias) serão <strong>apagados</strong> e substituídos pelo conteúdo do ficheiro selecionado.
+          Faz uma cópia de segurança antes de continuar.
+        </div>
+        <button class="hd-btn hd-btn-danger" :disabled="restoring" @click="doRestore">
+          <span class="material-icons">{{ restoring ? 'hourglass_empty' : 'restore' }}</span>
+          {{ restoring ? 'A restaurar...' : 'Confirmar restauro' }}
+        </button>
+      </div>
+
+      <div v-if="restoreResult" class="restore-result" :class="{ 'restore-error': restoreError }">
+        <span class="material-icons">{{ restoreError ? 'error' : 'check_circle' }}</span>
+        <div v-if="restoreError">{{ restoreResult }}</div>
+        <div v-else>
+          <strong>Restauro concluído com sucesso.</strong>
+          <ul class="restore-counts" v-if="restoreCounts">
+            <li v-for="(val, key) in restoreCounts" :key="key">{{ restoreLabel(String(key)) }}: <strong>{{ val }}</strong></li>
+          </ul>
+        </div>
+      </div>
     </section>
 
     <section class="hd-card backup-card">
@@ -165,7 +190,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { downloadBackup, downloadFullBackup, getAdminStats, getBackupConfig, getBackupHistory, runServerBackup, saveFullBackupToDisk, updateBackupConfig } from '../../api/tickets'
+import { downloadBackup, downloadFullBackup, getAdminStats, getBackupConfig, getBackupHistory, restoreBackup, runServerBackup, saveFullBackupToDisk, updateBackupConfig } from '../../api/tickets'
 import type { BackupHistoryEntry } from '../../api/tickets'
 
 const backing = ref(false)
@@ -174,9 +199,13 @@ const downloadingFull = ref(false)
 const savingFull = ref(false)
 const saving = ref(false)
 const loadingHistory = ref(false)
+const restoring = ref(false)
 const message = ref('')
 const messageError = ref(false)
 const restoreFile = ref<File | null>(null)
+const restoreResult = ref('')
+const restoreError = ref(false)
+const restoreCounts = ref<Record<string, number> | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const stats = ref({ tickets: '—', users: '—', categories: '—' })
 const config = ref({ enabled: false, interval_hours: 24, directory: '/app/data/backups', retention: 14, secondary_directory: '' })
@@ -252,6 +281,11 @@ async function doDownloadBackup() {
 }
 
 async function doDownloadFull() {
+  const confirmed = window.confirm(
+    'Este ZIP inclui o ficheiro .env com credenciais sensíveis\n(senhas, chaves JWT, secrets do Azure/LDAP).\n\n' +
+    'Confirmas que vais guardar este ficheiro num local seguro\ne não o partilhar por canais não cifrados (email, Teams, etc.)?'
+  )
+  if (!confirmed) return
   downloadingFull.value = true
   try {
     await downloadFullBackup()
@@ -283,11 +317,50 @@ function showMessage(text: string, isError: boolean) {
 function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   restoreFile.value = input.files?.[0] ?? null
+  restoreResult.value = ''
+  restoreError.value = false
+  restoreCounts.value = null
 }
 
 function onDrop(e: DragEvent) {
   const file = e.dataTransfer?.files?.[0]
-  if (file?.name.endsWith('.json')) restoreFile.value = file
+  if (file?.name.endsWith('.json')) {
+    restoreFile.value = file
+    restoreResult.value = ''
+    restoreError.value = false
+    restoreCounts.value = null
+  }
+}
+
+async function doRestore() {
+  if (!restoreFile.value) return
+  const confirmed = window.confirm(
+    'ATENÇÃO: Todos os dados atuais serão apagados permanentemente.\n\n' +
+    'Esta operação não pode ser desfeita. Tens a certeza?'
+  )
+  if (!confirmed) return
+  restoring.value = true
+  try {
+    const result = await restoreBackup(restoreFile.value)
+    restoreCounts.value = result.counts ?? null
+    restoreResult.value = 'ok'
+    restoreError.value = false
+    await loadHistory()
+  } catch (e: any) {
+    restoreResult.value = e?.response?.data?.detail ?? 'Erro ao restaurar dados.'
+    restoreError.value = true
+  } finally {
+    restoring.value = false
+  }
+}
+
+const RESTORE_LABELS: Record<string, string> = {
+  schools: 'Escolas', users: 'Utilizadores', categories: 'Categorias',
+  tickets: 'Tickets', comments: 'Comentários', attachments: 'Anexos',
+}
+
+function restoreLabel(key: string) {
+  return RESTORE_LABELS[key] ?? key
 }
 
 function formatDate(iso: string) {
@@ -378,13 +451,76 @@ function formatDate(iso: string) {
   color: var(--c-muted);
   margin-top: 2px;
 }
-.status-line, .warning-line {
+.status-line {
   margin-top: 12px;
   color: var(--c-muted);
   font-size: 13px;
 }
 .status-line.error { color: #dc2626; }
-.warning-line { color: #92400e; }
+.secret-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #92400e;
+  margin-bottom: 12px;
+}
+:root.dark .secret-warning { background: #422006; border-color: #92400e; color: #FDE68A; }
+.secret-warning .material-icons { color: #D97706; }
+.restore-confirm-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 14px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #7F1D1D;
+}
+:root.dark .restore-confirm-box { background: #450A0A; border-color: #991B1B; color: #FCA5A5; }
+.restore-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #14532D;
+}
+:root.dark .restore-result { background: #14532D; border-color: #166534; color: #86EFAC; }
+.restore-result .material-icons { color: #22c55e; flex-shrink: 0; }
+.restore-result.restore-error { background: #FEF2F2; border-color: #FECACA; color: #7F1D1D; }
+:root.dark .restore-result.restore-error { background: #450A0A; border-color: #991B1B; color: #FCA5A5; }
+.restore-result.restore-error .material-icons { color: #dc2626; }
+.restore-counts { margin: 8px 0 0; padding-left: 16px; }
+.restore-counts li { margin-bottom: 2px; }
+.hd-dropzone.has-file { border-color: var(--c-primary); background: rgba(var(--c-primary-rgb, 59,130,246), 0.04); }
+.hd-btn-danger {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.hd-btn-danger:hover:not(:disabled) { background: #b91c1c; }
+.hd-btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
 .stats-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

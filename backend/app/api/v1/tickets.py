@@ -37,10 +37,11 @@ async def list_tickets(
     size: int = Query(20, ge=1, le=100),
     status: TicketStatus | None = None,
     category_id: int | None = None,
+    search: str | None = Query(None, max_length=200),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id)
+    items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id, search)
     return {"items": items, "total": total, "page": page, "size": size}
 
 
@@ -292,6 +293,26 @@ async def escalate_ticket(
         },
     )
     db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated", message=f"Ticket escalado para {provider_name} ({provider_email})"))
+    await db.commit()
+    return await ticket_service.get_ticket(db, ticket_id)
+
+
+@router.post("/{ticket_id}/deescalate", response_model=TicketRead)
+async def deescalate_ticket(
+    ticket_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    if not any(e.event_type == "escalated" for e in ticket.events):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket não está escalado")
+    app_settings = _read_settings()
+    provider_name = (app_settings.get("support_provider_name") or "Fornecedor externo").strip()
+    db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="deescalated", message=f"Ticket resolvido pelo fornecedor ({provider_name})"))
     await db.commit()
     return await ticket_service.get_ticket(db, ticket_id)
 

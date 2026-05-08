@@ -1,6 +1,7 @@
-import io
 import json
+import os
 import shutil
+import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -154,46 +155,7 @@ async def build_backup(db: AsyncSession) -> dict[str, Any]:
     }
 
 
-async def write_backup(db: AsyncSession) -> dict[str, Any]:
-    config = load_config()
-    directory = Path(config["directory"])
-    directory.mkdir(parents=True, exist_ok=True)
-    filename = f"helpdesk-backup-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.json"
-    path = directory / filename
-    data = await build_backup(db)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    cleanup_old_backups(directory, config["retention"])
-
-    locations = [str(path)]
-    secondary_error: str | None = None
-    secondary_dir = config.get("secondary_directory", "").strip()
-    if secondary_dir:
-        try:
-            sec_path = Path(secondary_dir)
-            sec_path.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(path, sec_path / filename)
-            locations.append(str(sec_path / filename))
-            cleanup_old_backups(sec_path, config["retention"])
-        except Exception as exc:
-            secondary_error = str(exc)
-
-    entry: dict[str, Any] = {
-        "id": int(datetime.utcnow().timestamp() * 1000),
-        "filename": filename,
-        "path": str(path),
-        "locations": locations,
-        "date": datetime.utcnow().isoformat(),
-        "ok": True,
-        "source": "auto" if False else "manual",
-    }
-    if secondary_error:
-        entry["secondary_error"] = secondary_error
-    _append_history(entry)
-
-    return {"filename": filename, "path": str(path), "locations": locations, "secondary_error": secondary_error}
-
-
-async def write_backup_auto(db: AsyncSession) -> None:
+async def _write_backup_inner(db: AsyncSession, source: str) -> dict[str, Any]:
     config = load_config()
     directory = Path(config["directory"])
     directory.mkdir(parents=True, exist_ok=True)
@@ -223,11 +185,20 @@ async def write_backup_auto(db: AsyncSession) -> None:
         "locations": locations,
         "date": datetime.utcnow().isoformat(),
         "ok": secondary_error is None,
-        "source": "auto",
+        "source": source,
     }
     if secondary_error:
         entry["secondary_error"] = secondary_error
     _append_history(entry)
+    return {"filename": filename, "path": str(path), "locations": locations, "secondary_error": secondary_error}
+
+
+async def write_backup(db: AsyncSession) -> dict[str, Any]:
+    return await _write_backup_inner(db, source="manual")
+
+
+async def write_backup_auto(db: AsyncSession) -> None:
+    await _write_backup_inner(db, source="auto")
 
 
 def cleanup_old_backups(directory: Path, retention: int) -> None:
@@ -246,18 +217,22 @@ def cleanup_old_backups(directory: Path, retention: int) -> None:
 _ENV_CANDIDATES = [Path("/app/.env"), Path(".env")]
 
 
-def build_full_zip() -> tuple[io.BytesIO, str]:
-    """Create an in-memory ZIP of data/ + .env for full disaster recovery."""
+def build_full_zip() -> tuple[str, str]:
+    """Write a full ZIP to a temp file and return (tmp_path, filename).
+
+    Uses a temp file instead of BytesIO so large attachment collections
+    don't exhaust container memory.
+    """
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     filename = f"helpdesk-full-{timestamp}.zip"
-
     skip_dirs = {"backups"}
 
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    tmp.close()
+
+    with zipfile.ZipFile(tmp.name, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
         zf.writestr("RESTAURO.txt", _RESTORE_INSTRUCTIONS)
 
-        # Include .env if found
         for env_path in _ENV_CANDIDATES:
             if env_path.exists():
                 try:
@@ -282,17 +257,71 @@ def build_full_zip() -> tuple[io.BytesIO, str]:
                 except Exception:
                     pass
 
-    buf.seek(0)
-    return buf, filename
+    return tmp.name, filename
 
 
 def write_full_zip_to_disk(target_dir: str | None = None) -> dict[str, str]:
-    """Write a full ZIP to disk (secondary directory or primary backup dir)."""
     config = load_config()
     directory = Path(target_dir or config.get("secondary_directory") or config["directory"])
     directory.mkdir(parents=True, exist_ok=True)
-    buf, filename = build_full_zip()
+    tmp_path, filename = build_full_zip()
     dest = directory / filename
-    dest.write_bytes(buf.read())
+    shutil.move(tmp_path, dest)
     return {"filename": filename, "path": str(dest)}
 
+
+async def restore_backup(db: AsyncSession, data: dict[str, Any]) -> dict[str, int]:
+    """Restore from a JSON backup. Clears existing data and reimports."""
+    from app.models.group import HelpdeskGroup
+
+    # Clear existing data (order matters for FK constraints)
+    for model in (Attachment, Comment, Ticket, User, Category, School):
+        rows = (await db.execute(select(model))).scalars().all()
+        for row in rows:
+            await db.delete(row)
+    await db.flush()
+
+    counts: dict[str, int] = {}
+
+    def _parse_dt(v: Any) -> datetime | None:
+        if not v:
+            return None
+        try:
+            return datetime.fromisoformat(str(v))
+        except Exception:
+            return None
+
+    for school_d in data.get("schools", []):
+        s = School(**{k: v for k, v in school_d.items() if hasattr(School, k)})
+        db.add(s)
+    counts["schools"] = len(data.get("schools", []))
+
+    for cat_d in data.get("categories", []):
+        c = Category(**{k: v for k, v in cat_d.items() if hasattr(Category, k)})
+        db.add(c)
+    counts["categories"] = len(data.get("categories", []))
+
+    for user_d in data.get("users", []):
+        u = User(**{k: v for k, v in user_d.items() if hasattr(User, k)})
+        db.add(u)
+    counts["users"] = len(data.get("users", []))
+
+    await db.flush()
+
+    for ticket_d in data.get("tickets", []):
+        t = Ticket(**{k: v for k, v in ticket_d.items() if hasattr(Ticket, k)})
+        db.add(t)
+    counts["tickets"] = len(data.get("tickets", []))
+
+    for comment_d in data.get("comments", []):
+        c = Comment(**{k: v for k, v in comment_d.items() if hasattr(Comment, k)})
+        db.add(c)
+    counts["comments"] = len(data.get("comments", []))
+
+    for att_d in data.get("attachments", []):
+        a = Attachment(**{k: v for k, v in att_d.items() if hasattr(Attachment, k)})
+        db.add(a)
+    counts["attachments"] = len(data.get("attachments", []))
+
+    await db.commit()
+    return counts

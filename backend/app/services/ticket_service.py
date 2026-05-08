@@ -102,6 +102,7 @@ async def list_tickets(
     size: int = 20,
     status: TicketStatus | None = None,
     category_id: int | None = None,
+    search: str | None = None,
 ) -> tuple[list[Ticket], int]:
     query = select(Ticket).options(
         selectinload(Ticket.creator),
@@ -117,6 +118,9 @@ async def list_tickets(
         query = query.where(Ticket.status == status)
     if category_id:
         query = query.where(Ticket.category_id == category_id)
+    if search:
+        term = f"%{search}%"
+        query = query.where(or_(Ticket.title.ilike(term), Ticket.description.ilike(term)))
 
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar_one()

@@ -17,7 +17,7 @@ export interface TicketDetail extends TicketListItem { description: string; comm
 export interface PaginatedTickets { items: TicketListItem[]; total: number; page: number; size: number }
 export interface KnowledgeArticle { id: number; title: string; body: string; is_published: boolean; category_id?: number | null; category?: Category | null; updated_at: string }
 
-export async function getTickets(params: { page?: number; size?: number; status?: string; category_id?: number; school_id?: number; priority?: string; admin?: boolean }) {
+export async function getTickets(params: { page?: number; size?: number; status?: string; category_id?: number; school_id?: number; priority?: string; search?: string; admin?: boolean }) {
   const prefix = params.admin ? '/api/v1/admin' : '/api/v1'
   const p = { ...params }
   delete (p as any).admin
@@ -70,6 +70,23 @@ export async function adminUpdateTicket(id: number, payload: Partial<{ status: s
 
 export async function escalateTicket(id: number) {
   const { data } = await api.post<TicketDetail>(`/api/v1/tickets/${id}/escalate`)
+  return data
+}
+
+export async function deescalateTicket(id: number) {
+  const { data } = await api.post<TicketDetail>(`/api/v1/tickets/${id}/deescalate`)
+  return data
+}
+
+export async function restoreBackup(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await api.post<{ restored: boolean; counts: Record<string, number> }>('/api/v1/admin/backup/restore/json', form)
+  return data
+}
+
+export async function testSmtp() {
+  const { data } = await api.post<{ sent_to: string }>('/api/v1/admin/mail/test')
   return data
 }
 

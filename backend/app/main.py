@@ -79,11 +79,20 @@ async def _backup_periodically() -> None:
     from app.database import AsyncSessionLocal
     from app.services import backup_service
 
+    first_run = True
     while True:
         config = backup_service.load_config()
         if not config["enabled"]:
             await asyncio.sleep(300)
+            first_run = True
             continue
+        if first_run:
+            first_run = False
+            async with AsyncSessionLocal() as db:
+                try:
+                    await backup_service.write_backup_auto(db)
+                except Exception:
+                    pass
         await asyncio.sleep(max(config["interval_hours"], 1) * 3600)
         async with AsyncSessionLocal() as db:
             try:

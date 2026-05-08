@@ -10,6 +10,7 @@
 
     <div class="hd-card">
       <div style="display:flex;gap:10px;padding:14px 16px;border-bottom:1px solid var(--c-border);flex-wrap:wrap">
+        <input class="hd-input" style="width:220px" v-model="searchQuery" placeholder="Pesquisar tickets..." @input="debouncedLoad" />
         <select class="hd-select" style="width:auto" v-model="filterStatus" @change="load">
           <option value="">Todos os estados</option>
           <option v-for="o in statusOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
@@ -23,7 +24,7 @@
       <div v-if="loading" style="padding:48px;text-align:center;color:var(--c-muted)">A carregar...</div>
       <table v-else class="hd-table">
         <thead>
-          <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
+          <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SLA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
         </thead>
         <tbody>
           <tr v-for="t in tickets" :key="t.id" @click="$router.push(`/tickets/${t.id}`)">
@@ -31,6 +32,7 @@
             <td style="font-weight:500">{{ t.title }}</td>
             <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
             <td><PriorityBadge :priority="t.priority" /></td>
+            <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
             <td>
               <button
                 class="email-pill"
@@ -56,6 +58,7 @@
 import { ref, onMounted } from 'vue'
 import { getTickets, getCategories, updateTicket } from '../api/tickets'
 import PriorityBadge from '../components/PriorityBadge.vue'
+import SlaBadge from '../components/SlaBadge.vue'
 import { timeAgo } from '../utils/dates'
 
 const tickets = ref<any[]>([])
@@ -63,6 +66,8 @@ const categories = ref<any[]>([])
 const loading = ref(false)
 const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
+const searchQuery = ref('')
+let _searchTimer: ReturnType<typeof setTimeout> | null = null
 
 const statusOpts = [
   { v: 'open', l: 'Aberto' }, { v: 'assigned', l: 'Atribuído' },
@@ -75,12 +80,18 @@ onMounted(async () => {
   await load()
 })
 
+function debouncedLoad() {
+  if (_searchTimer) clearTimeout(_searchTimer)
+  _searchTimer = setTimeout(load, 350)
+}
+
 async function load() {
   loading.value = true
   try {
     const p: any = { page: 1, size: 50 }
     if (filterStatus.value) p.status = filterStatus.value
     if (filterCat.value) p.category_id = filterCat.value
+    if (searchQuery.value.trim()) p.search = searchQuery.value.trim()
     const d = await getTickets(p)
     tickets.value = d.items
   } finally { loading.value = false }

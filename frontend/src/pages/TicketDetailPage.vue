@@ -21,9 +21,24 @@
               </button>
               <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
               <PriorityBadge :priority="ticket.priority" />
-              <span v-if="isEscalated" class="escalated-badge" title="Ticket escalado para o fornecedor externo">
+              <span v-if="isEscalated && !isDeescalated" class="escalated-badge" title="Ticket escalado para o fornecedor externo">
                 <span class="material-icons" style="font-size:13px;vertical-align:middle">open_in_new</span>
                 Fornecedor
+              </span>
+              <button
+                v-if="isEscalated && !isDeescalated && auth.isStaff"
+                class="hd-btn hd-btn-outline"
+                style="font-size:12px;padding:3px 10px"
+                :disabled="deescalating"
+                title="Marcar como resolvido pelo fornecedor"
+                @click="onDeescalate"
+              >
+                <span class="material-icons" style="font-size:13px">check_circle</span>
+                {{ deescalating ? '...' : 'Fornecedor resolveu' }}
+              </button>
+              <span v-if="isDeescalated" class="deescalated-badge">
+                <span class="material-icons" style="font-size:13px;vertical-align:middle">check_circle</span>
+                Resolvido pelo fornecedor
               </span>
             </template>
             <template v-else>
@@ -344,7 +359,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob } from '../api/tickets'
+import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob } from '../api/tickets'
 import { getGroups, getUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -391,6 +406,10 @@ const fileAttachments = computed(() =>
 const isEscalated = computed(() =>
   (ticket.value?.events ?? []).some((e: any) => e.event_type === 'escalated')
 )
+const isDeescalated = computed(() =>
+  (ticket.value?.events ?? []).some((e: any) => e.event_type === 'deescalated')
+)
+const deescalating = ref(false)
 
 const canManageEmailNotifications = computed(() => {
   if (!ticket.value || !auth.user) return false
@@ -659,6 +678,16 @@ async function onEscalateTicket() {
   }
 }
 
+async function onDeescalate() {
+  if (!ticket.value) return
+  deescalating.value = true
+  try {
+    ticket.value = await deescalateTicket(ticket.value.id)
+  } finally {
+    deescalating.value = false
+  }
+}
+
 function userOptionLabel(u: any) {
   return `${u.display_name} — ${u.email} (Técnico)`
 }
@@ -709,6 +738,26 @@ function formatSize(size: number) {
   background: #431407;
   color: #FB923C;
   border-color: #7C2D12;
+}
+.deescalated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  background: #DCFCE7;
+  color: #166534;
+  border: 1px solid #BBF7D0;
+  border-radius: 5px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+:root.dark .deescalated-badge {
+  background: #14532D;
+  color: #86EFAC;
+  border-color: #166534;
 }
 
 .ticket-detail-grid {

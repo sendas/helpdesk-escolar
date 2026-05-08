@@ -128,11 +128,33 @@ async def import_azure_users(db: AsyncSession) -> dict:
         by_email[email.lower()] = user
         created += 1
 
+    # Deactivate Azure-sourced users that were not in the Entra response
+    seen_emails: set[str] = set()
+    for item in users:
+        e = _preferred_email(item)
+        if e:
+            seen_emails.add(e.lower())
+        upn = (item.get("userPrincipalName") or "").strip().lower()
+        if upn:
+            seen_emails.add(upn)
+
+    deactivated = 0
+    for user in existing:
+        if user.auth_provider != "azure":
+            continue
+        if not user.is_active:
+            continue
+        user_email = (user.email or "").lower()
+        if user_email and user_email not in seen_emails:
+            user.is_active = False
+            deactivated += 1
+
     await db.commit()
     return {
         "created": created,
         "updated": updated,
         "skipped": skipped,
+        "deactivated": deactivated,
         "total": len(users),
         "role_changes": role_changes,
         "manual_locked": manual_locked,

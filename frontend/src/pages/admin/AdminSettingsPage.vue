@@ -234,10 +234,25 @@
           </div>
         </div>
       </div>
-      <button class="hd-btn hd-btn-primary" @click="saved = true">
-        <span class="material-icons" style="font-size:16px">save</span> Guardar
-      </button>
-      <span v-if="saved" style="margin-left:12px;font-size:13px;color:#22C55E">Guardado!</span>
+      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-top:4px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:10px">Teste de email</div>
+        <p class="hd-hint" style="margin-bottom:12px">Envia um email de teste para o endereço do utilizador atual, para verificar se as notificações estão a funcionar.</p>
+        <div class="hd-row" style="gap:10px;align-items:center">
+          <button class="hd-btn hd-btn-outline" :disabled="testingSmtp" @click="testSmtpNow">
+            <span class="material-icons" style="font-size:16px">send</span>
+            {{ testingSmtp ? 'A enviar...' : 'Enviar email de teste' }}
+          </button>
+          <span v-if="smtpTestResult" :style="{ color: smtpTestOk ? '#22C55E' : '#EF4444', fontSize: '13px' }">
+            {{ smtpTestResult }}
+          </span>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <button class="hd-btn hd-btn-primary" @click="saved = true">
+          <span class="material-icons" style="font-size:16px">save</span> Guardar
+        </button>
+        <span v-if="saved" style="margin-left:12px;font-size:13px;color:#22C55E">Guardado!</span>
+      </div>
     </div>
 
     <!-- Categories -->
@@ -414,7 +429,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory } from '../../api/tickets'
+import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp } from '../../api/tickets'
 import { getPublicSettings, updateSettings } from '../../api/settings'
 import { getGroups, getUsers } from '../../api/users'
 
@@ -423,6 +438,9 @@ const saved = ref(false)
 const testing = ref(false)
 const ldapTestResult = ref('')
 const ldapTestOk = ref(false)
+const testingSmtp = ref(false)
+const smtpTestResult = ref('')
+const smtpTestOk = ref(false)
 const showNewCat = ref(false)
 const showNewSchool = ref(false)
 const loadingCats = ref(false)
@@ -492,6 +510,21 @@ async function saveGeneral() {
     logoFile.value = null
     saved.value = true
   } catch { /* ignore */ }
+}
+
+async function testSmtpNow() {
+  testingSmtp.value = true
+  smtpTestResult.value = ''
+  try {
+    const r = await testSmtp()
+    smtpTestOk.value = true
+    smtpTestResult.value = `Email enviado para ${r.sent_to}`
+  } catch (e: any) {
+    smtpTestOk.value = false
+    smtpTestResult.value = e?.response?.data?.detail || 'Erro ao enviar email de teste'
+  } finally {
+    testingSmtp.value = false
+  }
 }
 
 async function testLdap() {

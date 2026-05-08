@@ -19,6 +19,7 @@
 
     <section class="hd-card tickets-panel">
       <div class="filters-grid">
+        <input class="hd-input" v-model="searchQuery" placeholder="Pesquisar..." @input="debouncedLoad" style="grid-column:1/-1" />
         <select class="hd-select" v-model="filterStatus" @change="resetAndLoad">
           <option value="">Todos os estados</option>
           <option v-for="o in statusOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
@@ -93,6 +94,7 @@
                 <th>Categoria</th>
                 <th>Solicitante</th>
                 <th>Prioridade</th>
+                <th>SLA</th>
                 <th>Estado</th>
                 <th>Responsável</th>
                 <th>Grupo</th>
@@ -117,6 +119,7 @@
                   </div>
                 </td>
                 <td><PriorityBadge :priority="t.priority" /></td>
+                <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
                 <td><StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></td>
                 <td><AssigneeSelect :value="t.assignee?.id ?? ''" :users="staffUsers" @change="changeAssignee(t, $event)" /></td>
                 <td><GroupSelect :value="t.group?.id ?? ''" :groups="groups" @change="changeGroup(t, $event)" /></td>
@@ -198,6 +201,7 @@ import { getGroups, getUsers } from '../../api/users'
 import { useAuthStore } from '../../stores/auth'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
+import SlaBadge from '../../components/SlaBadge.vue'
 import { timeAgo as formatTimeAgo } from '../../utils/dates'
 
 const CategoryPill = defineComponent({
@@ -276,6 +280,8 @@ const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 const filterPriority = ref('')
 const filterSchool = ref<number | ''>('')
+const searchQuery = ref('')
+let _searchTimer: ReturnType<typeof setTimeout> | null = null
 
 const statusOpts = [
   { v: 'open', l: 'Aberto' },
@@ -302,6 +308,11 @@ function resetAndLoad() {
   load()
 }
 
+function debouncedLoad() {
+  if (_searchTimer) clearTimeout(_searchTimer)
+  _searchTimer = setTimeout(() => { page.value = 1; load() }, 350)
+}
+
 async function load() {
   loading.value = true
   try {
@@ -310,6 +321,7 @@ async function load() {
     if (filterCat.value) params.category_id = filterCat.value
     if (filterPriority.value) params.priority = filterPriority.value
     if (filterSchool.value) params.school_id = filterSchool.value
+    if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
     const data = await getTickets(params)
     tickets.value = data.items
     total.value = data.total
