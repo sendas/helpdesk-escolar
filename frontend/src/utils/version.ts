@@ -1,7 +1,16 @@
-export const APP_VERSION = '1.7.16'
+export const APP_VERSION = '1.7.17'
 export const APP_VERSION_DATE = '2026-05-08'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.17',
+    date: '2026-05-08',
+    title: 'Notificação ao fornecedor quando ticket escalado é atualizado',
+    changes: [
+      'Quando o assunto ou a descrição de um ticket que já foi escalado para o fornecedor são alterados pelo administrador, é enviado automaticamente um email ao fornecedor com o conteúdo atualizado.',
+      'O email indica quem fez a alteração e inclui a descrição atual do pedido.',
+    ],
+  },
   {
     version: '1.7.16',
     date: '2026-05-08',

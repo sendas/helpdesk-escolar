@@ -11,6 +11,7 @@ from app.models.group import HelpdeskGroup
 from app.models.ticket import Ticket, Comment, TicketEvent, TicketRoutingRule, TicketStatus
 from app.schemas.ticket import TicketBulkAction, TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets, TicketRoutingRuleCreate, TicketRoutingRuleRead, TicketRoutingRuleUpdate
 from app.services import ticket_service, email_service, email_ingest, backup_service
+from app.api.v1.settings import _read_settings
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -253,6 +254,26 @@ async def admin_update_ticket(
                     "assigned",
                     {"id": updated.id, "title": updated.title, "assignee": updated.group.name},
                 )
+
+    if content_changed and any(e.event_type == "escalated" for e in updated.events):
+        app_settings = _read_settings()
+        provider_email = app_settings.get("support_provider_email", "")
+        provider_name = app_settings.get("support_provider_name", "Fornecedor externo")
+        if provider_email:
+            await email_service.send_ticket_notification(
+                provider_email,
+                "supplier_updated",
+                {
+                    "id": updated.id,
+                    "title": updated.title,
+                    "status": updated.status.value,
+                    "priority": updated.priority,
+                    "description": updated.description,
+                    "editor": current_staff.display_name,
+                    "provider": provider_name,
+                },
+            )
+
     return updated
 
 
