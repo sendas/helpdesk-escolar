@@ -8,31 +8,30 @@
     <div v-if="!ticket" style="padding:80px;text-align:center;color:var(--c-muted)">A carregar...</div>
 
     <template v-else>
-      <div class="hd-row" style="align-items:flex-start;margin-bottom:24px">
-        <div style="flex:1;min-width:0">
-          <div v-if="!editingContent">
-            <h1 style="font-size:22px;margin-bottom:4px">{{ ticket.title }}</h1>
+      <div style="margin-bottom:24px">
+        <div class="hd-row" style="align-items:flex-start;gap:8px;margin-bottom:4px">
+          <div style="flex:1;min-width:0">
+            <h1 v-if="!editingContent" style="font-size:22px;margin:0">{{ ticket.title }}</h1>
+            <input v-else class="hd-input" v-model="editTitle" style="font-size:18px;font-weight:600;width:100%" />
           </div>
-          <div v-else style="margin-bottom:8px">
-            <input class="hd-input" v-model="editTitle" style="font-size:18px;font-weight:600;margin-bottom:8px" />
-          </div>
-          <div style="font-size:13px;color:var(--c-muted)">
-            Aberto por <strong>{{ ticket.creator.display_name }}</strong> · {{ formatDate(ticket.created_at) }}
+          <div class="hd-row" style="gap:6px;flex-shrink:0;margin-top:4px">
+            <template v-if="!editingContent">
+              <button v-if="auth.isAdmin" class="hd-icon-btn" title="Editar assunto e descrição" @click="startEditContent">
+                <span class="material-icons" style="font-size:18px">edit</span>
+              </button>
+              <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
+              <PriorityBadge :priority="ticket.priority" />
+            </template>
+            <template v-else>
+              <button class="hd-btn hd-btn-outline" @click="cancelEditContent">Cancelar</button>
+              <button class="hd-btn hd-btn-primary" :disabled="savingContent" @click="saveContent">
+                {{ savingContent ? 'A guardar...' : 'Guardar' }}
+              </button>
+            </template>
           </div>
         </div>
-        <div class="hd-row" style="gap:8px;flex-shrink:0">
-          <button v-if="auth.isAdmin && !editingContent" class="hd-btn hd-btn-outline" style="gap:6px" @click="startEditContent">
-            <span class="material-icons" style="font-size:15px">edit</span>
-            Editar
-          </button>
-          <template v-if="editingContent">
-            <button class="hd-btn hd-btn-outline" @click="cancelEditContent">Cancelar</button>
-            <button class="hd-btn hd-btn-primary" :disabled="savingContent" @click="saveContent">
-              {{ savingContent ? 'A guardar...' : 'Guardar' }}
-            </button>
-          </template>
-          <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
-          <PriorityBadge :priority="ticket.priority" />
+        <div style="font-size:13px;color:var(--c-muted)">
+          Aberto por <strong>{{ ticket.creator.display_name }}</strong> · {{ formatDate(ticket.created_at) }}
         </div>
       </div>
 
@@ -514,7 +513,7 @@ async function saveContent() {
   savingContent.value = true
   contentError.value = ''
   try {
-    ticket.value = await updateTicket(ticket.value.id, {
+    ticket.value = await adminUpdateTicket(ticket.value.id, {
       title: editTitle.value.trim(),
       description: editDescription.value.trim(),
     })

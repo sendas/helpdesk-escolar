@@ -63,7 +63,7 @@ export async function downloadAttachment(ticketId: number, attachmentId: number,
   setTimeout(() => URL.revokeObjectURL(url), 10000)
 }
 
-export async function adminUpdateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string; creator_email_notifications: boolean }>) {
+export async function adminUpdateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string; creator_email_notifications: boolean; title: string; description: string }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/admin/tickets/${id}`, payload)
   return data
 }

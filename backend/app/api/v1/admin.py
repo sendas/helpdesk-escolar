@@ -212,7 +212,7 @@ async def admin_update_ticket(
     ticket_id: int,
     data: TicketUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_staff),
+    current_staff: User = Depends(require_staff),
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
@@ -220,6 +220,7 @@ async def admin_update_ticket(
 
     prev_assignee_id = ticket.assignee_id
     only_email_preference = data.model_fields_set == {"creator_email_notifications"}
+    content_changed = bool(data.model_fields_set & {"title", "description"})
     try:
         updated = await ticket_service.update_ticket(db, ticket, data)
     except ticket_service.TicketValidationError as exc:
@@ -228,18 +229,16 @@ async def admin_update_ticket(
     if only_email_preference:
         return updated
 
+    notif_type = "content_updated" if content_changed else "updated"
+    base_payload = {"id": updated.id, "title": updated.title, "status": updated.status.value}
+    if content_changed:
+        base_payload["editor"] = current_staff.display_name
+
     if updated.creator_email_notifications:
-        await email_service.send_ticket_notification(
-            updated.creator.email, "updated",
-            {"id": updated.id, "title": updated.title, "status": updated.status.value},
-        )
+        await email_service.send_ticket_notification(updated.creator.email, notif_type, base_payload)
     for watcher in updated.watchers:
         if watcher.email:
-            await email_service.send_ticket_notification(
-                watcher.email,
-                "updated",
-                {"id": updated.id, "title": updated.title, "status": updated.status.value},
-            )
+            await email_service.send_ticket_notification(watcher.email, notif_type, base_payload)
     if data.assignee_id and data.assignee_id != prev_assignee_id and updated.assignee:
         await email_service.send_ticket_notification(
             updated.assignee.email,
