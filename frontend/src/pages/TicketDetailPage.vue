@@ -21,6 +21,10 @@
               </button>
               <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
               <PriorityBadge :priority="ticket.priority" />
+              <span v-if="isEscalated" class="escalated-badge" title="Ticket escalado para o fornecedor externo">
+                <span class="material-icons" style="font-size:13px;vertical-align:middle">open_in_new</span>
+                Fornecedor
+              </span>
             </template>
             <template v-else>
               <button class="hd-btn hd-btn-outline" @click="cancelEditContent">Cancelar</button>
@@ -384,6 +388,10 @@ const fileAttachments = computed(() =>
   (ticket.value?.attachments ?? []).filter((a: any) => !(a.content_type as string).startsWith('image/'))
 )
 
+const isEscalated = computed(() =>
+  (ticket.value?.events ?? []).some((e: any) => e.event_type === 'escalated')
+)
+
 const canManageEmailNotifications = computed(() => {
   if (!ticket.value || !auth.user) return false
   return auth.isAdmin || ticket.value.creator?.id === auth.user.id
@@ -682,6 +690,27 @@ function formatSize(size: number) {
 </script>
 
 <style scoped>
+.escalated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  background: #FFF7ED;
+  color: #C2410C;
+  border: 1px solid #FED7AA;
+  border-radius: 5px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+:root.dark .escalated-badge {
+  background: #431407;
+  color: #FB923C;
+  border-color: #7C2D12;
+}
+
 .ticket-detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
