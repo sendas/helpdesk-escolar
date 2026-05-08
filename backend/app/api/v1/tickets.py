@@ -111,6 +111,31 @@ async def create_ticket(
                 },
             )
             notified.add(email)
+
+    if data.escalate and current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+        app_settings = _read_settings()
+        provider_email = (app_settings.get("support_provider_email") or "").strip()
+        provider_name = (app_settings.get("support_provider_name") or "Fornecedor externo").strip()
+        if provider_email and settings.mail_server:
+            await email_service.send_ticket_notification(
+                provider_email,
+                "escalated",
+                {
+                    "id": ticket.id,
+                    "title": ticket.title,
+                    "description": ticket.description,
+                    "requester": ticket.creator.display_name,
+                    "requester_email": ticket.creator.email,
+                    "category": ticket.category.name,
+                    "priority": ticket.priority.value,
+                    "school": ticket.school.name if ticket.school else "",
+                    "provider": provider_name,
+                    "escalated_by": current_user.display_name,
+                },
+            )
+            db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated", message=f"Ticket escalado para {provider_name} ({provider_email}) na criação"))
+            await db.commit()
+
     return ticket
 
 
@@ -213,15 +238,19 @@ async def update_ticket(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     if not _can_access_ticket(ticket, current_user, allow_watcher=False):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    content_fields = {"title", "description"}
+    if data.model_fields_set & content_fields and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só administradores podem editar o conteúdo do ticket")
     only_email_preference = data.model_fields_set == {"creator_email_notifications"}
+    content_changed = bool(data.model_fields_set & content_fields)
     updated = await ticket_service.update_ticket(db, ticket, data)
     if not only_email_preference:
+        notif_type = "content_updated" if content_changed else "updated"
+        payload: dict = {"id": updated.id, "title": updated.title, "status": updated.status.value}
+        if content_changed:
+            payload["editor"] = current_user.display_name
         for recipient in _ticket_update_recipients(updated, current_user):
-            await email_service.send_ticket_notification(
-                recipient,
-                "updated",
-                {"id": updated.id, "title": updated.title, "status": updated.status.value},
-            )
+            await email_service.send_ticket_notification(recipient, notif_type, payload)
     return updated
 
 

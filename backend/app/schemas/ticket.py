@@ -19,6 +19,7 @@ class TicketCreate(BaseModel):
     watcher_ids: list[int] = []
     group_ids: list[int] = []
     creator_email_notifications: bool = True
+    escalate: bool = False
 
 
 class TicketUpdate(BaseModel):
@@ -27,6 +28,8 @@ class TicketUpdate(BaseModel):
     group_id: int | None = None
     priority: TicketPriority | None = None
     creator_email_notifications: bool | None = None
+    title: str | None = None
+    description: str | None = None
 
 
 class TicketBulkUpdate(BaseModel):

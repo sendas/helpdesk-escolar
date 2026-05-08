@@ -1,7 +1,17 @@
-export const APP_VERSION = '1.7.15'
-export const APP_VERSION_DATE = '2026-05-07'
+export const APP_VERSION = '1.7.16'
+export const APP_VERSION_DATE = '2026-05-08'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.16',
+    date: '2026-05-08',
+    title: 'Escalação na criação e edição de conteúdo pelo administrador',
+    changes: [
+      'Ao criar um ticket, o administrador pode ativar "Escalar imediatamente para fornecedor" — o email de escalação é enviado ao fornecedor externo logo após a criação, sem passos extra.',
+      'O administrador pode editar o assunto e a descrição de qualquer ticket através do botão Editar no topo do ticket.',
+      'Quando o conteúdo é alterado, todos os participantes (autor, técnico, grupo, pessoas em conhecimento) recebem um email de notificação identificando quem fez a alteração.',
+    ],
+  },
   {
     version: '1.7.15',
     date: '2026-05-07',

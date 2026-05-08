@@ -10,12 +10,27 @@
     <template v-else>
       <div class="hd-row" style="align-items:flex-start;margin-bottom:24px">
         <div style="flex:1;min-width:0">
-          <h1 style="font-size:22px;margin-bottom:4px">{{ ticket.title }}</h1>
+          <div v-if="!editingContent">
+            <h1 style="font-size:22px;margin-bottom:4px">{{ ticket.title }}</h1>
+          </div>
+          <div v-else style="margin-bottom:8px">
+            <input class="hd-input" v-model="editTitle" style="font-size:18px;font-weight:600;margin-bottom:8px" />
+          </div>
           <div style="font-size:13px;color:var(--c-muted)">
             Aberto por <strong>{{ ticket.creator.display_name }}</strong> · {{ formatDate(ticket.created_at) }}
           </div>
         </div>
         <div class="hd-row" style="gap:8px;flex-shrink:0">
+          <button v-if="auth.isAdmin && !editingContent" class="hd-btn hd-btn-outline" style="gap:6px" @click="startEditContent">
+            <span class="material-icons" style="font-size:15px">edit</span>
+            Editar
+          </button>
+          <template v-if="editingContent">
+            <button class="hd-btn hd-btn-outline" @click="cancelEditContent">Cancelar</button>
+            <button class="hd-btn hd-btn-primary" :disabled="savingContent" @click="saveContent">
+              {{ savingContent ? 'A guardar...' : 'Guardar' }}
+            </button>
+          </template>
           <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
           <PriorityBadge :priority="ticket.priority" />
         </div>
@@ -32,7 +47,9 @@
                 <span class="hd-msg-author">{{ ticket.creator.display_name }}</span>
                 <span class="hd-msg-time">{{ formatDate(ticket.created_at) }}</span>
               </div>
-              <div class="hd-msg-bubble">{{ ticket.description }}</div>
+              <div v-if="!editingContent" class="hd-msg-bubble">{{ ticket.description }}</div>
+              <textarea v-else class="hd-textarea" v-model="editDescription" rows="6" style="margin-top:4px"></textarea>
+              <div v-if="contentError" style="color:#DC2626;font-size:12px;margin-top:6px">{{ contentError }}</div>
               <div v-if="ticket.attachments?.length" style="margin-top:10px">
                 <!-- image thumbnails -->
                 <div v-if="imageAttachments.length" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
@@ -355,6 +372,11 @@ const addingWatcher = ref(false)
 const allUsers = ref<any[]>([])
 const attachBlobUrls = ref<Record<number, string>>({})
 const lightboxSrc = ref<string | null>(null)
+const editingContent = ref(false)
+const editTitle = ref('')
+const editDescription = ref('')
+const savingContent = ref(false)
+const contentError = ref('')
 
 const imageAttachments = computed(() =>
   (ticket.value?.attachments ?? []).filter((a: any) => (a.content_type as string).startsWith('image/'))
@@ -470,6 +492,38 @@ async function openFile(a: { id: number; original_name: string }) {
   const url = await fetchAttachmentBlob(ticket.value.id, a.id)
   window.open(url, '_blank')
   setTimeout(() => URL.revokeObjectURL(url), 30000)
+}
+
+function startEditContent() {
+  editTitle.value = ticket.value.title
+  editDescription.value = ticket.value.description
+  contentError.value = ''
+  editingContent.value = true
+}
+
+function cancelEditContent() {
+  editingContent.value = false
+  contentError.value = ''
+}
+
+async function saveContent() {
+  if (!editTitle.value.trim() || !editDescription.value.trim()) {
+    contentError.value = 'O assunto e a descrição não podem estar vazios.'
+    return
+  }
+  savingContent.value = true
+  contentError.value = ''
+  try {
+    ticket.value = await updateTicket(ticket.value.id, {
+      title: editTitle.value.trim(),
+      description: editDescription.value.trim(),
+    })
+    editingContent.value = false
+  } catch (e: any) {
+    contentError.value = e?.response?.data?.detail || 'Erro ao guardar as alterações.'
+  } finally {
+    savingContent.value = false
+  }
 }
 
 async function onAddComment() {

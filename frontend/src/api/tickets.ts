@@ -30,7 +30,7 @@ export async function getTicket(id: number) {
   return data
 }
 
-export async function createTicket(payload: { title: string; description: string; category_id: number; school_id: number; priority: string; watcher_ids?: number[]; group_ids?: number[]; creator_email_notifications?: boolean }) {
+export async function createTicket(payload: { title: string; description: string; category_id: number; school_id: number; priority: string; watcher_ids?: number[]; group_ids?: number[]; creator_email_notifications?: boolean; escalate?: boolean }) {
   const { data } = await api.post<TicketDetail>('/api/v1/tickets', payload)
   return data
 }
@@ -42,7 +42,7 @@ export async function uploadTicketAttachment(ticketId: number, file: File) {
   return data
 }
 
-export async function updateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string; creator_email_notifications: boolean }>) {
+export async function updateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string; creator_email_notifications: boolean; title: string; description: string }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/tickets/${id}`, payload)
   return data
 }

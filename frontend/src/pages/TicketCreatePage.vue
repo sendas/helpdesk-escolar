@@ -197,14 +197,31 @@
         </div>
       </div>
 
+      <!-- Escalation (admin only) -->
+      <div v-if="auth.isAdmin" class="hd-field" style="margin-bottom:24px">
+        <div class="escalate-toggle" :class="{ active: escalate }" @click="escalate = !escalate">
+          <div>
+            <div style="font-weight:600;font-size:13px">Escalar imediatamente para fornecedor</div>
+            <div style="font-size:12px;color:var(--c-muted);margin-top:2px">
+              O ticket é enviado por email ao fornecedor externo configurado nas definições logo após a criação.
+            </div>
+          </div>
+          <div class="hd-toggle-wrap" style="flex-shrink:0">
+            <div class="hd-toggle-track" :class="{ on: escalate }">
+              <div class="hd-toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="hd-row ticket-actions">
         <router-link to="/tickets">
           <button class="hd-btn hd-btn-outline">Cancelar</button>
         </router-link>
         <button type="button" class="hd-btn hd-btn-primary" :disabled="!canSubmit || loading" @click="onSubmit">
-          <span class="material-icons" style="font-size:16px">send</span>
-          {{ loading ? 'A enviar...' : 'Submeter ticket' }}
+          <span class="material-icons" style="font-size:16px">{{ escalate ? 'upload' : 'send' }}</span>
+          {{ loading ? 'A enviar...' : escalate ? 'Criar e escalar para fornecedor' : 'Submeter ticket' }}
         </button>
       </div>
 
@@ -224,6 +241,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
+const escalate = ref(false)
 const categories = ref<any[]>([])
 const schools = ref<any[]>([])
 const files = ref<File[]>([])
@@ -272,6 +290,7 @@ async function onSubmit() {
       watcher_ids: selectedWatchers.value.map(user => user.id),
       group_ids: selectedGroupIds.value,
       creator_email_notifications: form.value.creator_email_notifications === true,
+      escalate: escalate.value,
     })
     const attachErrors: string[] = []
     for (const file of files.value) {
@@ -363,6 +382,27 @@ function formatSize(size: number) {
 .ticket-create-card {
   padding: 28px;
   max-width: 800px;
+}
+
+.escalate-toggle {
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 14px;
+  transition: border-color .15s, background .15s;
+}
+
+.escalate-toggle.active {
+  background: #FFF7ED;
+  border-color: #F97316;
+}
+
+.dark .escalate-toggle.active {
+  background: #431407;
+  border-color: #EA580C;
 }
 .ticket-actions {
   justify-content: flex-end;
