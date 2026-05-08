@@ -71,6 +71,7 @@
             <span class="full-badge"><span class="material-icons" style="font-size:13px">storage</span> Base de dados</span>
             <span class="full-badge"><span class="material-icons" style="font-size:13px">attach_file</span> Anexos</span>
             <span class="full-badge"><span class="material-icons" style="font-size:13px">settings</span> Configurações</span>
+            <span class="full-badge"><span class="material-icons" style="font-size:13px">key</span> .env</span>
           </div>
           <div class="full-actions">
             <button class="hd-btn hd-btn-primary full" :disabled="downloadingFull" @click="doDownloadFull">
@@ -83,7 +84,7 @@
             </button>
           </div>
           <p class="card-copy" style="margin-top:10px">
-            <strong>Nota:</strong> O ficheiro <code>.env</code> não está incluído — guarda-o separadamente (contém palavras-passe e chaves de acesso).
+            <strong>Atenção:</strong> O ZIP inclui o ficheiro <code>.env</code> com credenciais sensíveis. Guarda-o num local seguro e não o partilhes por canais não cifrados.
           </p>
         </section>
 

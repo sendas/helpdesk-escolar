@@ -25,46 +25,37 @@ _RESTORE_INSTRUCTIONS = """\
 RESTAURO DO HELPDESK ESCOLAR
 ==============================
 
-Este arquivo ZIP contém todos os dados necessários para repor o helpdesk
+Este arquivo ZIP contém tudo o que é necessário para repor o helpdesk
 numa instalação limpa. Inclui:
 
+  .env                  — variáveis de ambiente (chaves, palavras-passe, SMTP, AD)
   data/                 — volume completo do servidor
     tickets.db          — base de dados SQLite (tickets, utilizadores, etc.)
     uploads/            — ficheiros anexados aos tickets e logótipos
     app_settings.json   — configurações da aplicação (nome, fornecedor, etc.)
     backup_config.json  — configurações de backup automático
 
+ATENÇÃO — SEGURANÇA
+-------------------
+Este ZIP contém o ficheiro .env com credenciais sensíveis (chave JWT,
+palavras-passe SMTP, segredos AD/Azure). Guarda-o num local seguro e
+não o partilhes por canais não cifrados.
+
 PASSOS PARA RESTAURO
 --------------------
 
 1. Instala o Docker e o Docker Compose no novo servidor.
 
-2. Copia o docker-compose.yml e o ficheiro .env para uma pasta de trabalho.
-   (Guarda o .env em local seguro — contém chaves e palavras-passe.)
+2. Cria uma pasta de trabalho e copia o docker-compose.yml para lá.
 
-3. Extrai o conteúdo da pasta data/ deste ZIP para o volume do Docker.
-   Por omissão esse volume está em: ./data/  (junto ao docker-compose.yml)
-
-   Exemplo:
-     unzip helpdesk-full-*.zip -d /tmp/restore
-     cp -r /tmp/restore/data/* ./data/
+3. Extrai este ZIP para essa pasta:
+     unzip helpdesk-full-*.zip -d /opt/helpdesk
+   Isso vai repor o .env e a pasta data/ nos locais corretos.
 
 4. Inicia o serviço:
      docker compose up -d
 
 5. Abre o browser e verifica que os tickets, utilizadores e ficheiros estão presentes.
-
-NOTA SOBRE O FICHEIRO .env
---------------------------
-O .env NAO esta incluido neste ZIP porque contém segredos (chaves JWT,
-palavras-passe SMTP, credenciais AD). Guarda-o separadamente num gestor
-de palavras-passe ou cofre seguro.
-
-Variáveis essenciais a preservar:
-  APP_SECRET_KEY         — chave de assinatura dos tokens JWT
-  DATABASE_URL           — caminho da base de dados
-  MAIL_SERVER / MAIL_FROM / MAIL_PASSWORD
-  LDAP_* ou AZURE_*      — credenciais de autenticação
 """
 
 
@@ -252,29 +243,33 @@ def cleanup_old_backups(directory: Path, retention: int) -> None:
         pass
 
 
-def build_full_zip() -> tuple[io.BytesIO, str]:
-    """Create an in-memory ZIP of the entire data directory.
+_ENV_CANDIDATES = [Path("/app/.env"), Path(".env")]
 
-    Returns (buffer, filename). The ZIP contains data/* plus a restore
-    instructions text file. The SQLite DB is copied to a temp snapshot
-    so the file is not locked mid-write.
-    """
+
+def build_full_zip() -> tuple[io.BytesIO, str]:
+    """Create an in-memory ZIP of data/ + .env for full disaster recovery."""
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     filename = f"helpdesk-full-{timestamp}.zip"
 
-    # Directories/patterns to skip (previous JSON backups are large and
-    # already tracked separately — the SQLite DB is the authoritative source)
     skip_dirs = {"backups"}
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
         zf.writestr("RESTAURO.txt", _RESTORE_INSTRUCTIONS)
 
+        # Include .env if found
+        for env_path in _ENV_CANDIDATES:
+            if env_path.exists():
+                try:
+                    zf.write(env_path, ".env")
+                except Exception:
+                    pass
+                break
+
         if DATA_DIR.exists():
             for path in sorted(DATA_DIR.rglob("*")):
                 if not path.is_file():
                     continue
-                # Skip the backups subdirectory
                 try:
                     rel = path.relative_to(DATA_DIR)
                 except ValueError:
@@ -285,7 +280,7 @@ def build_full_zip() -> tuple[io.BytesIO, str]:
                 try:
                     zf.write(path, arcname)
                 except Exception:
-                    pass  # skip locked / unreadable files silently
+                    pass
 
     buf.seek(0)
     return buf, filename
