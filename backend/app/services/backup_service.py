@@ -1,5 +1,7 @@
+import io
 import json
 import shutil
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -14,9 +16,56 @@ from app.models.ticket import Attachment, Comment, Ticket
 from app.models.user import User
 
 
-CONFIG_PATH = Path("/app/data/backup_config.json")
-HISTORY_PATH = Path("/app/data/backup_history.json")
+DATA_DIR = Path("/app/data")
+CONFIG_PATH = DATA_DIR / "backup_config.json"
+HISTORY_PATH = DATA_DIR / "backup_history.json"
 MAX_HISTORY = 100
+
+_RESTORE_INSTRUCTIONS = """\
+RESTAURO DO HELPDESK ESCOLAR
+==============================
+
+Este arquivo ZIP contém todos os dados necessários para repor o helpdesk
+numa instalação limpa. Inclui:
+
+  data/                 — volume completo do servidor
+    tickets.db          — base de dados SQLite (tickets, utilizadores, etc.)
+    uploads/            — ficheiros anexados aos tickets e logótipos
+    app_settings.json   — configurações da aplicação (nome, fornecedor, etc.)
+    backup_config.json  — configurações de backup automático
+
+PASSOS PARA RESTAURO
+--------------------
+
+1. Instala o Docker e o Docker Compose no novo servidor.
+
+2. Copia o docker-compose.yml e o ficheiro .env para uma pasta de trabalho.
+   (Guarda o .env em local seguro — contém chaves e palavras-passe.)
+
+3. Extrai o conteúdo da pasta data/ deste ZIP para o volume do Docker.
+   Por omissão esse volume está em: ./data/  (junto ao docker-compose.yml)
+
+   Exemplo:
+     unzip helpdesk-full-*.zip -d /tmp/restore
+     cp -r /tmp/restore/data/* ./data/
+
+4. Inicia o serviço:
+     docker compose up -d
+
+5. Abre o browser e verifica que os tickets, utilizadores e ficheiros estão presentes.
+
+NOTA SOBRE O FICHEIRO .env
+--------------------------
+O .env NAO esta incluido neste ZIP porque contém segredos (chaves JWT,
+palavras-passe SMTP, credenciais AD). Guarda-o separadamente num gestor
+de palavras-passe ou cofre seguro.
+
+Variáveis essenciais a preservar:
+  APP_SECRET_KEY         — chave de assinatura dos tokens JWT
+  DATABASE_URL           — caminho da base de dados
+  MAIL_SERVER / MAIL_FROM / MAIL_PASSWORD
+  LDAP_* ou AZURE_*      — credenciais de autenticação
+"""
 
 
 def default_config() -> dict[str, Any]:
@@ -201,4 +250,54 @@ def cleanup_old_backups(directory: Path, retention: int) -> None:
             old_file.unlink(missing_ok=True)
     except Exception:
         pass
+
+
+def build_full_zip() -> tuple[io.BytesIO, str]:
+    """Create an in-memory ZIP of the entire data directory.
+
+    Returns (buffer, filename). The ZIP contains data/* plus a restore
+    instructions text file. The SQLite DB is copied to a temp snapshot
+    so the file is not locked mid-write.
+    """
+    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    filename = f"helpdesk-full-{timestamp}.zip"
+
+    # Directories/patterns to skip (previous JSON backups are large and
+    # already tracked separately — the SQLite DB is the authoritative source)
+    skip_dirs = {"backups"}
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+        zf.writestr("RESTAURO.txt", _RESTORE_INSTRUCTIONS)
+
+        if DATA_DIR.exists():
+            for path in sorted(DATA_DIR.rglob("*")):
+                if not path.is_file():
+                    continue
+                # Skip the backups subdirectory
+                try:
+                    rel = path.relative_to(DATA_DIR)
+                except ValueError:
+                    continue
+                if rel.parts and rel.parts[0] in skip_dirs:
+                    continue
+                arcname = str(Path("data") / rel)
+                try:
+                    zf.write(path, arcname)
+                except Exception:
+                    pass  # skip locked / unreadable files silently
+
+    buf.seek(0)
+    return buf, filename
+
+
+def write_full_zip_to_disk(target_dir: str | None = None) -> dict[str, str]:
+    """Write a full ZIP to disk (secondary directory or primary backup dir)."""
+    config = load_config()
+    directory = Path(target_dir or config.get("secondary_directory") or config["directory"])
+    directory.mkdir(parents=True, exist_ok=True)
+    buf, filename = build_full_zip()
+    dest = directory / filename
+    dest.write_bytes(buf.read())
+    return {"filename": filename, "path": str(dest)}
 

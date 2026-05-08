@@ -1,7 +1,18 @@
-export const APP_VERSION = '1.7.18'
+export const APP_VERSION = '1.7.19'
 export const APP_VERSION_DATE = '2026-05-08'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.19',
+    date: '2026-05-08',
+    title: 'Exportação completa para recuperação catastrófica',
+    changes: [
+      'Novo botão "Descarregar ZIP completo": exporta tudo — base de dados SQLite, todos os ficheiros anexados, logótipo e configurações da aplicação — num único ficheiro ZIP.',
+      'O ZIP inclui um ficheiro RESTAURO.txt com instruções passo a passo para repor o helpdesk numa instalação limpa.',
+      'Se estiver configurado um destino secundário, é possível guardar o ZIP diretamente nesse local a partir da interface.',
+      'Nota: o ficheiro .env não está incluído no ZIP porque contém segredos — deve ser guardado separadamente.',
+    ],
+  },
   {
     version: '1.7.18',
     date: '2026-05-08',

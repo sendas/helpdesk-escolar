@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -382,6 +382,22 @@ async def admin_stats(
 async def backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
     data = await backup_service.build_backup(db)
     return JSONResponse(content=data, headers={"Content-Disposition": "attachment; filename=helpdesk-backup.json"})
+
+
+@router.get("/backup/full")
+async def backup_full(_: User = Depends(require_admin)):
+    buf, filename = backup_service.build_full_zip()
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.post("/backup/full/save")
+async def backup_full_save(_: User = Depends(require_admin)):
+    result = backup_service.write_full_zip_to_disk()
+    return result
 
 
 @router.get("/backup/history")

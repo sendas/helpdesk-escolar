@@ -185,6 +185,24 @@ export async function runServerBackup() {
   return data as { filename: string; path: string; locations: string[]; secondary_error?: string }
 }
 
+export async function downloadFullBackup() {
+  const resp = await api.get('/api/v1/admin/backup/full', { responseType: 'blob' })
+  const url = URL.createObjectURL(resp.data)
+  const a = document.createElement('a')
+  a.href = url
+  const today = new Date().toISOString().slice(0, 10)
+  a.download = `helpdesk-full-${today}.zip`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+
+export async function saveFullBackupToDisk() {
+  const { data } = await api.post<{ filename: string; path: string }>('/api/v1/admin/backup/full/save')
+  return data
+}
+
 export interface BackupHistoryEntry {
   id: number
   filename: string

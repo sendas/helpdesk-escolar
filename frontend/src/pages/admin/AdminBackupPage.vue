@@ -57,22 +57,53 @@
         <div v-if="message" class="status-line" :class="{ error: messageError }">{{ message }}</div>
       </section>
 
-      <section class="hd-card backup-card">
-        <div class="card-title">
-          <span class="material-icons">download</span>
-          Exportar ficheiro
-        </div>
-        <p class="card-copy">Descarrega uma cópia JSON para guardar fora do servidor.</p>
-        <div class="stats-row">
-          <div><strong>{{ stats.tickets }}</strong><span>Tickets</span></div>
-          <div><strong>{{ stats.users }}</strong><span>Utilizadores</span></div>
-          <div><strong>{{ stats.categories }}</strong><span>Categorias</span></div>
-        </div>
-        <button class="hd-btn hd-btn-outline full" :disabled="downloading" @click="doDownloadBackup">
-          <span class="material-icons">{{ downloading ? 'hourglass_empty' : 'file_download' }}</span>
-          {{ downloading ? 'A exportar...' : 'Descarregar backup' }}
-        </button>
-      </section>
+      <div class="right-col">
+        <section class="hd-card backup-card">
+          <div class="card-title">
+            <span class="material-icons">folder_zip</span>
+            Exportar tudo (ZIP)
+          </div>
+          <p class="card-copy">
+            Inclui a base de dados, todos os ficheiros anexados, logótipo e configurações da aplicação.
+            Use este ficheiro para recuperação total em caso de perda catastrófica.
+          </p>
+          <div class="full-badge-row">
+            <span class="full-badge"><span class="material-icons" style="font-size:13px">storage</span> Base de dados</span>
+            <span class="full-badge"><span class="material-icons" style="font-size:13px">attach_file</span> Anexos</span>
+            <span class="full-badge"><span class="material-icons" style="font-size:13px">settings</span> Configurações</span>
+          </div>
+          <div class="full-actions">
+            <button class="hd-btn hd-btn-primary full" :disabled="downloadingFull" @click="doDownloadFull">
+              <span class="material-icons">{{ downloadingFull ? 'hourglass_empty' : 'download' }}</span>
+              {{ downloadingFull ? 'A preparar ZIP...' : 'Descarregar ZIP completo' }}
+            </button>
+            <button v-if="config.secondary_directory" class="hd-btn hd-btn-outline full" :disabled="savingFull" @click="doSaveFullToDisk">
+              <span class="material-icons">{{ savingFull ? 'hourglass_empty' : 'save' }}</span>
+              {{ savingFull ? 'A guardar...' : 'Guardar ZIP no destino secundário' }}
+            </button>
+          </div>
+          <p class="card-copy" style="margin-top:10px">
+            <strong>Nota:</strong> O ficheiro <code>.env</code> não está incluído — guarda-o separadamente (contém palavras-passe e chaves de acesso).
+          </p>
+        </section>
+
+        <section class="hd-card backup-card">
+          <div class="card-title">
+            <span class="material-icons">download</span>
+            Exportar dados (JSON)
+          </div>
+          <p class="card-copy">Apenas tickets, utilizadores e categorias, sem ficheiros anexados.</p>
+          <div class="stats-row">
+            <div><strong>{{ stats.tickets }}</strong><span>Tickets</span></div>
+            <div><strong>{{ stats.users }}</strong><span>Utilizadores</span></div>
+            <div><strong>{{ stats.categories }}</strong><span>Categorias</span></div>
+          </div>
+          <button class="hd-btn hd-btn-outline full" :disabled="downloading" @click="doDownloadBackup">
+            <span class="material-icons">{{ downloading ? 'hourglass_empty' : 'file_download' }}</span>
+            {{ downloading ? 'A exportar...' : 'Descarregar JSON' }}
+          </button>
+        </section>
+      </div>
     </div>
 
     <section class="hd-card backup-card">
@@ -133,11 +164,13 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { downloadBackup, getAdminStats, getBackupConfig, getBackupHistory, runServerBackup, updateBackupConfig } from '../../api/tickets'
+import { downloadBackup, downloadFullBackup, getAdminStats, getBackupConfig, getBackupHistory, runServerBackup, saveFullBackupToDisk, updateBackupConfig } from '../../api/tickets'
 import type { BackupHistoryEntry } from '../../api/tickets'
 
 const backing = ref(false)
 const downloading = ref(false)
+const downloadingFull = ref(false)
+const savingFull = ref(false)
 const saving = ref(false)
 const loadingHistory = ref(false)
 const message = ref('')
@@ -217,6 +250,29 @@ async function doDownloadBackup() {
   }
 }
 
+async function doDownloadFull() {
+  downloadingFull.value = true
+  try {
+    await downloadFullBackup()
+  } catch {
+    showMessage('Erro ao preparar o ZIP completo.', true)
+  } finally {
+    downloadingFull.value = false
+  }
+}
+
+async function doSaveFullToDisk() {
+  savingFull.value = true
+  try {
+    const result = await saveFullBackupToDisk()
+    showMessage(`ZIP completo guardado em ${result.path}`, false)
+  } catch {
+    showMessage('Erro ao guardar ZIP no destino secundário.', true)
+  } finally {
+    savingFull.value = false
+  }
+}
+
 function showMessage(text: string, isError: boolean) {
   message.value = text
   messageError.value = isError
@@ -253,11 +309,26 @@ function formatDate(iso: string) {
 .page-heading p, .card-copy { color: var(--c-muted); margin: 0; font-size: 14px; }
 .backup-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr);
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, .7fr);
   gap: 18px;
   margin-bottom: 18px;
 }
+.right-col { display: flex; flex-direction: column; gap: 18px; }
+.right-col .backup-card { margin-bottom: 0; }
 .backup-card { padding: 22px; margin-bottom: 18px; }
+.full-badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.full-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--c-border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  color: var(--c-muted);
+}
+.full-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
 .card-title {
   display: flex;
   align-items: center;
@@ -367,6 +438,7 @@ function formatDate(iso: string) {
 .empty-log { color: var(--c-muted); font-size: 13px; }
 @media (max-width: 820px) {
   .page-heading, .backup-grid { display: grid; grid-template-columns: 1fr; }
+  .right-col .backup-card { margin-bottom: 0; }
   .page-heading .hd-btn { width: 100%; justify-content: center; }
   .backup-card { padding: 18px; }
   .form-grid { grid-template-columns: 1fr; }
