@@ -576,16 +576,24 @@ async def test_onedrive(_: User = Depends(require_admin)):
     from app.services import onedrive_service
     from app.services.backup_service import load_config
     config = load_config()
-    if not config.get("onedrive_enabled") or not config.get("onedrive_user"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="OneDrive não está ativo ou utilizador não configurado")
+    if not config.get("onedrive_user"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Utilizador OneDrive (UPN) não configurado")
     try:
-        result = await asyncio.get_event_loop().run_in_executor(
-            None,
-            onedrive_service.test_connection,
-            config["onedrive_user"],
-            config["onedrive_folder"],
+        result = await asyncio.wait_for(
+            asyncio.get_event_loop().run_in_executor(
+                None,
+                onedrive_service.test_connection,
+                config["onedrive_user"],
+                config["onedrive_folder"],
+            ),
+            timeout=40.0,
         )
         return result
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Tempo esgotado (40s). Verifique se o servidor tem acesso à internet e se as credenciais Azure AD estão corretas.",
+        )
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 

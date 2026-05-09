@@ -20,7 +20,8 @@ from pathlib import Path
 from app.config import settings
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-CHUNK_SIZE = 4 * 1024 * 1024  # 4 MB — Graph API minimum chunk size
+CHUNK_SIZE = 4 * 1024 * 1024  # 4 MB
+TOKEN_TIMEOUT = 20  # seconds for MSAL HTTP calls
 
 
 # ---------------------------------------------------------------------------
@@ -28,20 +29,26 @@ CHUNK_SIZE = 4 * 1024 * 1024  # 4 MB — Graph API minimum chunk size
 # ---------------------------------------------------------------------------
 
 def _get_token() -> str:
-    if not all([settings.azure_tenant_id, settings.azure_client_id, settings.azure_client_secret]):
+    if not settings.azure_tenant_id or not settings.azure_client_id or not settings.azure_client_secret:
         raise RuntimeError(
-            "Azure AD não está configurado (AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET)"
+            "Azure AD não está configurado (AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET em branco)"
         )
+    # Use a custom requests session with a strict timeout to avoid blocking indefinitely
+    import requests
+    session = requests.Session()
+    session.request = lambda method, url, **kwargs: requests.Session.request(
+        session, method, url, timeout=kwargs.pop("timeout", TOKEN_TIMEOUT), **kwargs
+    )
     app = msal.ConfidentialClientApplication(
         client_id=settings.azure_client_id,
         client_credential=settings.azure_client_secret,
         authority=f"https://login.microsoftonline.com/{settings.azure_tenant_id}",
+        http_client=session,
     )
     result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
     if "access_token" not in result:
-        raise RuntimeError(
-            f"Não foi possível obter token OneDrive: {result.get('error_description', result.get('error', 'unknown'))}"
-        )
+        err = result.get("error_description") or result.get("error") or str(result)
+        raise RuntimeError(f"Não foi possível obter token: {err}")
     return result["access_token"]
 
 
