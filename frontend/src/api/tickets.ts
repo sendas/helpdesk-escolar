@@ -85,6 +85,13 @@ export async function restoreBackup(file: File) {
   return data
 }
 
+export async function restoreFullZip(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await api.post<{ restored: boolean; counts: Record<string, number> }>('/api/v1/admin/backup/restore/zip', form)
+  return data
+}
+
 export async function testSmtp() {
   const { data } = await api.post<{ sent_to: string }>('/api/v1/admin/mail/test')
   return data

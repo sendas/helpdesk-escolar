@@ -477,6 +477,93 @@ async def restore_backup_json(
     return {"restored": True, "counts": counts}
 
 
+@router.post("/backup/restore/zip")
+async def restore_backup_zip(
+    file: UploadFile = FastAPIFile(...),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    import os
+    import shutil
+    import tempfile
+    import zipfile
+    from pathlib import Path
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession as AsyncSess
+    from sqlalchemy.orm import sessionmaker
+
+    # Stream ZIP to temp file to avoid loading it all into RAM
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    try:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            tmp.write(chunk)
+        tmp.close()
+
+        if not zipfile.is_zipfile(tmp.name):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ficheiro não é um ZIP válido")
+
+        with zipfile.ZipFile(tmp.name, "r") as zf:
+            names = set(zf.namelist())
+            if "data/tickets.db" not in names:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="ZIP não contém data/tickets.db — não parece um backup completo",
+                )
+
+            extract_dir = tempfile.mkdtemp(prefix="helpdesk-restore-")
+            try:
+                zf.extractall(extract_dir)
+                extracted_db = Path(extract_dir) / "data" / "tickets.db"
+                extracted_uploads = Path(extract_dir) / "data" / "uploads"
+
+                # Read all records from the extracted SQLite into a backup dict
+                ext_engine = create_async_engine(f"sqlite+aiosqlite:///{extracted_db}")
+                ExtSession = sessionmaker(ext_engine, class_=AsyncSess, expire_on_commit=False)
+                try:
+                    async with ExtSession() as ext_db:
+                        backup_data = await backup_service.build_backup(ext_db)
+                finally:
+                    await ext_engine.dispose()
+
+                # Restore database records
+                counts = await backup_service.restore_backup(db, backup_data)
+
+                # Copy uploads
+                uploads_restored = 0
+                if extracted_uploads.exists():
+                    target_uploads = Path("/app/data/uploads")
+                    target_uploads.mkdir(parents=True, exist_ok=True)
+                    for src in extracted_uploads.rglob("*"):
+                        if src.is_file():
+                            rel = src.relative_to(extracted_uploads)
+                            dest = target_uploads / rel
+                            dest.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(src, dest)
+                            uploads_restored += 1
+                counts["upload_files"] = uploads_restored
+
+                # Copy app_settings if present
+                for extra in ("app_settings.json", "backup_config.json"):
+                    src_file = Path(extract_dir) / "data" / extra
+                    if src_file.exists():
+                        shutil.copy2(src_file, Path("/app/data") / extra)
+
+                return {"restored": True, "counts": counts}
+            finally:
+                shutil.rmtree(extract_dir, ignore_errors=True)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+
+
 @router.post("/mail/test")
 async def test_mail(current_admin: User = Depends(require_admin)):
     if not current_admin.email:

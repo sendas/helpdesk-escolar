@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.21'
+export const APP_VERSION = '1.7.22'
 export const APP_VERSION_DATE = '2026-05-09'
-export const APP_VERSION_TIME = '11:00'
+export const APP_VERSION_TIME = '11:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.22',
+    date: '2026-05-09',
+    title: 'Restauro a partir de ZIP completo',
+    changes: [
+      'A área de importação aceita agora tanto ficheiros .json (apenas dados) como .zip (completo com anexos).',
+      'Ao restaurar um ZIP completo, a base de dados é reposta a partir do tickets.db incluído no ZIP e todos os ficheiros anexados são copiados de volta.',
+      'As configurações da aplicação (app_settings.json) e do backup (backup_config.json) são também restauradas do ZIP.',
+      'O diálogo de confirmação indica claramente o tipo de ficheiro e o que será substituído.',
+      'O resumo pós-restauro inclui o número de ficheiros de anexos recuperados.',
+    ],
+  },
   {
     version: '1.7.21',
     date: '2026-05-09',

@@ -132,17 +132,18 @@
         @dragover.prevent
         @drop.prevent="onDrop"
       >
-        <span class="material-icons">{{ restoreFile ? 'description' : 'upload_file' }}</span>
-        <div>{{ restoreFile ? restoreFile.name : 'Arrastar ficheiro JSON ou clicar para selecionar' }}</div>
-        <small>Apenas ficheiros .json exportados por esta aplicação</small>
-        <input ref="fileInput" type="file" accept=".json" style="display:none" @change="onFileChange" />
+        <span class="material-icons">{{ restoreFile ? (isZipFile ? 'folder_zip' : 'description') : 'upload_file' }}</span>
+        <div>{{ restoreFile ? restoreFile.name : 'Arrastar ficheiro JSON ou ZIP completo, ou clicar para selecionar' }}</div>
+        <small>Ficheiros .json (dados) ou .zip (completo com anexos)</small>
+        <input ref="fileInput" type="file" accept=".json,.zip" style="display:none" @change="onFileChange" />
       </div>
 
       <div v-if="restoreFile && !restoreResult" class="restore-confirm-box">
         <span class="material-icons" style="color:#dc2626;font-size:20px;flex-shrink:0">warning</span>
         <div>
           <strong>Atenção: esta operação é irreversível.</strong><br>
-          Todos os dados atuais (tickets, comentários, utilizadores, categorias) serão <strong>apagados</strong> e substituídos pelo conteúdo do ficheiro selecionado.
+          Todos os dados atuais (tickets, comentários, utilizadores, categorias<span v-if="isZipFile">, anexos</span>) serão <strong>apagados</strong> e substituídos pelo conteúdo do ficheiro selecionado.
+          <span v-if="isZipFile"> O ZIP também repõe os ficheiros anexados e as configurações da aplicação.</span>
           Faz uma cópia de segurança antes de continuar.
         </div>
         <button class="hd-btn hd-btn-danger" :disabled="restoring" @click="doRestore">
@@ -200,8 +201,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { downloadBackup, downloadFullBackup, getAdminStats, getBackupConfig, getBackupHistory, restoreBackup, runServerBackup, saveFullBackupToDisk, updateBackupConfig } from '../../api/tickets'
+import { computed, onMounted, ref } from 'vue'
+import { downloadBackup, downloadFullBackup, getAdminStats, getBackupConfig, getBackupHistory, restoreBackup, restoreFullZip, runServerBackup, saveFullBackupToDisk, updateBackupConfig } from '../../api/tickets'
 import type { BackupHistoryEntry } from '../../api/tickets'
 
 const backing = ref(false)
@@ -327,34 +328,42 @@ function showMessage(text: string, isError: boolean) {
   setTimeout(() => { if (message.value === text) message.value = '' }, 6000)
 }
 
-function onFileChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  restoreFile.value = input.files?.[0] ?? null
+const isZipFile = computed(() => !!restoreFile.value?.name.endsWith('.zip'))
+
+function _clearRestore() {
   restoreResult.value = ''
   restoreError.value = false
   restoreCounts.value = null
 }
 
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
+  if (f && (f.name.endsWith('.json') || f.name.endsWith('.zip'))) {
+    restoreFile.value = f
+    _clearRestore()
+  }
+}
+
 function onDrop(e: DragEvent) {
-  const file = e.dataTransfer?.files?.[0]
-  if (file?.name.endsWith('.json')) {
-    restoreFile.value = file
-    restoreResult.value = ''
-    restoreError.value = false
-    restoreCounts.value = null
+  const f = e.dataTransfer?.files?.[0]
+  if (f && (f.name.endsWith('.json') || f.name.endsWith('.zip'))) {
+    restoreFile.value = f
+    _clearRestore()
   }
 }
 
 async function doRestore() {
   if (!restoreFile.value) return
+  const typeLabel = isZipFile.value ? 'ZIP completo (base de dados + anexos + configurações)' : 'JSON (registos da base de dados)'
   const confirmed = window.confirm(
-    'ATENÇÃO: Todos os dados atuais serão apagados permanentemente.\n\n' +
-    'Esta operação não pode ser desfeita. Tens a certeza?'
+    `ATENÇÃO: Todos os dados atuais serão apagados permanentemente.\n\nTipo: ${typeLabel}\n\nEsta operação não pode ser desfeita. Tens a certeza?`
   )
   if (!confirmed) return
   restoring.value = true
   try {
-    const result = await restoreBackup(restoreFile.value)
+    const fn = isZipFile.value ? restoreFullZip : restoreBackup
+    const result = await fn(restoreFile.value)
     restoreCounts.value = result.counts ?? null
     restoreResult.value = 'ok'
     restoreError.value = false
@@ -369,7 +378,8 @@ async function doRestore() {
 
 const RESTORE_LABELS: Record<string, string> = {
   schools: 'Escolas', users: 'Utilizadores', categories: 'Categorias',
-  tickets: 'Tickets', comments: 'Comentários', attachments: 'Anexos',
+  tickets: 'Tickets', comments: 'Comentários', attachments: 'Registos de anexos',
+  upload_files: 'Ficheiros restaurados',
 }
 
 function restoreLabel(key: string) {
