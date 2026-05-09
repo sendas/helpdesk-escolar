@@ -69,6 +69,10 @@ def default_config() -> dict[str, Any]:
         "secondary_directory": "",
         "full_zip_enabled": False,
         "full_zip_retention": 7,
+        "onedrive_enabled": False,
+        "onedrive_user": "",
+        "onedrive_folder": "Backups/Helpdesk",
+        "onedrive_retention": 14,
     }
 
 
@@ -88,13 +92,18 @@ def load_config() -> dict[str, Any]:
     config["secondary_directory"] = str(config.get("secondary_directory") or "").strip()
     config["full_zip_enabled"] = bool(config.get("full_zip_enabled", False))
     config["full_zip_retention"] = max(1, int(config.get("full_zip_retention") or 7))
+    config["onedrive_enabled"] = bool(config.get("onedrive_enabled", False))
+    config["onedrive_user"] = str(config.get("onedrive_user") or "").strip()
+    config["onedrive_folder"] = str(config.get("onedrive_folder") or "Backups/Helpdesk").strip()
+    config["onedrive_retention"] = max(1, int(config.get("onedrive_retention") or 14))
     return config
 
 
 def save_config(data: dict[str, Any]) -> dict[str, Any]:
     config = load_config()
     for key in ("enabled", "interval_hours", "directory", "retention", "secondary_directory",
-                "full_zip_enabled", "full_zip_retention"):
+                "full_zip_enabled", "full_zip_retention",
+                "onedrive_enabled", "onedrive_user", "onedrive_folder", "onedrive_retention"):
         if key in data:
             config[key] = data[key]
     config["enabled"] = bool(config["enabled"])
@@ -104,6 +113,10 @@ def save_config(data: dict[str, Any]) -> dict[str, Any]:
     config["secondary_directory"] = str(config.get("secondary_directory") or "").strip()
     config["full_zip_enabled"] = bool(config.get("full_zip_enabled", False))
     config["full_zip_retention"] = max(1, int(config.get("full_zip_retention") or 7))
+    config["onedrive_enabled"] = bool(config.get("onedrive_enabled", False))
+    config["onedrive_user"] = str(config.get("onedrive_user") or "").strip()
+    config["onedrive_folder"] = str(config.get("onedrive_folder") or "Backups/Helpdesk").strip()
+    config["onedrive_retention"] = max(1, int(config.get("onedrive_retention") or 14))
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
     return config
@@ -185,17 +198,36 @@ async def _write_backup_inner(db: AsyncSession, source: str) -> dict[str, Any]:
         except Exception as exc:
             secondary_error = str(exc)
 
+    # OneDrive upload
+    onedrive_error: str | None = None
+    if config.get("onedrive_enabled") and config.get("onedrive_user"):
+        import asyncio
+        from app.services import onedrive_service
+        od_user = config["onedrive_user"]
+        od_folder = config["onedrive_folder"]
+        od_retention = config["onedrive_retention"]
+        def _od_upload_json() -> None:
+            onedrive_service.upload_file(str(path), od_user, od_folder)
+            onedrive_service.cleanup_remote(od_user, od_folder, "helpdesk-backup-", od_retention)
+        try:
+            await asyncio.get_event_loop().run_in_executor(None, _od_upload_json)
+            locations.append(f"onedrive:{od_folder}/{filename}")
+        except Exception as exc:
+            onedrive_error = str(exc)
+
     entry: dict[str, Any] = {
         "id": int(datetime.utcnow().timestamp() * 1000),
         "filename": filename,
         "path": str(path),
         "locations": locations,
         "date": datetime.utcnow().isoformat(),
-        "ok": secondary_error is None,
+        "ok": secondary_error is None and onedrive_error is None,
         "source": source,
     }
     if secondary_error:
         entry["secondary_error"] = secondary_error
+    if onedrive_error:
+        entry["onedrive_error"] = onedrive_error
     _append_history(entry)
     return {"filename": filename, "path": str(path), "locations": locations, "secondary_error": secondary_error}
 
@@ -258,18 +290,34 @@ def write_full_zip_auto() -> None:
         except Exception as exc:
             secondary_error = str(exc)
 
+    # OneDrive upload
+    onedrive_error: str | None = None
+    if config.get("onedrive_enabled") and config.get("onedrive_user"):
+        from app.services import onedrive_service
+        od_user = config["onedrive_user"]
+        od_zip_folder = config["onedrive_folder"].rstrip("/") + "/full_zips"
+        od_retention = config.get("full_zip_retention", 7)
+        try:
+            onedrive_service.upload_file(str(dest), od_user, od_zip_folder)
+            onedrive_service.cleanup_remote(od_user, od_zip_folder, "helpdesk-full-", od_retention)
+            locations.append(f"onedrive:{od_zip_folder}/{filename}")
+        except Exception as exc:
+            onedrive_error = str(exc)
+
     entry: dict[str, Any] = {
         "id": int(datetime.utcnow().timestamp() * 1000) + 1,
         "filename": filename,
         "path": str(dest),
         "locations": locations,
         "date": datetime.utcnow().isoformat(),
-        "ok": secondary_error is None,
+        "ok": secondary_error is None and onedrive_error is None,
         "source": "auto",
         "backup_type": "zip",
     }
     if secondary_error:
         entry["secondary_error"] = secondary_error
+    if onedrive_error:
+        entry["onedrive_error"] = onedrive_error
     _append_history(entry)
 
 

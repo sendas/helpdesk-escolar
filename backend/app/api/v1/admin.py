@@ -570,6 +570,26 @@ async def restore_backup_zip(
             pass
 
 
+@router.post("/onedrive/test")
+async def test_onedrive(_: User = Depends(require_admin)):
+    import asyncio
+    from app.services import onedrive_service
+    from app.services.backup_service import load_config
+    config = load_config()
+    if not config.get("onedrive_enabled") or not config.get("onedrive_user"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="OneDrive não está ativo ou utilizador não configurado")
+    try:
+        result = await asyncio.get_event_loop().run_in_executor(
+            None,
+            onedrive_service.test_connection,
+            config["onedrive_user"],
+            config["onedrive_folder"],
+        )
+        return result
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
 @router.post("/mail/test")
 async def test_mail(current_admin: User = Depends(require_admin)):
     if not current_admin.email:

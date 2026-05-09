@@ -97,6 +97,11 @@ export async function testSmtp() {
   return data
 }
 
+export async function testOneDrive() {
+  const { data } = await api.post<{ ok: boolean; user: string; folder: string }>('/api/v1/admin/onedrive/test')
+  return data
+}
+
 export async function addWatcher(ticketId: number, userId: number) {
   const { data } = await api.post<TicketDetail>(`/api/v1/tickets/${ticketId}/watchers`, { user_id: userId })
   return data
@@ -237,6 +242,7 @@ export interface BackupHistoryEntry {
   source: 'manual' | 'auto'
   backup_type?: 'json' | 'zip'
   secondary_error?: string
+  onedrive_error?: string
 }
 
 export async function getBackupHistory() {

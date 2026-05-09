@@ -120,6 +120,53 @@
 
     <section class="hd-card backup-card">
       <div class="card-title">
+        <span class="material-icons" style="color:#0078d4">cloud</span>
+        OneDrive (Microsoft 365)
+      </div>
+      <p class="card-copy">
+        Copia automaticamente cada backup para o OneDrive da escola após ser criado.
+        Requer permissão <strong>Files.ReadWrite.All</strong> (aplicação) na app registration Azure AD.
+      </p>
+
+      <label class="backup-toggle" style="margin:14px 0 10px">
+        <input type="checkbox" v-model="config.onedrive_enabled" />
+        <span>Ativar cópia para OneDrive</span>
+      </label>
+
+      <div v-if="config.onedrive_enabled" class="onedrive-form">
+        <label>
+          Utilizador OneDrive (UPN)
+          <input class="hd-input" v-model="config.onedrive_user" placeholder="ti@escola.pt" />
+          <span class="field-hint">Email / UPN do utilizador cujo OneDrive recebe as cópias.</span>
+        </label>
+        <label>
+          Pasta no OneDrive
+          <input class="hd-input" v-model="config.onedrive_folder" placeholder="Backups/Helpdesk" />
+        </label>
+        <label>
+          Manter (ficheiros)
+          <input class="hd-input" type="number" min="1" max="365" v-model.number="config.onedrive_retention" />
+        </label>
+      </div>
+
+      <div class="onedrive-actions">
+        <button class="hd-btn hd-btn-outline" :disabled="saving" @click="saveConfig">
+          <span class="material-icons">check</span>
+          {{ saving ? 'A guardar...' : 'Guardar' }}
+        </button>
+        <button v-if="config.onedrive_enabled" class="hd-btn hd-btn-outline" :disabled="testingOD" @click="testOneDrive">
+          <span class="material-icons">{{ testingOD ? 'hourglass_empty' : 'wifi_tethering' }}</span>
+          {{ testingOD ? 'A testar...' : 'Testar ligação' }}
+        </button>
+      </div>
+      <div v-if="odResult" class="od-result" :class="{ 'od-error': !odOk }">
+        <span class="material-icons">{{ odOk ? 'check_circle' : 'error' }}</span>
+        {{ odResult }}
+      </div>
+    </section>
+
+    <section class="hd-card backup-card">
+      <div class="card-title">
         <span class="material-icons">cloud_upload</span>
         Importar / Restaurar
       </div>
@@ -192,6 +239,10 @@
               <span class="material-icons" style="font-size:13px;vertical-align:middle">warning</span>
               Destino secundário: {{ entry.secondary_error }}
             </div>
+            <div v-if="entry.onedrive_error" class="log-sec-error">
+              <span class="material-icons" style="font-size:13px;vertical-align:middle">cloud_off</span>
+              OneDrive: {{ entry.onedrive_error }}
+            </div>
           </div>
         </div>
         <div v-if="!history.length" class="empty-log">Ainda não há cópias de segurança registadas.</div>
@@ -202,7 +253,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { downloadBackup, downloadFullBackup, getAdminStats, getBackupConfig, getBackupHistory, restoreBackup, restoreFullZip, runServerBackup, saveFullBackupToDisk, updateBackupConfig } from '../../api/tickets'
+import { downloadBackup, downloadFullBackup, getAdminStats, getBackupConfig, getBackupHistory, restoreBackup, restoreFullZip, runServerBackup, saveFullBackupToDisk, testOneDrive as apiTestOneDrive, updateBackupConfig } from '../../api/tickets'
 import type { BackupHistoryEntry } from '../../api/tickets'
 
 const backing = ref(false)
@@ -326,6 +377,26 @@ function showMessage(text: string, isError: boolean) {
   message.value = text
   messageError.value = isError
   setTimeout(() => { if (message.value === text) message.value = '' }, 6000)
+}
+
+const testingOD = ref(false)
+const odResult = ref('')
+const odOk = ref(false)
+
+async function testOneDrive() {
+  testingOD.value = true
+  odResult.value = ''
+  try {
+    await saveConfig()
+    const r = await apiTestOneDrive()
+    odOk.value = true
+    odResult.value = `Ligação OK — ficheiro de teste criado em ${r.folder} (${r.user})`
+  } catch (e: any) {
+    odOk.value = false
+    odResult.value = e?.response?.data?.detail ?? 'Erro ao ligar ao OneDrive'
+  } finally {
+    testingOD.value = false
+  }
 }
 
 const isZipFile = computed(() => !!restoreFile.value?.name.endsWith('.zip'))
@@ -533,6 +604,38 @@ function formatDate(iso: string) {
 .restore-counts { margin: 8px 0 0; padding-left: 16px; }
 .restore-counts li { margin-bottom: 2px; }
 .hd-dropzone.has-file { border-color: var(--c-primary); background: rgba(var(--c-primary-rgb, 59,130,246), 0.04); }
+.onedrive-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 120px;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.onedrive-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.onedrive-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.od-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #14532D;
+}
+:root.dark .od-result { background: #14532D; border-color: #166534; color: #86EFAC; }
+.od-result .material-icons { color: #22c55e; }
+.od-result.od-error { background: #FEF2F2; border-color: #FECACA; color: #7F1D1D; }
+:root.dark .od-result.od-error { background: #450A0A; border-color: #991B1B; color: #FCA5A5; }
+.od-result.od-error .material-icons { color: #dc2626; }
 .hd-btn-danger {
   background: #dc2626;
   color: #fff;

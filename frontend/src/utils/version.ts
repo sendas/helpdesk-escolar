@@ -1,8 +1,22 @@
-export const APP_VERSION = '1.7.22'
+export const APP_VERSION = '1.7.23'
 export const APP_VERSION_DATE = '2026-05-09'
-export const APP_VERSION_TIME = '11:30'
+export const APP_VERSION_TIME = '19:45'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.23',
+    date: '2026-05-09',
+    time: '19:45',
+    title: 'Cópia automática para OneDrive (Microsoft 365)',
+    changes: [
+      'Nova secção OneDrive em Backup & Restauro: ativa a cópia automática de cada backup (JSON e ZIP) para o OneDrive de um utilizador da escola.',
+      'Usa as credenciais Azure AD já configuradas na app — não é necessário configurar nada separado.',
+      'Requer a permissão Files.ReadWrite.All (aplicação) na app registration do Azure AD com consentimento de administrador.',
+      'Pasta configurável no OneDrive; os ZIPs vão para uma subpasta full_zips/ dentro da pasta escolhida.',
+      'Botão "Testar ligação" verifica as credenciais e cria um ficheiro de teste no OneDrive.',
+      'Erros de upload ao OneDrive ficam visíveis no registo de cópias por entrada.',
+    ],
+  },
   {
     version: '1.7.22',
     date: '2026-05-09',
