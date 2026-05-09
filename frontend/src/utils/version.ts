@@ -1,8 +1,21 @@
-export const APP_VERSION = '1.7.23'
+export const APP_VERSION = '1.7.24'
 export const APP_VERSION_DATE = '2026-05-09'
-export const APP_VERSION_TIME = '13:30'
+export const APP_VERSION_TIME = '14:05'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.24',
+    date: '2026-05-09',
+    time: '14:05',
+    title: 'App PWA para iOS e Android',
+    changes: [
+      'O Helpdesk Escolar é agora uma Progressive Web App (PWA) — pode ser instalada diretamente no iPhone/iPad ou Android a partir do browser, sem passar pela App Store ou Play Store.',
+      'iOS: no Safari, toca em Partilhar → "Adicionar ao ecrã de início". Android/Chrome: toca nos três pontos → "Instalar app".',
+      'Ícone personalizado com letra H no ecrã de início, barra de estado em azul escolar, modo standalone (sem barra do browser).',
+      'Suporte offline básico: as páginas já visitadas ficam em cache pelo service worker; quando há ligação os dados são sempre atualizados.',
+      'Atualizações automáticas: quando é lançada uma nova versão, o service worker atualiza-se em segundo plano e a página recarrega sozinha.',
+    ],
+  },
   {
     version: '1.7.23',
     date: '2026-05-09',
