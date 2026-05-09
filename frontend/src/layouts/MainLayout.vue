@@ -84,6 +84,15 @@
     <div class="app-main">
       <!-- Header -->
       <header class="hd-header">
+        <!-- Mobile: hamburger + brand (replaces hidden fixed topbar) -->
+        <button class="hd-icon-btn mobile-nav-btn" type="button" @click="mobileMenuOpen = !mobileMenuOpen" title="Menu">
+          <span class="material-icons">{{ mobileMenuOpen ? 'close' : 'menu' }}</span>
+        </button>
+        <div class="mobile-header-brand" @click="mobileMenuOpen = false">
+          <img v-if="settings.logo_url" class="mobile-header-logo" :src="settings.logo_url" alt="" />
+          <div v-else class="mobile-header-dot"></div>
+          <span class="mobile-header-name">{{ settings.org_name }}</span>
+        </div>
         <div class="hd-header-title">{{ pageTitle }}</div>
         <div class="hd-search">
           <span class="material-icons" style="font-size:16px">search</span>
@@ -441,36 +450,49 @@ onBeforeUnmount(() => {
   background: var(--c-primary-dark, #1251a0);
 }
 
+/* Mobile nav button — only visible on mobile */
+.mobile-nav-btn { display: none; }
+.mobile-header-brand { display: none; }
+.mobile-header-logo { width: 28px; height: 28px; border-radius: 6px; object-fit: contain; flex-shrink: 0; }
+.mobile-header-dot { width: 28px; height: 28px; border-radius: 6px; background: var(--c-primary); flex-shrink: 0; }
+.mobile-header-name { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 @media (max-width: 820px) {
   .app-shell {
     display: block;
-    padding-top: 58px;
+    padding-top: 0;  /* hd-header is now sticky at top:0, no fixed topbar */
   }
-  .mobile-topbar {
-    position: fixed;
-    inset: 0 0 auto 0;
-    height: 58px;
+  /* Hide the old fixed topbar — it was covered by the browser chrome */
+  .mobile-topbar { display: none !important; }
+
+  /* Show hamburger + brand inside hd-header */
+  .mobile-nav-btn {
+    display: flex;
+    flex-shrink: 0;
+  }
+  .mobile-header-brand {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
-    background: var(--c-surface);
-    border-bottom: 1px solid var(--c-border);
-    z-index: 80;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
   }
+
+  /* Sidebar: drop down from below the sticky hd-header (~56px) */
   .app-sidebar {
     position: fixed;
-    top: 58px;
+    top: 56px;
     left: 0;
     right: 0;
     height: auto;
     width: 100%;
-    transform: translateY(-120%);
+    transform: translateY(-130%);
     opacity: 0;
     pointer-events: none;
-    transition: transform .18s ease, opacity .18s ease;
+    transition: transform .2s ease, opacity .2s ease;
     box-shadow: 0 18px 40px rgba(15, 23, 42, .18);
+    z-index: 70;
   }
   .app-sidebar.open {
     transform: translateY(0);
@@ -494,7 +516,7 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
     gap: 8px;
     padding: 12px;
-    max-height: calc(100vh - 58px);
+    max-height: calc(100vh - 56px - 56px);
     overflow-y: auto;
   }
   :deep(.hd-nav-section) {
@@ -515,8 +537,8 @@ onBeforeUnmount(() => {
   }
   :deep(.hd-header) {
     position: sticky;
-    top: 58px;
-    z-index: 15;
+    top: 0;
+    z-index: 80;
     gap: 8px;
     padding: 10px 12px;
     height: auto;
@@ -526,17 +548,12 @@ onBeforeUnmount(() => {
     display: none;
   }
   :deep(.hd-search) {
-    flex: 1;
-    min-width: 0;
-    max-width: none;
-  }
-  :deep(.hd-search input) {
-    min-width: 0;
-    font-size: 13px;
+    display: none;
   }
   :deep(.hd-header-actions) {
     gap: 6px;
     flex-shrink: 0;
+    margin-left: auto;
   }
   :deep(.hd-header-actions > .hd-avatar) {
     display: none;

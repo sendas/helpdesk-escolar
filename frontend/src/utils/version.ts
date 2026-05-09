@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.25'
+export const APP_VERSION = '1.7.26'
 export const APP_VERSION_DATE = '2026-05-09'
-export const APP_VERSION_TIME = '14:55'
+export const APP_VERSION_TIME = '16:10'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.26',
+    date: '2026-05-09',
+    time: '16:10',
+    title: 'Navegação móvel corrigida (logo e menus sempre acessíveis)',
+    changes: [
+      'Corrigido: na versão móvel (browser iOS/Android e PWA), o topo da página ficava escondido atrás da barra nativa do browser.',
+      'Novo layout móvel: botão de menu, logotipo e nome do agrupamento integrados no cabeçalho principal (sempre visível, nunca coberto).',
+      'A barra de navegação lateral desliza a partir de baixo do cabeçalho ao tocar no ícone ≡.',
+    ],
+  },
   {
     version: '1.7.25',
     date: '2026-05-09',
