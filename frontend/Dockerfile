@@ -8,12 +8,16 @@ RUN npm install
 
 COPY . .
 
-# Generate PWA icons from the SVG logo (fallback to a solid blue square if absent)
+# Generate PWA icons using ImageMagick v7 (magick cmd, no SVG/librsvg needed)
+# Creates a blue square with a white "H" using a built-in font, falls back to plain square
 RUN mkdir -p public/icons && \
-    if [ -f public/logo.svg ]; then SRC=public/logo.svg; else \
-      printf '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" rx="80" fill="#1565C0"/><text x="256" y="340" font-size="280" font-family="sans-serif" fill="white" text-anchor="middle">H</text></svg>' > /tmp/logo.svg && SRC=/tmp/logo.svg; fi && \
+    magick -size 512x512 xc:"#1565C0" \
+           -fill white -font DejaVu-Sans-Bold -pointsize 300 \
+           -gravity Center -annotate 0 "H" \
+           /tmp/base-icon.png 2>/dev/null || \
+    magick -size 512x512 xc:"#1565C0" /tmp/base-icon.png && \
     for SIZE in 72 96 128 144 152 192 384 512; do \
-      convert -background none "$SRC" -resize ${SIZE}x${SIZE} public/icons/icon-${SIZE}x${SIZE}.png; \
+      magick /tmp/base-icon.png -resize ${SIZE}x${SIZE} public/icons/icon-${SIZE}x${SIZE}.png; \
     done
 
 ARG VITE_API_URL
