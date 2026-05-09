@@ -39,28 +39,6 @@ export default defineConfig((ctx) => {
       swFilename: 'sw.js',
       manifestFilename: 'manifest.json',
       useCredentialsForManifestTag: false,
-      extendManifestJson (json) {
-        json.name = 'Helpdesk Escolar'
-        json.short_name = 'Helpdesk'
-        json.description = 'Sistema de tickets do Agrupamento de Escolas Eça de Queirós'
-        json.display = 'standalone'
-        json.orientation = 'portrait'
-        json.background_color = '#ffffff'
-        json.theme_color = '#1565C0'
-        json.start_url = '/'
-        json.scope = '/'
-        json.lang = 'pt'
-        json.icons = [
-          { src: 'icons/icon-72x72.png',   sizes: '72x72',   type: 'image/png' },
-          { src: 'icons/icon-96x96.png',   sizes: '96x96',   type: 'image/png' },
-          { src: 'icons/icon-128x128.png', sizes: '128x128', type: 'image/png' },
-          { src: 'icons/icon-144x144.png', sizes: '144x144', type: 'image/png' },
-          { src: 'icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
-          { src: 'icons/icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-          { src: 'icons/icon-384x384.png', sizes: '384x384', type: 'image/png' },
-          { src: 'icons/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-        ]
-      },
     },
 
     cordova: {},
