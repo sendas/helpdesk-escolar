@@ -199,7 +199,7 @@ export async function getBackupConfig() {
   return data
 }
 
-export async function updateBackupConfig(payload: { enabled: boolean; interval_hours: number; directory: string; retention: number; secondary_directory?: string }) {
+export async function updateBackupConfig(payload: { enabled: boolean; interval_hours: number; directory: string; retention: number; secondary_directory?: string; full_zip_enabled?: boolean; full_zip_retention?: number }) {
   const { data } = await api.patch('/api/v1/admin/backup/config', payload)
   return data
 }

@@ -436,7 +436,13 @@ async def update_backup_config(data: dict, _: User = Depends(require_admin)):
 
 @router.post("/backup/run")
 async def run_backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
-    return await backup_service.write_backup(db)
+    import asyncio
+    result = await backup_service.write_backup(db)
+    config = backup_service.load_config()
+    if config.get("full_zip_enabled", False):
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, backup_service.write_full_zip_auto)
+    return result
 
 
 @router.post("/backup/restore")
