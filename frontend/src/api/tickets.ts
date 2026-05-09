@@ -268,3 +268,19 @@ export async function updateKnowledgeArticle(id: number, payload: Partial<{ titl
 export async function deleteKnowledgeArticle(id: number) {
   await api.delete(`/api/v1/knowledge/admin/${id}`)
 }
+
+export async function getVapidPublicKey(): Promise<string> {
+  const { data } = await api.get<{ public_key: string }>('/api/v1/notifications/vapid-public-key')
+  return data.public_key
+}
+
+export async function subscribePush(subscription: PushSubscriptionJSON) {
+  await api.post('/api/v1/notifications/subscribe', {
+    endpoint: subscription.endpoint,
+    keys: { p256dh: subscription.keys?.p256dh ?? '', auth: subscription.keys?.auth ?? '' },
+  })
+}
+
+export async function unsubscribePush(endpoint: string) {
+  await api.delete('/api/v1/notifications/subscribe', { data: { endpoint } })
+}

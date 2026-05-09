@@ -1,3 +1,4 @@
+import asyncio
 import os
 import uuid
 from datetime import datetime
@@ -11,7 +12,7 @@ from app.models.ticket import Attachment, Comment, TicketEvent, TicketStatus
 from app.models.category import Category
 from app.models.school import School
 from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, CommentCreate, CommentRead, CommentUpdate, WatcherAdd
-from app.services import ticket_service, email_service
+from app.services import ticket_service, email_service, push_service
 from app.api.v1.settings import _read_settings
 from app.config import settings
 
@@ -136,6 +137,24 @@ async def create_ticket(
             )
             db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated", message=f"Ticket escalado para {provider_name} ({provider_email}) na criação"))
             await db.commit()
+
+    # Push notifications for ticket creation
+    push_user_ids: set[int] = set()
+    if ticket.assignee_id:
+        push_user_ids.add(ticket.assignee_id)
+    if ticket.group:
+        for m in ticket.group.members:
+            push_user_ids.add(m.id)
+    for w in ticket.watchers:
+        push_user_ids.add(w.id)
+    push_user_ids.discard(current_user.id)
+    if push_user_ids:
+        asyncio.create_task(push_service.send_push_to_users_bg(
+            push_user_ids,
+            f"Novo ticket: {ticket.title}",
+            f"Pedido de {current_user.display_name}",
+            f"/tickets/{ticket.id}",
+        ))
 
     return ticket
 
@@ -422,6 +441,22 @@ async def add_comment(
                     "comment": data.body,
                 },
             )
+        push_ids = {
+            uid for uid in [
+                ticket.creator_id,
+                ticket.assignee_id,
+                *(m.id for m in (ticket.group.members if ticket.group else [])),
+                *(w.id for w in ticket.watchers),
+            ]
+            if uid and uid != current_user.id
+        }
+        if push_ids:
+            asyncio.create_task(push_service.send_push_to_users_bg(
+                push_ids,
+                f"Nova resposta: {ticket.title}",
+                f"{current_user.display_name}: {data.body[:80]}",
+                f"/tickets/{ticket.id}",
+            ))
     return comment
 
 

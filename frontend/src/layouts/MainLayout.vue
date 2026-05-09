@@ -113,6 +113,31 @@
                 </div>
               </router-link>
               <div v-if="!notificationCount" class="notif-empty">Sem notificações novas.</div>
+              <div class="notif-push">
+                <template v-if="!push.isSupported">
+                  <span class="notif-push-label">Notificações push não suportadas neste browser.</span>
+                </template>
+                <template v-else-if="push.permission === 'denied'">
+                  <span class="notif-push-label notif-push-blocked">
+                    <span class="material-icons" style="font-size:14px">notifications_off</span>
+                    Notificações bloqueadas — ative nas definições do browser.
+                  </span>
+                </template>
+                <template v-else-if="push.isSubscribed">
+                  <span class="notif-push-label">
+                    <span class="material-icons" style="font-size:14px;color:var(--c-primary)">notifications_active</span>
+                    Alertas no telemóvel ativos
+                  </span>
+                  <button class="notif-push-btn" :disabled="push.loading" @click.stop="push.unsubscribe()">Desativar</button>
+                </template>
+                <template v-else>
+                  <span class="notif-push-label">Receber alertas no telemóvel</span>
+                  <button class="notif-push-btn notif-push-btn-primary" :disabled="push.loading" @click.stop="push.requestAndSubscribe()">
+                    <span class="material-icons" style="font-size:14px">add_alert</span>
+                    Ativar
+                  </button>
+                </template>
+              </div>
             </div>
           </div>
           <AvatarCircle :name="auth.user?.display_name || '?'" size="36" style="cursor:pointer" />
@@ -147,10 +172,12 @@ import { getPublicSettings } from '../api/settings'
 import { applyFavicon } from '../utils/branding'
 import { versionLabel } from '../utils/version'
 import AvatarCircle from '../components/AvatarCircle.vue'
+import { usePushNotifications } from '../composables/usePushNotifications'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const push = usePushNotifications()
 const search = ref('')
 const openCount = ref(0)
 const adminOpenCount = ref(0)
@@ -364,6 +391,54 @@ onBeforeUnmount(() => {
   padding: 18px 16px;
   color: var(--c-muted);
   font-size: 13px;
+}
+
+.notif-push {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--c-border);
+  font-size: 12px;
+}
+.notif-push-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--c-muted);
+  line-height: 1.3;
+}
+.notif-push-blocked {
+  color: #ef4444;
+}
+.notif-push-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--c-muted);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.notif-push-btn:hover:not(:disabled) {
+  background: var(--c-bg);
+}
+.notif-push-btn:disabled {
+  opacity: .5;
+  cursor: default;
+}
+.notif-push-btn-primary {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.notif-push-btn-primary:hover:not(:disabled) {
+  background: var(--c-primary-dark, #1251a0);
 }
 
 @media (max-width: 820px) {

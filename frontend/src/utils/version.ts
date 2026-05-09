@@ -1,8 +1,21 @@
-export const APP_VERSION = '1.7.24'
+export const APP_VERSION = '1.7.25'
 export const APP_VERSION_DATE = '2026-05-09'
-export const APP_VERSION_TIME = '14:05'
+export const APP_VERSION_TIME = '14:55'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.25',
+    date: '2026-05-09',
+    time: '14:55',
+    title: 'Notificações push (telemóvel e computador)',
+    changes: [
+      'Notificações push nativas no telemóvel e computador — recebe um alerta mesmo com o browser fechado quando há uma nova resposta ao teu ticket.',
+      'Ativa na campainha (ícone notificações) → "Ativar alertas no telemóvel". No iOS é necessário ter instalado a app (Partilhar → Adicionar ao ecrã de início).',
+      'Android (Chrome/Firefox/Edge): funciona mesmo sem instalar, diretamente no browser.',
+      'As notificações enviam o título do ticket e o início da resposta; ao tocar abre diretamente o ticket na app.',
+      'Desativa a qualquer momento no mesmo painel ou nas definições do sistema operativo.',
+    ],
+  },
   {
     version: '1.7.24',
     date: '2026-05-09',
