@@ -1,12 +1,12 @@
 export const APP_VERSION = '1.7.23'
 export const APP_VERSION_DATE = '2026-05-09'
-export const APP_VERSION_TIME = '19:45'
+export const APP_VERSION_TIME = '13:30'
 
 export const RELEASE_NOTES = [
   {
     version: '1.7.23',
     date: '2026-05-09',
-    time: '19:45',
+    time: '13:30',
     title: 'Cópia automática para OneDrive (Microsoft 365)',
     changes: [
       'Nova secção OneDrive em Backup & Restauro: ativa a cópia automática de cada backup (JSON e ZIP) para o OneDrive de um utilizador da escola.',
