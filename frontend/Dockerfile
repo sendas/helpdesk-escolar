@@ -8,8 +8,7 @@ RUN npm install
 
 COPY . .
 
-# Generate PWA icons using ImageMagick v7 (magick cmd, no SVG/librsvg needed)
-# Creates a blue square with a white "H" using a built-in font, falls back to plain square
+# Generate PWA icons (magick = ImageMagick v7, no SVG needed)
 RUN mkdir -p public/icons && \
     magick -size 512x512 xc:"#1565C0" \
            -fill white -font DejaVu-Sans-Bold -pointsize 300 \
@@ -24,10 +23,23 @@ ARG VITE_API_URL
 ARG VITE_LDAP_ENABLED
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_LDAP_ENABLED=$VITE_LDAP_ENABLED
-RUN npx quasar build -m pwa
+
+# Build as standard SPA (avoids Quasar PWA build-system bugs with workbox)
+RUN npx quasar build
+
+# --- Add PWA files manually to the SPA output ---
+# Web app manifest
+RUN cp src-pwa/manifest.json dist/spa/manifest.json
+
+# Service worker (push handler, plain ES5 — no bundling needed)
+RUN cp public/push-handler.js dist/spa/sw.js
+
+# Inject <link rel="manifest"> and SW registration into index.html
+RUN sed -i 's|</head>|<link rel="manifest" href="/manifest.json"></head>|' dist/spa/index.html && \
+    sed -i 's|</body>|<script src="/sw-register.js"></script></body>|' dist/spa/index.html
 
 # Stage 2: serve with nginx
 FROM nginx:1.27-alpine
-COPY --from=builder /app/dist/pwa /usr/share/nginx/html
+COPY --from=builder /app/dist/spa /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

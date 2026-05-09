@@ -33,18 +33,7 @@ export default defineConfig((ctx) => {
     animations: [],
 
     ssr: { pwa: false, prodPort: 3000, middlewares: ['render'] },
-    pwa: {
-      workboxMode: 'GenerateSW',
-      injectPwaMetaTags: true,
-      swFilename: 'sw.js',
-      manifestFilename: 'manifest.json',
-      useCredentialsForManifestTag: false,
-      extendGenerateSWOptions (cfg) {
-        cfg.skipWaiting = true
-        cfg.clientsClaim = true
-        cfg.importScripts = ['/push-handler.js']
-      },
-    },
+    pwa: { workboxMode: 'GenerateSW' },
 
     cordova: {},
     capacitor: { hideSplashscreen: true },
