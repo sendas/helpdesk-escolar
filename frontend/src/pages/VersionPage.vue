@@ -15,7 +15,7 @@
             <h2>v{{ release.version }}</h2>
             <p>{{ release.title }}</p>
           </div>
-          <time>{{ release.date }}</time>
+          <time>{{ release.date }}{{ release.time ? ' ' + release.time : '' }}</time>
         </div>
         <ul>
           <li v-for="change in release.changes" :key="change">

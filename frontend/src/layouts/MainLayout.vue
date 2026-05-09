@@ -16,14 +16,14 @@
 
     <!-- Sidebar -->
     <aside class="hd-sidebar app-sidebar" :class="{ open: mobileMenuOpen }">
-      <div class="hd-sidebar-logo">
+      <router-link class="hd-sidebar-logo" to="/dashboard" @click="mobileMenuOpen = false">
         <img v-if="settings.logo_url" class="hd-sidebar-logo-img" :src="settings.logo_url" alt="" />
         <div v-else class="hd-sidebar-logo-icon"></div>
         <div class="hd-sidebar-logo-text">
           <div class="hd-sidebar-logo-name">{{ settings.org_name }}</div>
           <div class="hd-sidebar-logo-sub">Helpdesk {{ roleLabel }}</div>
         </div>
-      </div>
+      </router-link>
 
       <nav class="hd-nav">
         <div class="hd-nav-section">Principal</div>

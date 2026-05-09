@@ -6,6 +6,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.22',
     date: '2026-05-09',
+    time: '11:30',
     title: 'Restauro a partir de ZIP completo',
     changes: [
       'A área de importação aceita agora tanto ficheiros .json (apenas dados) como .zip (completo com anexos).',
@@ -18,6 +19,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.21',
     date: '2026-05-09',
+    time: '07:44',
     title: 'Cópias automáticas do ZIP completo para o NAS secundário',
     changes: [
       'Nova opção "Cópias automáticas (ZIP completo)" na configuração de backup — o servidor cria automaticamente um ZIP completo (base de dados + anexos + .env) em cada intervalo configurado.',
@@ -30,6 +32,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.20',
     date: '2026-05-08',
+    time: '22:13',
     title: 'Melhorias de backup, pesquisa, SLA e de-escalação',
     changes: [
       'Pesquisa de tickets por título e descrição nas listas do utilizador e do administrador.',
@@ -48,6 +51,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.19',
     date: '2026-05-08',
+    time: '20:45',
     title: 'Exportação completa para recuperação catastrófica',
     changes: [
       'Novo botão "Descarregar ZIP completo": exporta tudo — base de dados SQLite, todos os ficheiros anexados, logótipo e configurações da aplicação — num único ficheiro ZIP.',
@@ -59,6 +63,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.18',
     date: '2026-05-08',
+    time: '19:27',
     title: 'Registo persistente de backups e destino secundário',
     changes: [
       'O registo de cópias de segurança é agora persistente no servidor — as entradas mantêm-se entre sessões e recarregamentos da página.',
@@ -69,6 +74,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.17',
     date: '2026-05-08',
+    time: '08:03',
     title: 'Notificação ao fornecedor quando ticket escalado é atualizado',
     changes: [
       'Quando o assunto ou a descrição de um ticket que já foi escalado para o fornecedor são alterados pelo administrador, é enviado automaticamente um email ao fornecedor com o conteúdo atualizado.',
@@ -78,6 +84,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.16',
     date: '2026-05-08',
+    time: '07:19',
     title: 'Escalação na criação e edição de conteúdo pelo administrador',
     changes: [
       'Ao criar um ticket, o administrador pode ativar "Escalar imediatamente para fornecedor" — o email de escalação é enviado ao fornecedor externo logo após a criação, sem passos extra.',
@@ -88,6 +95,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.15',
     date: '2026-05-07',
+    time: '21:08',
     title: 'Notificações automáticas para quem responde a um ticket',
     changes: [
       'Quem responde a um ticket passa a ser automaticamente adicionado às pessoas em conhecimento, ficando assim a receber todas as notificações seguintes (novas respostas, alterações de estado, fecho do ticket).',
@@ -97,6 +105,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.14',
     date: '2026-05-07',
+    time: '07:36',
     title: 'Aviso de modo de demonstração',
     changes: [
       'Quando o utilizador entra em modo de demonstração, aparece um aviso persistente no topo de todas as páginas a informar que os pedidos não serão processados e a indicar como entrar com a conta da escola.',
@@ -107,6 +116,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.13',
     date: '2026-05-06',
+    time: '23:41',
     title: 'Pré-visualização de imagens e PDFs nos tickets',
     changes: [
       'Imagens anexadas aparecem como miniaturas diretamente no ticket — clicar abre a imagem em popup a ecrã inteiro.',
@@ -117,6 +127,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.12',
     date: '2026-05-06',
+    time: '23:19',
     title: 'Correções de upload e download de anexos',
     changes: [
       'O backend passa a aceitar qualquer formato de imagem (incluindo HEIC e WebP de dispositivos iOS/Android) além de PDF.',
@@ -128,6 +139,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.11',
     date: '2026-05-06',
+    time: '22:54',
     title: 'Correções de anexos, mobile e branding do login',
     changes: [
       'Clicar num anexo já não devolve "Not authenticated" — o download é agora feito com o token de sessão.',
@@ -143,6 +155,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.10',
     date: '2026-05-06',
+    time: '22:16',
     title: 'Diagnóstico das respostas por email',
     changes: [
       'Os emails enviados passam a definir explicitamente o Reply-To para a caixa configurada em MAIL_FROM.',
@@ -153,6 +166,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.9',
     date: '2026-05-06',
+    time: '21:43',
     title: 'Respostas por email atualizam o ticket',
     changes: [
       'Quando a caixa IMAP de respostas está configurada, respostas a emails com o assunto [Ticket #ID] passam a ser importadas automaticamente como comentários públicos no ticket.',
@@ -163,6 +177,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.8',
     date: '2026-05-06',
+    time: '21:05',
     title: 'Correção da pesquisa em conhecimento por utilizador',
     changes: [
       'No detalhe do ticket, o campo Em conhecimento passa a filtrar sugestões pelo nome, email, prefixo do email e nome de utilizador.',
@@ -172,6 +187,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.7',
     date: '2026-05-06',
+    time: '20:28',
     title: 'Pesquisa por utilizador nas pessoas em conhecimento',
     changes: [
       'A gestão de membros dos grupos internos passa a permitir pesquisar utilizadores por nome, email ou nome de utilizador.',
@@ -182,6 +198,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.6',
     date: '2026-05-06',
+    time: '19:52',
     title: 'Gestão de pessoas em conhecimento no ticket',
     changes: [
       'O autor do ticket e qualquer técnico ou administrador podem agora adicionar e remover pessoas em conhecimento diretamente na página de detalhe, sem ser necessário recriar o ticket.',
@@ -192,6 +209,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.5',
     date: '2026-05-06',
+    time: '19:14',
     title: 'Correção do modo escuro no login',
     changes: [
       'Quando o modo escuro é ativado no ecrã de login, toda a área de entrada passa a usar fundo, cartões, bordas e texto escuros coerentes.',
@@ -201,6 +219,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.4',
     date: '2026-05-06',
+    time: '08:49',
     title: 'Escolha de tema no login',
     changes: [
       'Página de login continua a abrir em modo claro por defeito.',
@@ -211,6 +230,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.3',
     date: '2026-05-06',
+    time: '08:31',
     title: 'Criação de tickets e login claro',
     changes: [
       'Administradores podem atribuir logo um novo ticket a pessoas em conhecimento e a equipas internas.',
@@ -225,6 +245,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.2',
     date: '2026-05-06',
+    time: '07:58',
     title: 'Categorias, técnicos ativos e tema',
     changes: [
       'Categorias padrão atualizadas para Inovar, Mail e Teams, Internet e Wi-Fi, Computadores, Impressoras, Projetores, Passwords e Outros.',
@@ -238,6 +259,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.1',
     date: '2026-05-06',
+    time: '07:23',
     title: 'Utilizadores manuais e emails institucionais',
     changes: [
       'Adição manual de utilizadores com nome, email, papel, departamento, estado e palavra-passe definida pelo administrador.',
@@ -252,6 +274,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.0',
     date: '2026-05-05',
+    time: '22:37',
     title: 'Participantes, notificações e sincronização Entra',
     changes: [
       'Opção para dar conhecimento a pessoas ao criar um ticket.',
@@ -265,6 +288,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.6.0',
     date: '2026-05-05',
+    time: '07:52',
     title: 'Escalação e gestão em lote',
     changes: [
       'Escalação de tickets para fornecedor externo configurável.',
@@ -275,6 +299,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.5.0',
     date: '2026-05-04',
+    time: '20:14',
     title: 'Administração escolar',
     changes: [
       'Gestão de escolas, categorias e grupos internos.',
