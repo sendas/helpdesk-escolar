@@ -34,11 +34,16 @@ export default defineConfig((ctx) => {
 
     ssr: { pwa: false, prodPort: 3000, middlewares: ['render'] },
     pwa: {
-      workboxMode: 'InjectManifest',
+      workboxMode: 'GenerateSW',
       injectPwaMetaTags: true,
       swFilename: 'sw.js',
       manifestFilename: 'manifest.json',
       useCredentialsForManifestTag: false,
+      extendGenerateSWOptions (cfg) {
+        cfg.skipWaiting = true
+        cfg.clientsClaim = true
+        cfg.importScripts = ['/push-handler.js']
+      },
     },
 
     cordova: {},
