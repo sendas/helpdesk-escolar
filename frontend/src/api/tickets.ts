@@ -228,6 +228,7 @@ export interface BackupHistoryEntry {
   date: string
   ok: boolean
   source: 'manual' | 'auto'
+  backup_type?: 'json' | 'zip'
   secondary_error?: string
 }
 

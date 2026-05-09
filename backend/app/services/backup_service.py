@@ -67,6 +67,8 @@ def default_config() -> dict[str, Any]:
         "directory": settings.backup_directory,
         "retention": settings.backup_retention,
         "secondary_directory": "",
+        "full_zip_enabled": False,
+        "full_zip_retention": 7,
     }
 
 
@@ -84,12 +86,15 @@ def load_config() -> dict[str, Any]:
     config["directory"] = str(config.get("directory") or settings.backup_directory)
     config["retention"] = max(1, int(config.get("retention") or 14))
     config["secondary_directory"] = str(config.get("secondary_directory") or "").strip()
+    config["full_zip_enabled"] = bool(config.get("full_zip_enabled", False))
+    config["full_zip_retention"] = max(1, int(config.get("full_zip_retention") or 7))
     return config
 
 
 def save_config(data: dict[str, Any]) -> dict[str, Any]:
     config = load_config()
-    for key in ("enabled", "interval_hours", "directory", "retention", "secondary_directory"):
+    for key in ("enabled", "interval_hours", "directory", "retention", "secondary_directory",
+                "full_zip_enabled", "full_zip_retention"):
         if key in data:
             config[key] = data[key]
     config["enabled"] = bool(config["enabled"])
@@ -97,6 +102,8 @@ def save_config(data: dict[str, Any]) -> dict[str, Any]:
     config["directory"] = str(config["directory"]).strip() or settings.backup_directory
     config["retention"] = max(1, int(config["retention"]))
     config["secondary_directory"] = str(config.get("secondary_directory") or "").strip()
+    config["full_zip_enabled"] = bool(config.get("full_zip_enabled", False))
+    config["full_zip_retention"] = max(1, int(config.get("full_zip_retention") or 7))
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
     return config
@@ -214,6 +221,58 @@ def cleanup_old_backups(directory: Path, retention: int) -> None:
         pass
 
 
+def cleanup_old_full_zips(directory: Path, retention: int) -> None:
+    try:
+        zips = sorted(
+            directory.glob("helpdesk-full-*.zip"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+        for old_file in zips[retention:]:
+            old_file.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def write_full_zip_auto() -> None:
+    """Build a full ZIP and save to primary + secondary directories. Called by the scheduler."""
+    config = load_config()
+    primary_dir = Path(config["directory"]) / "full_zips"
+    primary_dir.mkdir(parents=True, exist_ok=True)
+
+    tmp_path, filename = build_full_zip()
+    dest = primary_dir / filename
+    shutil.move(tmp_path, dest)
+    cleanup_old_full_zips(primary_dir, config["full_zip_retention"])
+
+    locations = [str(dest)]
+    secondary_error: str | None = None
+    secondary_dir = config.get("secondary_directory", "").strip()
+    if secondary_dir:
+        try:
+            sec_path = Path(secondary_dir) / "full_zips"
+            sec_path.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(dest, sec_path / filename)
+            locations.append(str(sec_path / filename))
+            cleanup_old_full_zips(sec_path, config["full_zip_retention"])
+        except Exception as exc:
+            secondary_error = str(exc)
+
+    entry: dict[str, Any] = {
+        "id": int(datetime.utcnow().timestamp() * 1000) + 1,
+        "filename": filename,
+        "path": str(dest),
+        "locations": locations,
+        "date": datetime.utcnow().isoformat(),
+        "ok": secondary_error is None,
+        "source": "auto",
+        "backup_type": "zip",
+    }
+    if secondary_error:
+        entry["secondary_error"] = secondary_error
+    _append_history(entry)
+
+
 _ENV_CANDIDATES = [Path("/app/.env"), Path(".env")]
 
 
@@ -225,7 +284,7 @@ def build_full_zip() -> tuple[str, str]:
     """
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     filename = f"helpdesk-full-{timestamp}.zip"
-    skip_dirs = {"backups"}
+    skip_dirs = {"backups", "full_zips"}
 
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
     tmp.close()

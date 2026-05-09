@@ -19,10 +19,16 @@
         </div>
         <p class="card-copy">Define se o servidor deve criar cópias periódicas e onde as deve guardar.</p>
 
-        <label class="backup-toggle">
-          <input type="checkbox" v-model="config.enabled" />
-          <span>Ativar cópias automáticas</span>
-        </label>
+        <div class="toggle-group">
+          <label class="backup-toggle">
+            <input type="checkbox" v-model="config.enabled" />
+            <span>Cópias automáticas (JSON)</span>
+          </label>
+          <label class="backup-toggle">
+            <input type="checkbox" v-model="config.full_zip_enabled" />
+            <span>Cópias automáticas (ZIP completo)</span>
+          </label>
+        </div>
 
         <div class="form-grid">
           <label>
@@ -36,17 +42,21 @@
             </select>
           </label>
           <label>
-            Manter últimas
+            Manter JSON
             <input class="hd-input" type="number" min="1" max="365" v-model.number="config.retention" />
           </label>
-          <label class="span-2">
+          <label>
+            Manter ZIP
+            <input class="hd-input" type="number" min="1" max="365" v-model.number="config.full_zip_retention" />
+          </label>
+          <label class="span-3">
             Destino principal
             <input class="hd-input" v-model="config.directory" placeholder="/app/data/backups" />
           </label>
-          <label class="span-2">
+          <label class="span-3">
             Destino secundário <span class="optional-tag">opcional</span>
             <input class="hd-input" v-model="config.secondary_directory" placeholder="ex: /mnt/nas/backups ou \\\\servidor\\pasta" />
-            <span class="field-hint">Partilha de rede montada, disco externo ou outro caminho acessível pelo servidor. Deixar vazio para não usar.</span>
+            <span class="field-hint">Partilha de rede montada, disco externo ou outro caminho acessível pelo servidor. Aplica-se tanto ao JSON como ao ZIP.</span>
           </label>
         </div>
 
@@ -170,6 +180,7 @@
           <div>
             <strong>{{ entry.filename }}</strong>
             <span class="log-badge" :class="entry.source">{{ entry.source === 'auto' ? 'automático' : 'manual' }}</span>
+            <span v-if="entry.backup_type === 'zip'" class="log-badge zip">ZIP</span>
             <small class="log-date">{{ formatDate(entry.date) }}</small>
             <div class="log-locations">
               <span v-for="loc in entry.locations" :key="loc" class="log-loc">
@@ -208,7 +219,7 @@ const restoreError = ref(false)
 const restoreCounts = ref<Record<string, number> | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const stats = ref({ tickets: '—', users: '—', categories: '—' })
-const config = ref({ enabled: false, interval_hours: 24, directory: '/app/data/backups', retention: 14, secondary_directory: '' })
+const config = ref({ enabled: false, interval_hours: 24, directory: '/app/data/backups', retention: 14, secondary_directory: '', full_zip_enabled: false, full_zip_retention: 7 })
 const history = ref<BackupHistoryEntry[]>([])
 
 onMounted(async () => {
@@ -221,6 +232,8 @@ onMounted(async () => {
       directory: cfg.directory || '/app/data/backups',
       retention: Number(cfg.retention || 14),
       secondary_directory: cfg.secondary_directory || '',
+      full_zip_enabled: !!cfg.full_zip_enabled,
+      full_zip_retention: Number(cfg.full_zip_retention || 7),
     }
   } catch {
     showMessage('Não foi possível carregar a configuração de backup.', true)
@@ -412,16 +425,21 @@ function formatDate(iso: string) {
 }
 .card-title .material-icons { color: var(--c-primary); }
 .refresh-btn { margin-left: auto; }
+.toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 18px 0;
+}
 .backup-toggle {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 18px 0;
   font-weight: 600;
 }
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 160px;
+  grid-template-columns: 1fr 130px 130px;
   gap: 14px;
   margin-bottom: 16px;
 }
@@ -434,6 +452,7 @@ function formatDate(iso: string) {
   text-transform: uppercase;
 }
 .span-2 { grid-column: 1 / -1; }
+.span-3 { grid-column: 1 / -1; }
 .optional-tag {
   font-size: 10px;
   font-weight: 400;
@@ -568,6 +587,7 @@ function formatDate(iso: string) {
 }
 .log-badge.manual { background: #dbeafe; color: #1e40af; }
 .log-badge.auto { background: #dcfce7; color: #166534; }
+.log-badge.zip { background: #f3e8ff; color: #6b21a8; }
 .log-date { display: block; color: var(--c-muted); margin-top: 3px; }
 .log-locations { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
 .log-loc { font-size: 11px; color: var(--c-muted); }

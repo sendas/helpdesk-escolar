@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.20'
-export const APP_VERSION_DATE = '2026-05-08'
-export const APP_VERSION_TIME = '10:30'
+export const APP_VERSION = '1.7.21'
+export const APP_VERSION_DATE = '2026-05-09'
+export const APP_VERSION_TIME = '11:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.21',
+    date: '2026-05-09',
+    title: 'Cópias automáticas do ZIP completo para o NAS secundário',
+    changes: [
+      'Nova opção "Cópias automáticas (ZIP completo)" na configuração de backup — o servidor cria automaticamente um ZIP completo (base de dados + anexos + .env) em cada intervalo configurado.',
+      'O ZIP automático é guardado em subpasta "full_zips" dentro do destino principal e, se configurado, copiado para o destino secundário (outro NAS, partilha de rede, etc.).',
+      'Número de ZIPs a manter configurável independentemente do número de JSONs.',
+      'O registo de cópias identifica as entradas ZIP com etiqueta roxa "ZIP".',
+      'Os ZIPs gerados automaticamente são excluídos do conteúdo dos novos ZIPs para evitar recursividade.',
+    ],
+  },
   {
     version: '1.7.20',
     date: '2026-05-08',

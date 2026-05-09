@@ -79,24 +79,40 @@ async def _backup_periodically() -> None:
     from app.database import AsyncSessionLocal
     from app.services import backup_service
 
+    loop = asyncio.get_event_loop()
     first_run = True
     while True:
         config = backup_service.load_config()
-        if not config["enabled"]:
+        json_on = config["enabled"]
+        zip_on = config.get("full_zip_enabled", False)
+        if not json_on and not zip_on:
             await asyncio.sleep(300)
             first_run = True
             continue
         if first_run:
             first_run = False
+            if json_on:
+                async with AsyncSessionLocal() as db:
+                    try:
+                        await backup_service.write_backup_auto(db)
+                    except Exception:
+                        pass
+            if zip_on:
+                try:
+                    await loop.run_in_executor(None, backup_service.write_full_zip_auto)
+                except Exception:
+                    pass
+        await asyncio.sleep(max(config["interval_hours"], 1) * 3600)
+        config = backup_service.load_config()
+        if config["enabled"]:
             async with AsyncSessionLocal() as db:
                 try:
                     await backup_service.write_backup_auto(db)
                 except Exception:
                     pass
-        await asyncio.sleep(max(config["interval_hours"], 1) * 3600)
-        async with AsyncSessionLocal() as db:
+        if config.get("full_zip_enabled", False):
             try:
-                await backup_service.write_backup_auto(db)
+                await loop.run_in_executor(None, backup_service.write_full_zip_auto)
             except Exception:
                 pass
 
