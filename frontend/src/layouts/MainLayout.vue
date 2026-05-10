@@ -126,7 +126,14 @@
               </router-link>
               <div v-if="!notificationCount" class="notif-empty">Sem notificações novas.</div>
               <div class="notif-push">
-                <template v-if="!push.isSupported">
+                <template v-if="push.needsHttps">
+                  <span class="notif-push-label notif-push-blocked">
+                    <span class="material-icons" style="font-size:15px">lock_open</span>
+                    <span>Push não funciona em <strong>HTTP</strong>.<br>
+                    O site tem de ser acedido por <strong>HTTPS</strong> para ativar notificações.</span>
+                  </span>
+                </template>
+                <template v-else-if="!push.isSupported">
                   <span class="notif-push-label">Notificações push não suportadas neste browser.</span>
                 </template>
                 <template v-else-if="push.needsInstall">
@@ -170,7 +177,7 @@
                 </template>
 
                 <!-- Reset button — always visible when push is supported -->
-                <div v-if="push.isSupported && !push.needsInstall" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--c-border)">
+                <div v-if="push.isSupported && !push.needsInstall && !push.needsHttps" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--c-border)">
                   <button class="notif-push-btn" style="font-size:11px;width:100%;justify-content:center" :disabled="push.loading" @click.stop="push.hardReset()">
                     <span class="material-icons" style="font-size:13px">restart_alt</span>
                     {{ push.loading ? 'A reiniciar...' : 'Reiniciar subscrição' }}

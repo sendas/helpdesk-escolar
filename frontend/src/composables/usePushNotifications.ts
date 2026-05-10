@@ -50,10 +50,15 @@ async function getActiveRegistration(): Promise<ServiceWorkerRegistration | null
 const _isIos = typeof navigator !== 'undefined' &&
   /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream
 
+// Push requires HTTPS (except localhost). Detect HTTP so we can show a clear message.
+const _isHttp = typeof location !== 'undefined' &&
+  location.protocol === 'http:' && location.hostname !== 'localhost'
+
 export function usePushNotifications() {
-  const isSupported = 'Notification' in window && 'PushManager' in window && 'serviceWorker' in navigator
+  const isSupported = !_isHttp && 'Notification' in window && 'PushManager' in window && 'serviceWorker' in navigator
+  const needsHttps = _isHttp
   const isStandalone = (navigator as any).standalone === true
-  const needsInstall = _isIos && !isStandalone
+  const needsInstall = _isIos && !isStandalone && !_isHttp
 
   const permission = ref<NotificationPermission>(isSupported ? Notification.permission : 'denied')
   const isSubscribed = ref(false)
@@ -148,5 +153,5 @@ export function usePushNotifications() {
     }
   })
 
-  return { isSupported, needsInstall, permission, isSubscribed, canEnable, loading, error, swState, requestAndSubscribe, unsubscribe, hardReset }
+  return { isSupported, needsHttps, needsInstall, permission, isSubscribed, canEnable, loading, error, swState, requestAndSubscribe, unsubscribe, hardReset }
 }

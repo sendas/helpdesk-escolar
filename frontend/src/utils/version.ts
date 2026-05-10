@@ -1,17 +1,26 @@
-export const APP_VERSION = '1.7.32'
+export const APP_VERSION = '1.7.33'
 export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '12:00'
+export const APP_VERSION_TIME = '12:15'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.33',
+    date: '2026-05-10',
+    time: '12:15',
+    title: 'Push: deteção de HTTP e mensagem clara',
+    changes: [
+      'Notificações push requerem HTTPS — o browser bloqueia-as em HTTP. O painel de notificações passa a mostrar uma mensagem clara quando o site é acedido por HTTP em vez de "não suportado neste browser".',
+      'Solução: aceder ao Helpdesk por HTTPS (ex: configurar certificado SSL ou usar Cloudflare). Em HTTP nunca funcionarão, independentemente do browser ou dispositivo.',
+    ],
+  },
   {
     version: '1.7.32',
     date: '2026-05-10',
     time: '12:00',
     title: 'Push: botão Reiniciar subscrição + correcção do Desativar',
     changes: [
-      'Novo botão "Reiniciar subscrição" no painel de notificações: cancela tudo no browser (service worker + subscrição), re-regista e subscreve de novo — resolve qualquer estado inconsistente.',
-      'Corrigido: os botões Ativar e Desativar já não ficam bloqueados quando o service worker ainda não está ativo — passa a usar getRegistrations() que retorna imediatamente.',
-      'Mensagens de erro visíveis no estado "Alertas ativos" quando o Desativar falha.',
+      'Novo botão "Reiniciar subscrição" no painel de notificações.',
+      'Corrigido: os botões Ativar e Desativar já não ficam bloqueados quando o service worker ainda não está ativo.',
     ],
   },
   {
