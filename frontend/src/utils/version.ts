@@ -1,18 +1,28 @@
-export const APP_VERSION = '1.7.31'
+export const APP_VERSION = '1.7.32'
 export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '11:30'
+export const APP_VERSION_TIME = '12:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.32',
+    date: '2026-05-10',
+    time: '12:00',
+    title: 'Push: botão Reiniciar subscrição + correcção do Desativar',
+    changes: [
+      'Novo botão "Reiniciar subscrição" no painel de notificações: cancela tudo no browser (service worker + subscrição), re-regista e subscreve de novo — resolve qualquer estado inconsistente.',
+      'Corrigido: os botões Ativar e Desativar já não ficam bloqueados quando o service worker ainda não está ativo — passa a usar getRegistrations() que retorna imediatamente.',
+      'Mensagens de erro visíveis no estado "Alertas ativos" quando o Desativar falha.',
+    ],
+  },
   {
     version: '1.7.31',
     date: '2026-05-10',
     time: '11:30',
     title: 'Push: auto-sincronização e melhor diagnóstico',
     changes: [
-      'Cada vez que a app abre, se o browser tiver uma subscrição push registada, ela é automaticamente re-enviada ao servidor — elimina o problema de "sem subscrições" após reconstrução do container ou reset da base de dados.',
-      'Ao re-ativar push, a subscrição anterior é removida do browser antes de criar uma nova, garantindo que a chave VAPID é sempre a correta.',
-      'Subscrições com erro 401/403 (chave VAPID desatualizada) são agora removidas da base de dados automaticamente durante o envio.',
-      'Quando o teste de push falha, a mensagem de erro inclui instruções claras para re-sincronizar (Desativar → Ativar na campainha).',
+      'Cada vez que a app abre, se o browser tiver uma subscrição push registada, ela é automaticamente re-enviada ao servidor.',
+      'Ao re-ativar push, a subscrição anterior é removida do browser antes de criar uma nova.',
+      'Subscrições com erro 401/403 são agora removidas da base de dados automaticamente.',
     ],
   },
   {

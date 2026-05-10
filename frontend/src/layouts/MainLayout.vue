@@ -143,11 +143,18 @@
                   </span>
                 </template>
                 <template v-else-if="push.isSubscribed">
-                  <span class="notif-push-label">
-                    <span class="material-icons" style="font-size:14px;color:var(--c-primary)">notifications_active</span>
-                    Alertas ativos neste dispositivo
-                  </span>
-                  <button class="notif-push-btn" :disabled="push.loading" @click.stop="push.unsubscribe()">Desativar</button>
+                  <div style="display:flex;flex-direction:column;gap:6px;width:100%">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                      <span class="notif-push-label">
+                        <span class="material-icons" style="font-size:14px;color:var(--c-primary)">notifications_active</span>
+                        Alertas ativos neste dispositivo
+                      </span>
+                      <button class="notif-push-btn" :disabled="push.loading" @click.stop="push.unsubscribe()">
+                        {{ push.loading ? '...' : 'Desativar' }}
+                      </button>
+                    </div>
+                    <span v-if="push.error" style="font-size:11px;color:#EF4444;line-height:1.4">{{ push.error }}</span>
+                  </div>
                 </template>
                 <template v-else>
                   <div style="display:flex;flex-direction:column;gap:6px;width:100%">
@@ -161,6 +168,14 @@
                     <span v-if="push.error" style="font-size:11px;color:#EF4444;line-height:1.4">{{ push.error }}</span>
                   </div>
                 </template>
+
+                <!-- Reset button — always visible when push is supported -->
+                <div v-if="push.isSupported && !push.needsInstall" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--c-border)">
+                  <button class="notif-push-btn" style="font-size:11px;width:100%;justify-content:center" :disabled="push.loading" @click.stop="push.hardReset()">
+                    <span class="material-icons" style="font-size:13px">restart_alt</span>
+                    {{ push.loading ? 'A reiniciar...' : 'Reiniciar subscrição' }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
