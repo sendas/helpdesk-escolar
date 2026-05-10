@@ -1,12 +1,22 @@
-export const APP_VERSION = '1.7.27'
+export const APP_VERSION = '1.7.28'
 export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '09:30'
+export const APP_VERSION_TIME = '10:00'
 
 export const RELEASE_NOTES = [
   {
+    version: '1.7.28',
+    date: '2026-05-10',
+    time: '10:00',
+    title: 'Botão de teste de notificações push',
+    changes: [
+      'Novo botão "Enviar notificação de teste" nas Configurações → Notificações — permite verificar se as notificações push estão a funcionar sem precisar de criar um ticket.',
+      'O backend regista agora no log se o envio foi bem-sucedido ou se a subscrição expirou e foi removida automaticamente.',
+    ],
+  },
+  {
     version: '1.7.27',
     date: '2026-05-10',
-    time: '09:00',
+    time: '09:30',
     title: 'Safe area iOS — cabeçalho e scroll corrigidos',
     changes: [
       'Corrigido: em iPhones com notch ou Dynamic Island, o cabeçalho sobrepunha-se à barra de estado do iOS.',

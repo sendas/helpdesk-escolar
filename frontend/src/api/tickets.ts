@@ -284,3 +284,7 @@ export async function subscribePush(subscription: PushSubscriptionJSON) {
 export async function unsubscribePush(endpoint: string) {
   await api.delete('/api/v1/notifications/subscribe', { data: { endpoint } })
 }
+
+export async function testPush() {
+  await api.post('/api/v1/notifications/test')
+}

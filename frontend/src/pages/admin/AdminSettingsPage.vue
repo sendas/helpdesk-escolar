@@ -247,6 +247,19 @@
           </span>
         </div>
       </div>
+      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-top:4px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:10px">Teste de notificação push</div>
+        <p class="hd-hint" style="margin-bottom:12px">Envia uma notificação push de teste para este dispositivo. O browser tem de ter as notificações ativas.</p>
+        <div class="hd-row" style="gap:10px;align-items:center">
+          <button class="hd-btn hd-btn-outline" :disabled="testingPush" @click="testPushNow">
+            <span class="material-icons" style="font-size:16px">notifications_active</span>
+            {{ testingPush ? 'A enviar...' : 'Enviar notificação de teste' }}
+          </button>
+          <span v-if="pushTestResult" :style="{ color: pushTestOk ? '#22C55E' : '#EF4444', fontSize: '13px' }">
+            {{ pushTestResult }}
+          </span>
+        </div>
+      </div>
       <div style="margin-top:20px">
         <button class="hd-btn hd-btn-primary" @click="saved = true">
           <span class="material-icons" style="font-size:16px">save</span> Guardar
@@ -429,7 +442,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp } from '../../api/tickets'
+import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
 import { getPublicSettings, updateSettings } from '../../api/settings'
 import { getGroups, getUsers } from '../../api/users'
 
@@ -441,6 +454,9 @@ const ldapTestOk = ref(false)
 const testingSmtp = ref(false)
 const smtpTestResult = ref('')
 const smtpTestOk = ref(false)
+const testingPush = ref(false)
+const pushTestResult = ref('')
+const pushTestOk = ref(false)
 const showNewCat = ref(false)
 const showNewSchool = ref(false)
 const loadingCats = ref(false)
@@ -524,6 +540,21 @@ async function testSmtpNow() {
     smtpTestResult.value = e?.response?.data?.detail || 'Erro ao enviar email de teste'
   } finally {
     testingSmtp.value = false
+  }
+}
+
+async function testPushNow() {
+  testingPush.value = true
+  pushTestResult.value = ''
+  try {
+    await apiTestPush()
+    pushTestOk.value = true
+    pushTestResult.value = 'Notificação enviada!'
+  } catch (e: any) {
+    pushTestOk.value = false
+    pushTestResult.value = e?.response?.data?.detail || 'Erro ao enviar notificação push'
+  } finally {
+    testingPush.value = false
   }
 }
 

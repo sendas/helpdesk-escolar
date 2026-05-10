@@ -168,13 +168,15 @@ def _send_sync(endpoint: str, p256dh: str, auth_key: str, payload_json: str, pri
     try:
         resp = httpx.post(endpoint, content=body, headers=headers, timeout=10)
         if resp.status_code in (201, 202):
+            logger.info("Push OK → %s", endpoint[:60])
             return False
         if resp.status_code in (404, 410):
+            logger.info("Push subscription expired (%s) → removing %s", resp.status_code, endpoint[:60])
             return True
-        logger.debug("Push %s → %s", endpoint[:60], resp.status_code)
+        logger.warning("Push unexpected status %s → %s", resp.status_code, endpoint[:60])
         return False
     except Exception as exc:
-        logger.debug("Push HTTP error: %s", exc)
+        logger.warning("Push HTTP error: %s", exc)
         return False
 
 

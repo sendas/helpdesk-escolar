@@ -74,3 +74,22 @@ async def unsubscribe(
     if existing:
         await db.delete(existing)
         await db.commit()
+
+
+@router.post("/test", status_code=status.HTTP_204_NO_CONTENT)
+async def send_test_push(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    subs = (
+        await db.execute(select(PushSubscription).where(PushSubscription.user_id == current_user.id))
+    ).scalars().all()
+    if not subs:
+        raise HTTPException(status_code=404, detail="Sem subscrições push ativas. Ative as notificações no browser primeiro.")
+    await push_service.send_push_to_users(
+        db,
+        {current_user.id},
+        "Teste de notificação",
+        "As notificações push estão a funcionar correctamente!",
+        "/dashboard",
+    )
