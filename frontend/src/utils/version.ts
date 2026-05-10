@@ -1,12 +1,12 @@
 export const APP_VERSION = '1.7.34'
 export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '12:30'
+export const APP_VERSION_TIME = '10:33'
 
 export const RELEASE_NOTES = [
   {
     version: '1.7.34',
     date: '2026-05-10',
-    time: '12:30',
+    time: '10:33',
     title: 'Push iOS: instrução de instalação corrigida',
     changes: [
       'Corrigido: no Safari do iPhone/iPad, o painel de notificações mostrava "não suportado neste browser" em vez da instrução para adicionar ao ecrã de início.',
