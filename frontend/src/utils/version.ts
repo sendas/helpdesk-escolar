@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.26'
-export const APP_VERSION_DATE = '2026-05-09'
-export const APP_VERSION_TIME = '16:10'
+export const APP_VERSION = '1.7.27'
+export const APP_VERSION_DATE = '2026-05-10'
+export const APP_VERSION_TIME = '09:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.27',
+    date: '2026-05-10',
+    time: '09:00',
+    title: 'Safe area iOS — cabeçalho e scroll corrigidos',
+    changes: [
+      'Corrigido: em iPhones com notch ou Dynamic Island, o cabeçalho sobrepunha-se à barra de estado do iOS.',
+      'Corrigido: na PWA instalada (ecrã de início), o conteúdo das páginas não fazia scroll correctamente — só era visível ao deslizar o dedo e desaparecia ao soltar.',
+      'A página de login também passa a respeitar a safe area do topo em todos os iPhones.',
+    ],
+  },
   {
     version: '1.7.26',
     date: '2026-05-09',

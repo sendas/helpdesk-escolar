@@ -165,8 +165,9 @@
       </div>
 
       <!-- Page content -->
-      <main style="flex:1;overflow:auto">
+      <main style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain">
         <router-view />
+        <div style="height:env(safe-area-inset-bottom,0px)"></div>
       </main>
     </div>
   </div>
@@ -501,6 +502,9 @@ onBeforeUnmount(() => {
   }
   .app-main {
     margin-left: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
   }
   :deep(.hd-sidebar) {
     width: 100%;
@@ -537,10 +541,10 @@ onBeforeUnmount(() => {
   }
   :deep(.hd-header) {
     position: sticky;
-    top: 0;
+    top: env(safe-area-inset-top, 0px);
     z-index: 80;
     gap: 8px;
-    padding: 10px 12px;
+    padding: max(env(safe-area-inset-top, 0px), 10px) 12px 10px;
     height: auto;
     flex-wrap: nowrap;
   }
