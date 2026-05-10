@@ -249,15 +249,25 @@
       </div>
       <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-top:4px">
         <div style="font-weight:600;font-size:14px;margin-bottom:10px">Teste de notificação push</div>
-        <p class="hd-hint" style="margin-bottom:12px">Envia uma notificação push de teste para este dispositivo. O browser tem de ter as notificações ativas.</p>
-        <div class="hd-row" style="gap:10px;align-items:center">
-          <button class="hd-btn hd-btn-outline" :disabled="testingPush" @click="testPushNow">
-            <span class="material-icons" style="font-size:16px">notifications_active</span>
-            {{ testingPush ? 'A enviar...' : 'Enviar notificação de teste' }}
-          </button>
-          <span v-if="pushTestResult" :style="{ color: pushTestOk ? '#22C55E' : '#EF4444', fontSize: '13px' }">
-            {{ pushTestResult }}
-          </span>
+        <p class="hd-hint" style="margin-bottom:12px">
+          Envia uma notificação push de teste para este dispositivo.
+          Clique primeiro na campainha (canto superior direito) → <strong>Ativar</strong> para registar este browser.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="hd-row" style="gap:10px;align-items:center">
+            <button class="hd-btn hd-btn-outline" :disabled="testingPush" @click="testPushNow">
+              <span class="material-icons" style="font-size:16px">notifications_active</span>
+              {{ testingPush ? 'A enviar...' : 'Enviar notificação de teste' }}
+            </button>
+            <span v-if="pushTestResult && pushTestOk" style="color:#22C55E;font-size:13px">{{ pushTestResult }}</span>
+          </div>
+          <div v-if="pushTestResult && !pushTestOk" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px 14px">
+            <div style="font-size:13px;color:#EF4444;font-weight:600;margin-bottom:4px">{{ pushTestResult }}</div>
+            <div style="font-size:12px;color:var(--c-muted);line-height:1.5">
+              Clique na <strong>campainha</strong> no topo da página → <strong>Ativar</strong> para registar este dispositivo.<br>
+              Se já ativou antes e continua a falhar, clique em <strong>Desativar</strong> e depois <strong>Ativar</strong> novamente para re-sincronizar.
+            </div>
+          </div>
         </div>
       </div>
       <div style="margin-top:20px">

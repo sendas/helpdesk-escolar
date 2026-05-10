@@ -173,6 +173,9 @@ def _send_sync(endpoint: str, p256dh: str, auth_key: str, payload_json: str, pri
         if resp.status_code in (404, 410):
             logger.info("Push subscription expired (%s) → removing %s", resp.status_code, endpoint[:60])
             return True
+        if resp.status_code in (401, 403):
+            logger.warning("Push VAPID auth error (%s) → removing stale subscription %s", resp.status_code, endpoint[:60])
+            return True
         logger.warning("Push unexpected status %s → %s", resp.status_code, endpoint[:60])
         return False
     except Exception as exc:

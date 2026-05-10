@@ -10,12 +10,15 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return arr
 }
 
-// Always wait for an *active* SW — avoids the race condition where
-// window.__swRegistration is set but the SW is still in 'installing' state.
-async function getSwRegistration(): Promise<ServiceWorkerRegistration | null> {
+async function getActiveSwRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!navigator.serviceWorker) return null
   try {
-    return await navigator.serviceWorker.ready
+    // navigator.serviceWorker.ready only resolves when a SW is in 'activated' state.
+    // Race with a 10 s timeout so we don't block forever if SW never activates.
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('sw-timeout')), 10000)),
+    ]) as ServiceWorkerRegistration
   } catch {
     return null
   }
@@ -39,11 +42,24 @@ export function usePushNotifications() {
 
   const canEnable = computed(() => isSupported && !needsInstall && permission.value !== 'denied')
 
-  async function _checkSubscribed() {
-    const reg = await getSwRegistration()
+  // Check browser subscription state and, if found, silently re-sync with the
+  // server. This handles the case where the DB was reset (container rebuild) but
+  // the browser still holds a valid subscription.
+  async function _checkAndSync() {
+    const reg = await getActiveSwRegistration()
     if (!reg) return
     const sub = await reg.pushManager.getSubscription()
-    isSubscribed.value = !!sub
+    if (!sub) {
+      isSubscribed.value = false
+      return
+    }
+    isSubscribed.value = true
+    // Re-register with server (upsert — safe to call on every load).
+    try {
+      await subscribePush(sub.toJSON() as PushSubscriptionJSON)
+    } catch {
+      // Non-fatal: network may be down; subscription shown as active locally.
+    }
   }
 
   async function requestAndSubscribe() {
@@ -58,15 +74,16 @@ export function usePushNotifications() {
         return
       }
 
-      const reg = await Promise.race([
-        getSwRegistration(),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
-      ]) as ServiceWorkerRegistration | null
-
+      const reg = await getActiveSwRegistration()
       if (!reg) {
         error.value = 'Service worker não está pronto. Recarregue a página e tente novamente.'
         return
       }
+
+      // If there's an existing subscription (possibly with an old VAPID key),
+      // drop it first so we always get a fresh one with the current server key.
+      const existing = await reg.pushManager.getSubscription()
+      if (existing) await existing.unsubscribe()
 
       const publicKey = await getVapidPublicKey()
       const sub = await reg.pushManager.subscribe({
@@ -79,10 +96,10 @@ export function usePushNotifications() {
       console.error('[Push] Erro ao subscrever:', err)
       if (err?.name === 'NotAllowedError') {
         error.value = 'Permissão negada. Ative nas definições do browser.'
-      } else if (err?.message === 'timeout') {
+      } else if (err?.message === 'sw-timeout') {
         error.value = 'O service worker demorou demasiado. Recarregue a página.'
       } else if (err?.name === 'AbortError' || err?.message?.includes('push service')) {
-        error.value = 'Erro a contactar o serviço push do browser. Verifique a ligação.'
+        error.value = 'Erro a contactar o serviço push do browser. Verifique a ligação à internet.'
       } else {
         error.value = err?.message || 'Erro desconhecido ao ativar notificações.'
       }
@@ -91,11 +108,12 @@ export function usePushNotifications() {
     }
   }
 
+  // Force unsubscribe in browser + remove from server.
   async function unsubscribe() {
     loading.value = true
     error.value = ''
     try {
-      const reg = await getSwRegistration()
+      const reg = await getActiveSwRegistration()
       if (!reg) return
       const sub = await reg.pushManager.getSubscription()
       if (sub) {
@@ -111,9 +129,9 @@ export function usePushNotifications() {
   }
 
   onMounted(() => {
-    if (isSupported) {
+    if (isSupported && !needsInstall) {
       permission.value = Notification.permission
-      _checkSubscribed()
+      _checkAndSync()
     }
   })
 

@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.30'
+export const APP_VERSION = '1.7.31'
 export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '11:00'
+export const APP_VERSION_TIME = '11:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.31',
+    date: '2026-05-10',
+    time: '11:30',
+    title: 'Push: auto-sincronização e melhor diagnóstico',
+    changes: [
+      'Cada vez que a app abre, se o browser tiver uma subscrição push registada, ela é automaticamente re-enviada ao servidor — elimina o problema de "sem subscrições" após reconstrução do container ou reset da base de dados.',
+      'Ao re-ativar push, a subscrição anterior é removida do browser antes de criar uma nova, garantindo que a chave VAPID é sempre a correta.',
+      'Subscrições com erro 401/403 (chave VAPID desatualizada) são agora removidas da base de dados automaticamente durante o envio.',
+      'Quando o teste de push falha, a mensagem de erro inclui instruções claras para re-sincronizar (Desativar → Ativar na campainha).',
+    ],
+  },
   {
     version: '1.7.30',
     date: '2026-05-10',
