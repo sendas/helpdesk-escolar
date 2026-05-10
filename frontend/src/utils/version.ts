@@ -1,12 +1,12 @@
 export const APP_VERSION = '1.7.34'
 export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '10:33'
+export const APP_VERSION_TIME = '10:19'
 
 export const RELEASE_NOTES = [
   {
     version: '1.7.34',
     date: '2026-05-10',
-    time: '10:33',
+    time: '10:19',
     title: 'Push iOS: instrução de instalação corrigida',
     changes: [
       'Corrigido: no Safari do iPhone/iPad, o painel de notificações mostrava "não suportado neste browser" em vez da instrução para adicionar ao ecrã de início.',
@@ -16,7 +16,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.33',
     date: '2026-05-10',
-    time: '12:15',
+    time: '09:59',
     title: 'Push: deteção de HTTP e mensagem clara',
     changes: [
       'Notificações push requerem HTTPS — o browser bloqueia-as em HTTP. O painel de notificações passa a mostrar uma mensagem clara quando o site é acedido por HTTP.',
@@ -25,7 +25,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.32',
     date: '2026-05-10',
-    time: '12:00',
+    time: '09:53',
     title: 'Push: botão Reiniciar subscrição + correcção do Desativar',
     changes: [
       'Novo botão "Reiniciar subscrição" no painel de notificações.',
@@ -35,7 +35,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.31',
     date: '2026-05-10',
-    time: '11:30',
+    time: '09:47',
     title: 'Push: auto-sincronização e melhor diagnóstico',
     changes: [
       'Cada vez que a app abre, se o browser tiver uma subscrição push registada, ela é automaticamente re-enviada ao servidor.',
@@ -46,7 +46,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.30',
     date: '2026-05-10',
-    time: '11:00',
+    time: '09:38',
     title: 'Correção do fluxo de subscrição push',
     changes: [
       'Corrigida race condition: o pedido de subscrição push aguarda agora o service worker estar em estado "activated" antes de prosseguir, eliminando falhas silenciosas no primeiro carregamento.',
@@ -57,7 +57,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.29',
     date: '2026-05-10',
-    time: '10:30',
+    time: '09:25',
     title: 'Página Sobre — autoria e método de criação',
     changes: [
       'Nova página "Sobre" no menu lateral, a seguir a "Versão / Atualizações".',
@@ -67,7 +67,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.28',
     date: '2026-05-10',
-    time: '10:00',
+    time: '09:23',
     title: 'Botão de teste de notificações push',
     changes: [
       'Novo botão "Enviar notificação de teste" nas Configurações → Notificações — permite verificar se as notificações push estão a funcionar sem precisar de criar um ticket.',
@@ -77,7 +77,7 @@ export const RELEASE_NOTES = [
   {
     version: '1.7.27',
     date: '2026-05-10',
-    time: '09:30',
+    time: '08:56',
     title: 'Safe area iOS — cabeçalho e scroll corrigidos',
     changes: [
       'Corrigido: em iPhones com notch ou Dynamic Island, o cabeçalho sobrepunha-se à barra de estado do iOS.',
