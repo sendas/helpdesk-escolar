@@ -58,6 +58,7 @@ export function usePushNotifications() {
   const isSupported = !_isHttp && 'Notification' in window && 'PushManager' in window && 'serviceWorker' in navigator
   const needsHttps = _isHttp
   const isStandalone = (navigator as any).standalone === true
+  // Show install hint on any iOS browser (standalone = false), regardless of isSupported.
   const needsInstall = _isIos && !isStandalone && !_isHttp
 
   const permission = ref<NotificationPermission>(isSupported ? Notification.permission : 'denied')

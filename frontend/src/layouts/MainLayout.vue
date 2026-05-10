@@ -133,15 +133,15 @@
                     O site tem de ser acedido por <strong>HTTPS</strong> para ativar notificações.</span>
                   </span>
                 </template>
-                <template v-else-if="!push.isSupported">
-                  <span class="notif-push-label">Notificações push não suportadas neste browser.</span>
-                </template>
                 <template v-else-if="push.needsInstall">
                   <span class="notif-push-label notif-push-ios">
                     <span class="material-icons" style="font-size:16px">ios_share</span>
                     <span>No iPhone/iPad, as notificações push só funcionam na app instalada.<br>
-                    Toque em <strong>Partilhar</strong> → <strong>"Adicionar ao ecrã de início"</strong> e abra a partir daí.</span>
+                    Toque em <strong>Partilhar</strong> <span class="material-icons" style="font-size:13px;vertical-align:middle">ios_share</span> → <strong>"Adicionar ao ecrã de início"</strong> e abra a partir daí.</span>
                   </span>
+                </template>
+                <template v-else-if="!push.isSupported">
+                  <span class="notif-push-label">Notificações push não suportadas neste browser.</span>
                 </template>
                 <template v-else-if="push.permission === 'denied'">
                   <span class="notif-push-label notif-push-blocked">

@@ -1,16 +1,25 @@
-export const APP_VERSION = '1.7.33'
+export const APP_VERSION = '1.7.34'
 export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '12:15'
+export const APP_VERSION_TIME = '12:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.34',
+    date: '2026-05-10',
+    time: '12:30',
+    title: 'Push iOS: instrução de instalação corrigida',
+    changes: [
+      'Corrigido: no Safari do iPhone/iPad, o painel de notificações mostrava "não suportado neste browser" em vez da instrução para adicionar ao ecrã de início.',
+      'A instrução "Partilhar → Adicionar ao ecrã de início" passa a aparecer sempre que a app é aberta no browser do iPhone/iPad, independentemente da versão do iOS.',
+    ],
+  },
   {
     version: '1.7.33',
     date: '2026-05-10',
     time: '12:15',
     title: 'Push: deteção de HTTP e mensagem clara',
     changes: [
-      'Notificações push requerem HTTPS — o browser bloqueia-as em HTTP. O painel de notificações passa a mostrar uma mensagem clara quando o site é acedido por HTTP em vez de "não suportado neste browser".',
-      'Solução: aceder ao Helpdesk por HTTPS (ex: configurar certificado SSL ou usar Cloudflare). Em HTTP nunca funcionarão, independentemente do browser ou dispositivo.',
+      'Notificações push requerem HTTPS — o browser bloqueia-as em HTTP. O painel de notificações passa a mostrar uma mensagem clara quando o site é acedido por HTTP.',
     ],
   },
   {
