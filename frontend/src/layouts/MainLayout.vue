@@ -544,7 +544,7 @@ onBeforeUnmount(() => {
     top: 0;
     z-index: 80;
     gap: 8px;
-    padding: 10px 12px;
+    padding: max(env(safe-area-inset-top, 0px), 10px) 12px 10px;
     height: auto;
     flex-wrap: nowrap;
   }
