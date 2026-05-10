@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.29'
+export const APP_VERSION = '1.7.30'
 export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '10:30'
+export const APP_VERSION_TIME = '11:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.30',
+    date: '2026-05-10',
+    time: '11:00',
+    title: 'Correção do fluxo de subscrição push',
+    changes: [
+      'Corrigida race condition: o pedido de subscrição push aguarda agora o service worker estar em estado "activated" antes de prosseguir, eliminando falhas silenciosas no primeiro carregamento.',
+      'Mensagens de erro visíveis no painel de notificações quando a ativação falha (permissão negada, timeout, erro de rede, etc.).',
+      'iPhone/iPad em Safari (browser): mostra instrução clara "Partilhar → Adicionar ao ecrã de início" em vez do botão Ativar que falha sem explicação.',
+    ],
+  },
   {
     version: '1.7.29',
     date: '2026-05-10',

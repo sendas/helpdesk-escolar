@@ -129,6 +129,13 @@
                 <template v-if="!push.isSupported">
                   <span class="notif-push-label">Notificações push não suportadas neste browser.</span>
                 </template>
+                <template v-else-if="push.needsInstall">
+                  <span class="notif-push-label notif-push-ios">
+                    <span class="material-icons" style="font-size:16px">ios_share</span>
+                    <span>No iPhone/iPad, as notificações push só funcionam na app instalada.<br>
+                    Toque em <strong>Partilhar</strong> → <strong>"Adicionar ao ecrã de início"</strong> e abra a partir daí.</span>
+                  </span>
+                </template>
                 <template v-else-if="push.permission === 'denied'">
                   <span class="notif-push-label notif-push-blocked">
                     <span class="material-icons" style="font-size:14px">notifications_off</span>
@@ -138,16 +145,21 @@
                 <template v-else-if="push.isSubscribed">
                   <span class="notif-push-label">
                     <span class="material-icons" style="font-size:14px;color:var(--c-primary)">notifications_active</span>
-                    Alertas no telemóvel ativos
+                    Alertas ativos neste dispositivo
                   </span>
                   <button class="notif-push-btn" :disabled="push.loading" @click.stop="push.unsubscribe()">Desativar</button>
                 </template>
                 <template v-else>
-                  <span class="notif-push-label">Receber alertas no telemóvel</span>
-                  <button class="notif-push-btn notif-push-btn-primary" :disabled="push.loading" @click.stop="push.requestAndSubscribe()">
-                    <span class="material-icons" style="font-size:14px">add_alert</span>
-                    Ativar
-                  </button>
+                  <div style="display:flex;flex-direction:column;gap:6px;width:100%">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                      <span class="notif-push-label">Receber alertas neste dispositivo</span>
+                      <button class="notif-push-btn notif-push-btn-primary" :disabled="push.loading" @click.stop="push.requestAndSubscribe()">
+                        <span class="material-icons" style="font-size:14px">add_alert</span>
+                        {{ push.loading ? '...' : 'Ativar' }}
+                      </button>
+                    </div>
+                    <span v-if="push.error" style="font-size:11px;color:#EF4444;line-height:1.4">{{ push.error }}</span>
+                  </div>
                 </template>
               </div>
             </div>
@@ -425,6 +437,13 @@ onBeforeUnmount(() => {
 }
 .notif-push-blocked {
   color: #ef4444;
+}
+.notif-push-ios {
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--c-muted);
 }
 .notif-push-btn {
   flex-shrink: 0;

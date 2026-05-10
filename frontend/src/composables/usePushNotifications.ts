@@ -10,8 +10,9 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return arr
 }
 
+// Always wait for an *active* SW — avoids the race condition where
+// window.__swRegistration is set but the SW is still in 'installing' state.
 async function getSwRegistration(): Promise<ServiceWorkerRegistration | null> {
-  if ((window as any).__swRegistration) return (window as any).__swRegistration
   if (!navigator.serviceWorker) return null
   try {
     return await navigator.serviceWorker.ready
@@ -20,13 +21,23 @@ async function getSwRegistration(): Promise<ServiceWorkerRegistration | null> {
   }
 }
 
+const _isIos = typeof navigator !== 'undefined' &&
+  /iPhone|iPad|iPod/.test(navigator.userAgent) &&
+  !(window as any).MSStream
+
 export function usePushNotifications() {
   const isSupported = 'Notification' in window && 'PushManager' in window && 'serviceWorker' in navigator
+
+  // On iOS, push only works in standalone (PWA) mode, not in Safari browser.
+  const isStandalone = (navigator as any).standalone === true
+  const needsInstall = _isIos && !isStandalone
+
   const permission = ref<NotificationPermission>(isSupported ? Notification.permission : 'denied')
   const isSubscribed = ref(false)
   const loading = ref(false)
+  const error = ref('')
 
-  const canEnable = computed(() => isSupported && permission.value !== 'denied')
+  const canEnable = computed(() => isSupported && !needsInstall && permission.value !== 'denied')
 
   async function _checkSubscribed() {
     const reg = await getSwRegistration()
@@ -36,15 +47,26 @@ export function usePushNotifications() {
   }
 
   async function requestAndSubscribe() {
-    if (!isSupported) return
+    if (!isSupported || needsInstall) return
     loading.value = true
+    error.value = ''
     try {
       const result = await Notification.requestPermission()
       permission.value = result
-      if (result !== 'granted') return
+      if (result !== 'granted') {
+        error.value = 'Permissão negada. Ative nas definições do browser.'
+        return
+      }
 
-      const reg = await getSwRegistration()
-      if (!reg) return
+      const reg = await Promise.race([
+        getSwRegistration(),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+      ]) as ServiceWorkerRegistration | null
+
+      if (!reg) {
+        error.value = 'Service worker não está pronto. Recarregue a página e tente novamente.'
+        return
+      }
 
       const publicKey = await getVapidPublicKey()
       const sub = await reg.pushManager.subscribe({
@@ -53,8 +75,17 @@ export function usePushNotifications() {
       })
       await subscribePush(sub.toJSON() as PushSubscriptionJSON)
       isSubscribed.value = true
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Push] Erro ao subscrever:', err)
+      if (err?.name === 'NotAllowedError') {
+        error.value = 'Permissão negada. Ative nas definições do browser.'
+      } else if (err?.message === 'timeout') {
+        error.value = 'O service worker demorou demasiado. Recarregue a página.'
+      } else if (err?.name === 'AbortError' || err?.message?.includes('push service')) {
+        error.value = 'Erro a contactar o serviço push do browser. Verifique a ligação.'
+      } else {
+        error.value = err?.message || 'Erro desconhecido ao ativar notificações.'
+      }
     } finally {
       loading.value = false
     }
@@ -62,6 +93,7 @@ export function usePushNotifications() {
 
   async function unsubscribe() {
     loading.value = true
+    error.value = ''
     try {
       const reg = await getSwRegistration()
       if (!reg) return
@@ -71,7 +103,7 @@ export function usePushNotifications() {
         await sub.unsubscribe()
       }
       isSubscribed.value = false
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Push] Erro ao cancelar:', err)
     } finally {
       loading.value = false
@@ -82,9 +114,8 @@ export function usePushNotifications() {
     if (isSupported) {
       permission.value = Notification.permission
       _checkSubscribed()
-      window.addEventListener('sw-registered', () => _checkSubscribed(), { once: true })
     }
   })
 
-  return { isSupported, permission, isSubscribed, canEnable, loading, requestAndSubscribe, unsubscribe }
+  return { isSupported, needsInstall, permission, isSubscribed, canEnable, loading, error, requestAndSubscribe, unsubscribe }
 }
