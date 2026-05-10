@@ -541,10 +541,10 @@ onBeforeUnmount(() => {
   }
   :deep(.hd-header) {
     position: sticky;
-    top: env(safe-area-inset-top, 0px);
+    top: 0;
     z-index: 80;
     gap: 8px;
-    padding: max(env(safe-area-inset-top, 0px), 10px) 12px 10px;
+    padding: 10px 12px;
     height: auto;
     flex-wrap: nowrap;
   }
