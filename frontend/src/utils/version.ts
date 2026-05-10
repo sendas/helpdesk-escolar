@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.28'
+export const APP_VERSION = '1.7.29'
 export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '10:00'
+export const APP_VERSION_TIME = '10:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.29',
+    date: '2026-05-10',
+    time: '10:30',
+    title: 'Página Sobre — autoria e método de criação',
+    changes: [
+      'Nova página "Sobre" no menu lateral, a seguir a "Versão / Atualizações".',
+      'Descreve o autor, o método de desenvolvimento assistido por IA (Claude Code + ChatGPT/Codex) e as tecnologias utilizadas.',
+    ],
+  },
   {
     version: '1.7.28',
     date: '2026-05-10',

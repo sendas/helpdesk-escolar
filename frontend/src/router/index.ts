@@ -24,6 +24,7 @@ const routes = [
       { path: 'tickets/:id', component: () => import('../pages/TicketDetailPage.vue') },
       { path: 'knowledge', component: () => import('../pages/KnowledgePage.vue') },
       { path: 'version', component: () => import('../pages/VersionPage.vue') },
+      { path: 'about', component: () => import('../pages/AboutPage.vue') },
       {
         path: 'admin',
         meta: { requiresStaff: true },
