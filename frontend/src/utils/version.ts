@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.34'
-export const APP_VERSION_DATE = '2026-05-10'
-export const APP_VERSION_TIME = '10:19'
+export const APP_VERSION = '1.7.35'
+export const APP_VERSION_DATE = '2026-05-11'
+export const APP_VERSION_TIME = '09:14'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.35',
+    date: '2026-05-11',
+    time: '09:14',
+    title: 'Correção do envio de notificações push',
+    changes: [
+      'O backend passa a usar a biblioteca pywebpush para enviar notificações Web Push com encriptação e cabeçalhos compatíveis com Chrome, Edge, Android e PWA iOS.',
+      'Subscrições push deixam de ser apagadas automaticamente em erros temporários de autenticação 401/403; só são removidas quando o browser confirma que expiraram.',
+      'Adicionada a configuração PUSH_VAPID_SUBJECT para definir o contacto VAPID usado pelos serviços de push.',
+      'Falhas de envio de email deixam de ficar silenciosas: o backend passa a registar o erro nos logs sem bloquear a criação ou atualização do ticket.',
+    ],
+  },
   {
     version: '1.7.34',
     date: '2026-05-10',

@@ -142,9 +142,12 @@ MAIL_USERNAME=helpdesk@techpro.pt
 MAIL_PASSWORD=password-ou-app-password
 MAIL_FROM=helpdesk@techpro.pt
 MAIL_SUPPRESS_SEND=false
+PUSH_VAPID_SUBJECT=mailto:helpdesk@techpro.pt
 ```
 
 Com SMTP ativo, o sistema envia emails quando um ticket e criado, atualizado, atribuido ou recebe uma resposta publica. Tambem podes definir um email em cada categoria para receber automaticamente os novos tickets dessa categoria.
+
+`PUSH_VAPID_SUBJECT` e o contacto usado pelos servicos Web Push do browser. Usa sempre `mailto:` seguido de uma conta valida.
 
 Para permitir que respostas aos emails entrem automaticamente como comentarios no ticket, ativa tambem IMAP no `app.env`:
 

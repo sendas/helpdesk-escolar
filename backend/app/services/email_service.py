@@ -1,9 +1,11 @@
 import os
+import logging
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from jinja2 import Environment, FileSystemLoader
 from app.config import settings
 
 _templates_dir = os.path.join(os.path.dirname(__file__), "..", "templates", "email")
+logger = logging.getLogger(__name__)
 
 jinja_env = Environment(loader=FileSystemLoader(_templates_dir))
 
@@ -36,7 +38,8 @@ async def send_ticket_notification(to_email: str, event: str, ticket_data: dict)
     try:
         template = jinja_env.get_template(f"ticket_{event}.html")
         html_body = template.render(**ticket_data)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Email template error for event %s: %s", event, exc)
         return
 
     try:
@@ -49,5 +52,6 @@ async def send_ticket_notification(to_email: str, event: str, ticket_data: dict)
         )
         fm = FastMail(_get_conf())
         await fm.send_message(message)
-    except Exception:
-        pass
+        logger.info("Email notification sent to %s for ticket %s (%s)", to_email, ticket_data.get("id"), event)
+    except Exception as exc:
+        logger.warning("Email notification failed to %s for ticket %s (%s): %s", to_email, ticket_data.get("id"), event, exc)

@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     mail_ssl_tls: bool = False
     mail_suppress_send: bool = False
 
+    # Web Push / browser notifications
+    # Must be a valid contact URI. Example: mailto:helpdesk@techpro.pt
+    push_vapid_subject: str = "mailto:helpdesk@techpro.pt"
+
     # Incoming mail replies
     mail_reply_enabled: bool = False
     imap_server: str = ""

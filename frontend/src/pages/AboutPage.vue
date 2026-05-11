@@ -45,8 +45,8 @@
           <p style="font-size:12px;line-height:1.6;color:var(--c-muted);padding:14px 16px;margin:0">
             Responsável pela maior parte da arquitetura e da implementação. Através do terminal (CLI),
             gerou e editou diretamente os ficheiros do projeto — modelos SQLAlchemy, endpoints FastAPI,
-            componentes Vue, lógica de autenticação LDAP/Azure AD, encriptação RFC&nbsp;8291 para push
-            notifications e toda a configuração Docker. A capacidade de raciocinar sobre múltiplos
+            componentes Vue, lógica de autenticação LDAP/Azure AD, notificações Web Push
+            e toda a configuração Docker. A capacidade de raciocinar sobre múltiplos
             ficheiros ao mesmo tempo e manter contexto ao longo de sessões longas foi determinante.
           </p>
         </div>
@@ -63,7 +63,7 @@
             Utilizado para exploração rápida de alternativas, revisão de algoritmos específicos e
             segunda opinião sobre escolhas de design. Em particular, foi consultado na fase inicial
             de definição da stack tecnológica, na análise de opções para autenticação híbrida e
-            na revisão de lógica de encriptação VAPID. A complementaridade entre os dois modelos
+            na revisão da integração VAPID/Web Push. A complementaridade entre os dois modelos
             permitiu cruzar perspectivas e chegar a soluções mais robustas.
           </p>
         </div>
