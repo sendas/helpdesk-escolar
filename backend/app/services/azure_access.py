@@ -13,6 +13,14 @@ DEFAULT_NON_TEACHING_DEPARTMENTS = {
     "assistente operacional",
     "assistentes operacionais",
 }
+DEFAULT_STUDENT_DEPARTMENTS = {
+    "aluno",
+    "alunos",
+    "discente",
+    "discentes",
+    "estudante",
+    "estudantes",
+}
 DEFAULT_EXCLUDED_ONPREM_OUS = {
     "queiroz.local/aeeq/_alunos",
     "queiroz.local/aeeq/alunos",
@@ -37,6 +45,23 @@ def is_allowed_onprem_user(onprem_dn: str | None) -> bool:
     if not allowed_paths:
         return True
     return any(user_path == path or user_path.startswith(f"{path}/") for path in allowed_paths)
+
+
+def is_allowed_directory_user(onprem_dn: str | None, department: str | None = None) -> bool:
+    """Allow every active Entra user except students.
+
+    Older installs used AZURE_ALLOWED_ONPREM_OUS as a hard allow-list. That blocks
+    valid cloud-only users because they do not have onPremisesDistinguishedName.
+    The school policy is now simpler: everyone in Entra can use the helpdesk,
+    except users that are clearly in student OUs/departments.
+    """
+    return not is_student_directory_user(onprem_dn, department)
+
+
+def is_student_directory_user(onprem_dn: str | None, department: str | None = None) -> bool:
+    if is_student_onprem_user(onprem_dn):
+        return True
+    return _normalize_text(department or "") in DEFAULT_STUDENT_DEPARTMENTS
 
 
 def is_student_onprem_user(onprem_dn: str | None) -> bool:

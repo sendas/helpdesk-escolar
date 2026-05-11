@@ -24,7 +24,7 @@
       <div><strong>{{ syncReport.manual_locked }}</strong><span>mantidos manualmente</span></div>
       <div><strong>{{ syncReport.skipped }}</strong><span>ignorados</span></div>
       <div class="sync-report-muted">
-        convidados {{ syncReport.skipped_guests }} · inativos {{ syncReport.skipped_disabled }} · alunos {{ syncReport.skipped_students || 0 }} · fora das OUs {{ syncReport.skipped_outside_ou }} · sem email {{ syncReport.skipped_without_email }}
+        convidados {{ syncReport.skipped_guests }} · inativos {{ syncReport.skipped_disabled }} · alunos {{ syncReport.skipped_students || 0 }} · fora das regras {{ syncReport.skipped_outside_ou }} · sem email {{ syncReport.skipped_without_email }}
       </div>
     </div>
     <div v-if="syncMessage" class="sync-message">{{ syncMessage }}</div>
@@ -34,7 +34,7 @@
         <div class="sync-modal-head">
           <div>
             <h2>Sincronizar Entra ID</h2>
-            <p>Escolha as OUs que pretende importar. Os alunos são sempre ignorados automaticamente.</p>
+            <p>Sincronize todos os utilizadores ativos do Entra ID. Os alunos são sempre ignorados automaticamente.</p>
           </div>
           <div class="sync-modal-actions sync-modal-actions-top">
             <button class="hd-btn hd-btn-outline" @click="showSyncDialog = false">Cancelar</button>
@@ -51,8 +51,8 @@
         <label class="sync-all-option">
           <input type="checkbox" v-model="syncAllOus" />
           <span>
-            <strong>Sincronizar todas as OUs permitidas</strong>
-            <small>Importa todos os utilizadores ativos do Entra ID, exceto OUs de alunos.</small>
+            <strong>Sincronizar todos os utilizadores não alunos</strong>
+            <small>Importa todos os utilizadores ativos do Entra ID e ignora alunos automaticamente.</small>
           </span>
         </label>
 

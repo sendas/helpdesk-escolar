@@ -41,7 +41,9 @@ class Settings(BaseSettings):
     azure_admin_group_id: str = ""
     # Comma-separated list of Microsoft account emails that should be admins.
     azure_admin_emails: str = ""
-    # Comma-separated AD/Entra OU paths allowed to use the app.
+    # Comma-separated AD/Entra OU paths suggested in the sync dialog.
+    # Access is no longer restricted by this list: every active Entra user can
+    # use the app unless they are identified as a student.
     # Example: queiroz.local/AEEQ/_Docentes,queiroz.local/AEEQ/_Suporte
     azure_allowed_onprem_ous: str = ""
     azure_admin_onprem_ous: str = ""

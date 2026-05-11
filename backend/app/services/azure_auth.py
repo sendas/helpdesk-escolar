@@ -45,7 +45,7 @@ async def exchange_code_for_user(code: str) -> dict | None:
     email = _preferred_email(profile)
     onprem_dn = profile.get("onPremisesDistinguishedName")
     department = profile.get("department")
-    if not azure_access.is_allowed_onprem_user(onprem_dn):
+    if not azure_access.is_allowed_directory_user(onprem_dn, department):
         return None
 
     role = azure_access.role_from_directory_user(onprem_dn, department)

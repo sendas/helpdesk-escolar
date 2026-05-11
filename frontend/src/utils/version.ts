@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.40'
+export const APP_VERSION = '1.7.41'
 export const APP_VERSION_DATE = '2026-05-11'
-export const APP_VERSION_TIME = '13:02'
+export const APP_VERSION_TIME = '14:57'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.41',
+    date: '2026-05-11',
+    time: '14:57',
+    title: 'Entra ID: todos os utilizadores exceto alunos',
+    changes: [
+      'A sincronização do Entra ID passa a importar todos os utilizadores ativos, incluindo contas cloud-only sem OU/onPremDN, desde que não sejam alunos.',
+      'O login Microsoft deixa de bloquear utilizadores válidos por não pertencerem a uma OU previamente permitida.',
+      'O diálogo de sincronização foi clarificado para indicar que os alunos continuam a ser ignorados automaticamente.',
+    ],
+  },
   {
     version: '1.7.40',
     date: '2026-05-11',

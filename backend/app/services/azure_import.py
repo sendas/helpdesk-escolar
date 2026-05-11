@@ -53,15 +53,6 @@ async def import_azure_users(db: AsyncSession) -> dict:
             continue
 
         onprem_dn = item.get("onPremisesDistinguishedName")
-        if azure_access.is_student_onprem_user(onprem_dn):
-            skipped_students += 1
-            skipped += 1
-            continue
-        if not azure_access.is_allowed_onprem_user(onprem_dn):
-            skipped_outside_ou += 1
-            skipped += 1
-            continue
-
         email = _preferred_email(item)
         if not email:
             skipped_without_email += 1
@@ -73,6 +64,15 @@ async def import_azure_users(db: AsyncSession) -> dict:
         display_name = item.get("displayName") or email
         onprem_path = azure_access.dn_to_path(onprem_dn) or None
         department = item.get("department") or onprem_path or None
+        if azure_access.is_student_directory_user(onprem_dn, department):
+            skipped_students += 1
+            skipped += 1
+            continue
+        if not azure_access.is_allowed_directory_user(onprem_dn, department):
+            skipped_outside_ou += 1
+            skipped += 1
+            continue
+
         imported_role = azure_access.role_from_directory_user(onprem_dn, department)
         user = by_email.get(email.lower())
         if not user and user_principal_name:
@@ -131,6 +131,12 @@ async def import_azure_users(db: AsyncSession) -> dict:
     # Deactivate Azure-sourced users that were not in the Entra response
     seen_emails: set[str] = set()
     for item in users:
+        if item.get("userType") == "Guest" or item.get("accountEnabled") is False:
+            continue
+        onprem_dn = item.get("onPremisesDistinguishedName")
+        department = item.get("department") or azure_access.dn_to_path(onprem_dn) or None
+        if azure_access.is_student_directory_user(onprem_dn, department):
+            continue
         e = _preferred_email(item)
         if e:
             seen_emails.add(e.lower())
