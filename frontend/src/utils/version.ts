@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.39'
+export const APP_VERSION = '1.7.40'
 export const APP_VERSION_DATE = '2026-05-11'
-export const APP_VERSION_TIME = '12:46'
+export const APP_VERSION_TIME = '13:02'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.40',
+    date: '2026-05-11',
+    time: '13:02',
+    title: 'Validação clara no novo ticket',
+    changes: [
+      'A página de criação de tickets passa a mostrar uma caixa com os campos obrigatórios que ainda faltam preencher.',
+      'Os campos em falta ficam destacados visualmente, evitando que o botão "Submeter ticket" pareça bloqueado sem explicação.',
+    ],
+  },
   {
     version: '1.7.39',
     date: '2026-05-11',

@@ -10,7 +10,7 @@
       <div style="font-size:13px;color:var(--c-muted);margin-bottom:28px">Descreva o seu pedido — quanto mais detalhe, mais rápida a resolução.</div>
 
       <!-- School selector -->
-      <div v-if="schools.length" class="hd-field" style="margin-bottom:24px">
+      <div v-if="schools.length" class="hd-field" :class="{ 'field-missing': !form.school_id }" style="margin-bottom:24px">
         <label class="hd-label">Escola <span class="hd-label-hint">*</span></label>
         <div class="hd-grid-2" style="margin-top:8px">
           <div
@@ -36,7 +36,7 @@
       </div>
 
       <!-- Category selector -->
-      <div class="hd-field" style="margin-bottom:24px">
+      <div class="hd-field" :class="{ 'field-missing': !form.category_id }" style="margin-bottom:24px">
         <label class="hd-label">Categoria <span class="hd-label-hint">*</span></label>
         <div class="hd-grid-3" style="margin-top:8px">
           <div
@@ -60,13 +60,13 @@
       </div>
 
       <!-- Title -->
-      <div class="hd-field" style="margin-bottom:20px">
+      <div class="hd-field" :class="{ 'field-missing': !form.title.trim() }" style="margin-bottom:20px">
         <label class="hd-label">Assunto <span class="hd-label-hint">*</span></label>
         <input class="hd-input" v-model="form.title" placeholder="Ex: Projetor da sala B-12 sem imagem" />
       </div>
 
       <!-- Description -->
-      <div class="hd-field" style="margin-bottom:20px">
+      <div class="hd-field" :class="{ 'field-missing': !form.description.trim() }" style="margin-bottom:20px">
         <label class="hd-label">Descrição <span class="hd-label-hint">*</span></label>
         <textarea class="hd-textarea" v-model="form.description" rows="5"
           placeholder="Descreva o problema com o máximo de detalhe: o que aconteceu, quando começou, o que já tentou..."
@@ -86,7 +86,7 @@
         <p class="hd-hint">A prioridade pode ser ajustada pela equipa de suporte.</p>
       </div>
 
-      <div class="email-choice">
+      <div class="email-choice" :class="{ 'field-missing': form.creator_email_notifications === null }">
         <div>
           <div class="email-choice-title">Quer receber atualizações por email?</div>
           <div class="email-choice-sub">Escolha obrigatoriamente se pretende receber notificações deste ticket.</div>
@@ -215,6 +215,15 @@
       </div>
 
       <!-- Actions -->
+      <div v-if="missingRequired.length" class="missing-panel" role="status">
+        <div class="missing-panel-title">
+          <span class="material-icons">info</span>
+          Ainda falta preencher para submeter o ticket
+        </div>
+        <ul>
+          <li v-for="item in missingRequired" :key="item">{{ item }}</li>
+        </ul>
+      </div>
       <div class="hd-row ticket-actions">
         <router-link to="/tickets">
           <button class="hd-btn hd-btn-outline">Cancelar</button>
@@ -261,13 +270,17 @@ const form = ref({
   creator_email_notifications: true as boolean | null,
 })
 
-const canSubmit = computed(() =>
-  form.value.title.trim()
-  && form.value.description.trim()
-  && form.value.category_id
-  && form.value.school_id
-  && form.value.creator_email_notifications !== null
-)
+const missingRequired = computed(() => {
+  const missing: string[] = []
+  if (!form.value.school_id) missing.push('Escolher a escola')
+  if (!form.value.category_id) missing.push('Escolher a categoria')
+  if (!form.value.title.trim()) missing.push('Preencher o assunto')
+  if (!form.value.description.trim()) missing.push('Preencher a descrição')
+  if (form.value.creator_email_notifications === null) missing.push('Responder se quer receber atualizações por email')
+  return missing
+})
+
+const canSubmit = computed(() => missingRequired.value.length === 0)
 
 onMounted(async () => {
   const [cats, schs, grps] = await Promise.all([getCategories(), getSchools(), auth.isAdmin ? getGroups() : Promise.resolve([])])
@@ -277,7 +290,10 @@ onMounted(async () => {
 })
 
 async function onSubmit() {
-  if (!form.value.category_id || !form.value.school_id) return
+  if (!canSubmit.value || !form.value.category_id || !form.value.school_id) {
+    error.value = `Ainda falta: ${missingRequired.value.join(', ')}.`
+    return
+  }
   loading.value = true
   error.value = ''
   try {
@@ -406,6 +422,63 @@ function formatSize(size: number) {
 }
 .ticket-actions {
   justify-content: flex-end;
+}
+
+.missing-panel {
+  background: #FFF7ED;
+  border: 1px solid #FDBA74;
+  border-radius: 10px;
+  color: #9A3412;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+}
+
+.missing-panel-title {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 8px;
+}
+
+.missing-panel-title .material-icons {
+  font-size: 18px;
+}
+
+.missing-panel ul {
+  margin: 8px 0 0 26px;
+  padding: 0;
+}
+
+.missing-panel li {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.field-missing :deep(.hd-input),
+.field-missing :deep(.hd-textarea),
+.field-missing :deep(.hd-select),
+.field-missing.email-choice {
+  border-color: #F97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+.field-missing :deep(.hd-sel-card:not(.selected)) {
+  border-color: rgba(249, 115, 22, 0.5);
+}
+
+.field-missing .hd-label::after {
+  color: #EA580C;
+  content: " obrigatório";
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.dark .missing-panel {
+  background: rgba(154, 52, 18, 0.18);
+  border-color: #C2410C;
+  color: #FDBA74;
 }
 
 .email-choice {
