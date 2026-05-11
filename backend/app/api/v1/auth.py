@@ -32,6 +32,8 @@ async def get_or_create_user(db: AsyncSession, info: dict) -> User:
             user.onprem_dn = info.get("onprem_dn")
         if info.get("onprem_path") is not None:
             user.onprem_path = info.get("onprem_path")
+        if info.get("department") is not None:
+            user.department = info.get("department")
         if user.role_locked:
             pass
         elif info.get("is_admin") and user.role != UserRole.ADMIN:
@@ -48,6 +50,7 @@ async def get_or_create_user(db: AsyncSession, info: dict) -> User:
         username=info["username"],
         email=info["email"],
         display_name=info["display_name"],
+        department=info.get("department"),
         role=UserRole.ADMIN if info.get("is_admin") else role,
         role_source="entra" if info["auth_provider"] == "azure" else info["auth_provider"],
         role_locked=False,

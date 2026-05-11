@@ -35,7 +35,7 @@ async def exchange_code_for_user(code: str) -> dict | None:
 
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            "https://graph.microsoft.com/v1.0/me?$select=displayName,mail,userPrincipalName,proxyAddresses,otherMails,onPremisesDistinguishedName",
+            "https://graph.microsoft.com/v1.0/me?$select=displayName,mail,userPrincipalName,proxyAddresses,otherMails,department,onPremisesDistinguishedName",
             headers={"Authorization": f"Bearer {access_token}"},
         )
         if resp.status_code != 200:
@@ -44,16 +44,18 @@ async def exchange_code_for_user(code: str) -> dict | None:
 
     email = _preferred_email(profile)
     onprem_dn = profile.get("onPremisesDistinguishedName")
+    department = profile.get("department")
     if not azure_access.is_allowed_onprem_user(onprem_dn):
         return None
 
-    role = azure_access.role_from_onprem_user(onprem_dn)
+    role = azure_access.role_from_directory_user(onprem_dn, department)
     is_admin = await _check_admin_group(access_token) or azure_access.is_email_admin(email) or role.value == "admin"
 
     return {
         "username": (profile.get("userPrincipalName") or "").split("@")[0],
         "email": email,
         "display_name": profile.get("displayName", ""),
+        "department": department,
         "is_admin": is_admin,
         "role": role,
         "onprem_dn": onprem_dn,

@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.38'
+export const APP_VERSION = '1.7.39'
 export const APP_VERSION_DATE = '2026-05-11'
-export const APP_VERSION_TIME = '12:00'
+export const APP_VERSION_TIME = '12:46'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.39',
+    date: '2026-05-11',
+    time: '12:46',
+    title: 'Mapeamento de Assistente Operacional',
+    changes: [
+      'Utilizadores sincronizados do Entra ID com departamento "ASSISTENTE OPERACIONAL" passam a receber automaticamente o papel "Não Docente".',
+      'A regra aplica-se tanto no login Microsoft como na sincronização/importação de utilizadores do Entra ID.',
+      'Ao arrancar, a app corrige também utilizadores já existentes com esse departamento, desde que o papel não esteja bloqueado manualmente.',
+    ],
+  },
   {
     version: '1.7.38',
     date: '2026-05-11',

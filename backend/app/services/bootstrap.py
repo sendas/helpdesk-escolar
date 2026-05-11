@@ -101,6 +101,7 @@ DEFAULT_KNOWLEDGE = [
 
 async def ensure_defaults(db: AsyncSession) -> None:
     await ensure_schema(db)
+    await normalize_directory_roles(db)
 
     for data in DEFAULT_SCHOOLS:
         exists = await db.execute(select(School).where(School.name == data["name"]))
@@ -130,6 +131,17 @@ async def ensure_defaults(db: AsyncSession) -> None:
         if not exists.scalar_one_or_none():
             db.add(KnowledgeArticle(**data))
 
+    await db.commit()
+
+
+async def normalize_directory_roles(db: AsyncSession) -> None:
+    await db.execute(text("""
+        UPDATE users
+        SET role = 'NON_TEACHING', role_source = 'entra'
+        WHERE COALESCE(role_locked, 0) = 0
+          AND role NOT IN ('ADMIN', 'TECHNICIAN', 'SECRETARY')
+          AND lower(trim(COALESCE(department, ''))) IN ('assistente operacional', 'assistentes operacionais')
+    """))
     await db.commit()
 
 

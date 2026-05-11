@@ -9,6 +9,10 @@ from app.models.user import UserRole
 
 DEFAULT_SECRETARY_ONPREM_OUS = {"queiroz.local/aeeq/secretaria-eseq"}
 DEFAULT_NON_TEACHING_ONPREM_OUS = {"queiroz.local/aeeq/_nao docentes"}
+DEFAULT_NON_TEACHING_DEPARTMENTS = {
+    "assistente operacional",
+    "assistentes operacionais",
+}
 DEFAULT_EXCLUDED_ONPREM_OUS = {
     "queiroz.local/aeeq/_alunos",
     "queiroz.local/aeeq/alunos",
@@ -61,6 +65,19 @@ def role_from_onprem_user(onprem_dn: str | None, fallback: UserRole = UserRole.T
     return fallback
 
 
+def role_from_directory_user(
+    onprem_dn: str | None,
+    department: str | None,
+    fallback: UserRole = UserRole.TEACHER,
+) -> UserRole:
+    role = role_from_onprem_user(onprem_dn, fallback)
+    if role != fallback:
+        return role
+    if _normalize_text(department or "") in DEFAULT_NON_TEACHING_DEPARTMENTS:
+        return UserRole.NON_TEACHING
+    return fallback
+
+
 def _csv(value: str) -> set[str]:
     return {_normalize_path(item) for item in value.split(",") if item.strip()}
 
@@ -108,6 +125,12 @@ def dn_to_path(dn: str | None) -> str:
 def _normalize_path(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value.strip().lower())
     return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+
+def _normalize_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value.strip().lower())
+    without_accents = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return " ".join(without_accents.split())
 
 
 def _runtime_setting(key: str):

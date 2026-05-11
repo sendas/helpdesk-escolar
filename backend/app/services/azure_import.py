@@ -71,9 +71,9 @@ async def import_azure_users(db: AsyncSession) -> dict:
         email = email.strip()
         user_principal_name = (item.get("userPrincipalName") or "").strip()
         display_name = item.get("displayName") or email
-        imported_role = azure_access.role_from_onprem_user(onprem_dn)
         onprem_path = azure_access.dn_to_path(onprem_dn) or None
         department = item.get("department") or onprem_path or None
+        imported_role = azure_access.role_from_directory_user(onprem_dn, department)
         user = by_email.get(email.lower())
         if not user and user_principal_name:
             user = by_email.get(user_principal_name.lower())
