@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
 import asyncio
 import os
+import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -134,6 +135,17 @@ app.add_middleware(
 
 app.add_middleware(SessionMiddleware, secret_key=settings.app_secret_key)
 
+@app.middleware("http")
+async def access_log_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    if _should_log_access(request.url.path):
+        try:
+            await _record_access(request, response.status_code, int((time.perf_counter() - start) * 1000))
+        except Exception:
+            pass
+    return response
+
 app.include_router(router)
 os.makedirs("/app/data/uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="/app/data/uploads"), name="uploads")
@@ -142,3 +154,69 @@ app.mount("/uploads", StaticFiles(directory="/app/data/uploads"), name="uploads"
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+def _should_log_access(path: str) -> bool:
+    if not path.startswith("/api/"):
+        return False
+    ignored = (
+        "/api/v1/notifications/vapid-public-key",
+        "/api/v1/settings/public",
+    )
+    return not any(path.startswith(prefix) for prefix in ignored)
+
+
+async def _record_access(request: Request, status_code: int, duration_ms: int) -> None:
+    from app.database import AsyncSessionLocal
+    from app.models.access_log import AccessLog
+    from app.services.jwt_service import decode_token
+
+    user_id = None
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        payload = decode_token(auth_header.split(" ", 1)[1])
+        if payload and payload.get("sub"):
+            try:
+                user_id = int(payload["sub"])
+            except (TypeError, ValueError):
+                user_id = None
+
+    user_agent = (request.headers.get("user-agent") or "")[:500]
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    ip_address = (forwarded_for.split(",", 1)[0].strip() or (request.client.host if request.client else ""))[:80]
+    entry = AccessLog(
+        method=request.method[:12],
+        path=request.url.path[:300],
+        status_code=status_code,
+        duration_ms=duration_ms,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        browser=_browser_from_user_agent(user_agent),
+        device=_device_from_user_agent(user_agent),
+        user_id=user_id,
+    )
+    async with AsyncSessionLocal() as db:
+        db.add(entry)
+        await db.commit()
+
+
+def _browser_from_user_agent(user_agent: str) -> str:
+    ua = user_agent.lower()
+    if "edg/" in ua:
+        return "Edge"
+    if "chrome/" in ua or "crios/" in ua:
+        return "Chrome"
+    if "firefox/" in ua or "fxios/" in ua:
+        return "Firefox"
+    if "safari/" in ua:
+        return "Safari"
+    return "Outro"
+
+
+def _device_from_user_agent(user_agent: str) -> str:
+    ua = user_agent.lower()
+    if "ipad" in ua or "tablet" in ua:
+        return "Tablet"
+    if "iphone" in ua or "android" in ua or "mobile" in ua:
+        return "Telemóvel"
+    return "Computador"

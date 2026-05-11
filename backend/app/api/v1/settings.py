@@ -21,11 +21,16 @@ DEFAULT_SETTINGS = {
     "support_provider_name": "Fornecedor externo",
     "support_provider_email": "",
     "azure_allowed_onprem_ous": [],
+    "knowledge_enabled": True,
 }
 
 
 class AzureSyncSettings(BaseModel):
     allowed_onprem_ous: list[str] = []
+
+
+class FeatureSettings(BaseModel):
+    knowledge_enabled: bool = True
 
 
 @router.get("/public")
@@ -76,6 +81,14 @@ async def update_azure_sync_settings(payload: AzureSyncSettings, _: User = Depen
     data["azure_allowed_onprem_ous"] = _normalize_ou_list(payload.allowed_onprem_ous)
     _write_settings(data)
     return {"allowed_onprem_ous": data["azure_allowed_onprem_ous"]}
+
+
+@router.put("/features")
+async def update_feature_settings(payload: FeatureSettings, _: User = Depends(require_admin)):
+    data = _read_settings()
+    data["knowledge_enabled"] = payload.knowledge_enabled
+    _write_settings(data)
+    return {"knowledge_enabled": data["knowledge_enabled"]}
 
 
 def _read_settings() -> dict:

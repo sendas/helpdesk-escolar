@@ -17,6 +17,17 @@
       </div>
     </div>
 
+    <div class="hd-grid-4" style="margin-bottom:24px">
+      <div class="hd-stat" v-for="s in accessKpis" :key="s.label">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="hd-stat-label">{{ s.label }}</div>
+          <span class="material-icons hd-stat-icon" style="font-size:20px">{{ s.icon }}</span>
+        </div>
+        <div class="hd-stat-value">{{ s.value }}</div>
+        <div class="hd-stat-trend" style="color:var(--c-muted)">{{ s.trend }}</div>
+      </div>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
       <!-- Bar chart -->
       <div class="hd-card" style="padding:20px">
@@ -108,6 +119,77 @@
         </table>
       </div>
     </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
+      <div class="hd-card" style="padding:20px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">Acessos à plataforma</div>
+        <div style="font-size:12px;color:var(--c-muted);margin-bottom:16px">Últimos 14 dias</div>
+        <div v-if="loading" style="height:220px;display:flex;align-items:center;justify-content:center;color:var(--c-muted)">
+          A carregar...
+        </div>
+        <Bar v-else :data="accessBarData" :options="barOptions" style="max-height:220px" />
+      </div>
+
+      <div class="hd-card" style="padding:20px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">Dispositivos e browsers</div>
+        <div style="font-size:12px;color:var(--c-muted);margin-bottom:16px">Últimos 30 dias</div>
+        <div class="access-split">
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px">Dispositivos</div>
+            <div v-for="item in accessDevices" :key="item.device" class="access-row">
+              <span>{{ item.device }}</span><strong>{{ item.hits }}</strong>
+            </div>
+            <div v-if="!accessDevices.length" class="empty-small">Sem dados.</div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px">Browsers</div>
+            <div v-for="item in accessBrowsers" :key="item.browser" class="access-row">
+              <span>{{ item.browser }}</span><strong>{{ item.hits }}</strong>
+            </div>
+            <div v-if="!accessBrowsers.length" class="empty-small">Sem dados.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hd-card" style="padding:20px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">Utilizadores mais ativos</div>
+        <div style="font-size:12px;color:var(--c-muted);margin-bottom:16px">Últimos 30 dias</div>
+        <table class="hd-table compact-table">
+          <thead><tr><th>UTILIZADOR</th><th>ACESSOS</th><th>ÚLTIMO ACESSO</th></tr></thead>
+          <tbody>
+            <tr v-for="u in accessTopUsers" :key="u.id">
+              <td>
+                <div style="font-weight:600">{{ u.name }}</div>
+                <div style="font-size:11px;color:var(--c-muted)">{{ u.email }}</div>
+              </td>
+              <td style="font-weight:700">{{ u.hits }}</td>
+              <td>{{ formatDateTime(u.last_seen) }}</td>
+            </tr>
+            <tr v-if="!accessTopUsers.length">
+              <td colspan="3" style="text-align:center;color:var(--c-muted);padding:24px">Sem dados.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="hd-card" style="padding:20px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">Áreas mais usadas</div>
+        <div style="font-size:12px;color:var(--c-muted);margin-bottom:16px">Últimos 30 dias</div>
+        <table class="hd-table compact-table">
+          <thead><tr><th>ROTA</th><th>ACESSOS</th><th>MÉDIA</th></tr></thead>
+          <tbody>
+            <tr v-for="p in accessTopPaths" :key="p.path">
+              <td style="font-family:monospace;font-size:12px">{{ p.path }}</td>
+              <td style="font-weight:700">{{ p.hits }}</td>
+              <td>{{ p.avg_ms }} ms</td>
+            </tr>
+            <tr v-if="!accessTopPaths.length">
+              <td colspan="3" style="text-align:center;color:var(--c-muted);padding:24px">Sem dados.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -149,6 +231,16 @@ const kpis = computed(() => {
   ]
 })
 
+const accessKpis = computed(() => {
+  const access = stats.value?.access ?? {}
+  return [
+    { label: 'Acessos 7 dias', value: access.visits_7 ?? '—', icon: 'visibility', trend: 'pedidos à plataforma' },
+    { label: 'Utilizadores 7 dias', value: access.unique_users_7 ?? '—', icon: 'groups', trend: 'utilizadores autenticados' },
+    { label: 'Acessos 30 dias', value: access.visits_30 ?? '—', icon: 'query_stats', trend: 'atividade recente' },
+    { label: 'Utilizadores 30 dias', value: access.unique_users_30 ?? '—', icon: 'person_search', trend: 'alcance mensal' },
+  ]
+})
+
 const barData = computed(() => {
   const weekly = stats.value?.weekly ?? []
   const labels = weekly.length ? weekly.map((w: any) => w.week) : ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4']
@@ -168,6 +260,17 @@ const barOptions = {
   plugins: { legend: { position: 'top' as const } },
   scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1 } } },
 }
+
+const accessBarData = computed(() => {
+  const daily = stats.value?.access?.daily ?? []
+  return {
+    labels: daily.map((d: any) => d.date.slice(5)),
+    datasets: [
+      { label: 'Acessos', data: daily.map((d: any) => d.hits), backgroundColor: '#3D52D5cc', borderRadius: 4 },
+      { label: 'Utilizadores', data: daily.map((d: any) => d.users), backgroundColor: '#10B981cc', borderRadius: 4 },
+    ],
+  }
+})
 
 const statusColors: Record<string, string> = {
   open: '#3D52D5', assigned: '#F59E0B', in_progress: '#8B5CF6', waiting_user: '#0891B2', resolved: '#22C55E', closed: '#6B7280',
@@ -208,4 +311,43 @@ const categoryStats = computed(() => {
 })
 
 const teamStats = computed(() => stats.value?.by_assignee ?? [])
+const accessTopUsers = computed(() => stats.value?.access?.top_users ?? [])
+const accessTopPaths = computed(() => stats.value?.access?.top_paths ?? [])
+const accessDevices = computed(() => stats.value?.access?.by_device ?? [])
+const accessBrowsers = computed(() => stats.value?.access?.by_browser ?? [])
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat('pt-PT', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+}
 </script>
+
+<style scoped>
+.access-split {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr 1fr;
+}
+.access-row {
+  align-items: center;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+.empty-small {
+  color: var(--c-muted);
+  font-size: 13px;
+  padding: 10px 0;
+}
+.compact-table td,
+.compact-table th {
+  padding: 10px 8px;
+}
+@media (max-width: 900px) {
+  .access-split {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

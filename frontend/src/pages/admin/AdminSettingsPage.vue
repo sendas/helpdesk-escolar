@@ -411,8 +411,21 @@
     </div>
 
     <div v-if="tab === 'knowledge'" class="hd-card" style="padding:28px;max-width:1100px">
-      <div style="font-weight:600;font-size:15px;margin-bottom:4px">Base de conhecimento</div>
-      <p class="hd-hint" style="margin-bottom:18px">Artigos visíveis aos utilizadores para respostas rápidas e redução de tickets repetidos.</p>
+      <div class="hd-row" style="align-items:flex-start;gap:16px;margin-bottom:18px">
+        <div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">Base de conhecimento</div>
+          <p class="hd-hint">Artigos visíveis aos utilizadores para respostas rápidas e redução de tickets repetidos.</p>
+        </div>
+        <div class="hd-spacer"></div>
+        <button class="hd-btn" :class="knowledgeEnabled ? 'hd-btn-primary' : 'hd-btn-outline'" @click="toggleKnowledge">
+          <span class="material-icons" style="font-size:16px">{{ knowledgeEnabled ? 'visibility' : 'visibility_off' }}</span>
+          {{ knowledgeEnabled ? 'Base ativa' : 'Base escondida' }}
+        </button>
+      </div>
+
+      <div v-if="!knowledgeEnabled" class="feature-disabled-note">
+        A Base de conhecimento está escondida no menu dos utilizadores e a página pública está bloqueada.
+      </div>
 
       <div class="knowledge-form">
         <input class="hd-input" v-model="newArticle.title" placeholder="Título do artigo" />
@@ -453,7 +466,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
-import { getPublicSettings, updateSettings } from '../../api/settings'
+import { getPublicSettings, updateFeatureSettings, updateSettings } from '../../api/settings'
 import { getGroups, getUsers } from '../../api/users'
 
 const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools' | 'routing' | 'knowledge'>('general')
@@ -478,6 +491,7 @@ const staffUsers = ref<any[]>([])
 const routingRules = ref<any[]>([])
 const articles = ref<any[]>([])
 const logoFile = ref<File | null>(null)
+const knowledgeEnabled = ref(true)
 
 const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Fornecedor externo', support_provider_email: '' })
 const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
@@ -504,6 +518,7 @@ onMounted(async () => {
     general.value.logo_url = settings.logo_url
     general.value.support_provider_name = settings.support_provider_name || 'Fornecedor externo'
     general.value.support_provider_email = settings.support_provider_email || ''
+    knowledgeEnabled.value = settings.knowledge_enabled !== false
     categories.value = cats
     schools.value = schs
     groups.value = grps
@@ -536,6 +551,12 @@ async function saveGeneral() {
     logoFile.value = null
     saved.value = true
   } catch { /* ignore */ }
+}
+
+async function toggleKnowledge() {
+  const next = !knowledgeEnabled.value
+  const saved = await updateFeatureSettings({ knowledge_enabled: next })
+  knowledgeEnabled.value = saved.knowledge_enabled
 }
 
 async function testSmtpNow() {
@@ -678,6 +699,19 @@ async function removeArticle(id: number) {
   gap: 8px;
   color: var(--c-muted);
   font-weight: 700;
+}
+.feature-disabled-note {
+  background: rgba(245, 158, 11, .1);
+  border: 1px solid rgba(245, 158, 11, .28);
+  border-radius: 10px;
+  color: #92400E;
+  font-size: 13px;
+  line-height: 1.45;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+}
+.dark .feature-disabled-note {
+  color: #FCD34D;
 }
 @media (max-width: 900px) {
   .routing-form { grid-template-columns: 1fr; }

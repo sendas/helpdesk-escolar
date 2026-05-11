@@ -7,6 +7,7 @@ export interface PublicSettings {
   support_provider_name: string
   support_provider_email: string
   azure_allowed_onprem_ous?: string[]
+  knowledge_enabled: boolean
 }
 
 export interface AzureSyncSettings {
@@ -35,5 +36,10 @@ export async function getAzureSyncSettings() {
 
 export async function updateAzureSyncSettings(payload: AzureSyncSettings) {
   const { data } = await api.put<AzureSyncSettings>('/api/v1/settings/azure-sync', payload)
+  return data
+}
+
+export async function updateFeatureSettings(payload: { knowledge_enabled: boolean }) {
+  const { data } = await api.put<{ knowledge_enabled: boolean }>('/api/v1/settings/features', payload)
   return data
 }

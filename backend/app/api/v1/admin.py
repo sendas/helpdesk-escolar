@@ -1,15 +1,16 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy import select, func
+from sqlalchemy import distinct, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, require_staff, require_admin
 from app.models.user import User, UserRole
 from app.models.group import HelpdeskGroup
 from app.models.ticket import Ticket, Comment, TicketEvent, TicketRoutingRule, TicketStatus
+from app.models.access_log import AccessLog
 from app.schemas.ticket import TicketBulkAction, TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets, TicketRoutingRuleCreate, TicketRoutingRuleRead, TicketRoutingRuleUpdate
 from app.services import ticket_service, email_service, email_ingest, backup_service
 from app.api.v1.settings import _read_settings
@@ -316,8 +317,6 @@ async def admin_stats(
 
     from app.models.category import Category
     from app.models.user import User as UserModel, UserRole
-    from datetime import datetime, timedelta
-
     # by category
     by_category = []
     cats = (await db.execute(select(Category))).scalars().all()
@@ -370,6 +369,8 @@ async def admin_stats(
             "in_progress": in_progress, "rating": min(5, max(1, resolved_count // 2 + 1)),
         })
 
+    access_stats = await _build_access_stats(db)
+
     return {
         "total": total,
         "open": counts.get("open", 0),
@@ -381,6 +382,99 @@ async def admin_stats(
         "user_count": user_count,
         "category_count": category_count,
         "staff_count": staff_count,
+        "access": access_stats,
+    }
+
+
+async def _build_access_stats(db: AsyncSession) -> dict:
+    now = datetime.utcnow()
+    since_7 = now - timedelta(days=7)
+    since_30 = now - timedelta(days=30)
+
+    visits_7 = (await db.execute(
+        select(func.count()).select_from(AccessLog).where(AccessLog.created_at >= since_7)
+    )).scalar_one()
+    visits_30 = (await db.execute(
+        select(func.count()).select_from(AccessLog).where(AccessLog.created_at >= since_30)
+    )).scalar_one()
+    unique_users_7 = (await db.execute(
+        select(func.count(distinct(AccessLog.user_id))).where(AccessLog.created_at >= since_7, AccessLog.user_id.is_not(None))
+    )).scalar_one()
+    unique_users_30 = (await db.execute(
+        select(func.count(distinct(AccessLog.user_id))).where(AccessLog.created_at >= since_30, AccessLog.user_id.is_not(None))
+    )).scalar_one()
+
+    daily = []
+    for i in range(13, -1, -1):
+        day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        hits = (await db.execute(
+            select(func.count()).select_from(AccessLog)
+            .where(AccessLog.created_at >= day_start, AccessLog.created_at < day_end)
+        )).scalar_one()
+        users = (await db.execute(
+            select(func.count(distinct(AccessLog.user_id)))
+            .where(AccessLog.created_at >= day_start, AccessLog.created_at < day_end, AccessLog.user_id.is_not(None))
+        )).scalar_one()
+        daily.append({"date": day_start.date().isoformat(), "hits": hits, "users": users})
+
+    top_users_result = await db.execute(
+        select(User.id, User.display_name, User.email, func.count(AccessLog.id).label("hits"), func.max(AccessLog.created_at).label("last_seen"))
+        .join(AccessLog, AccessLog.user_id == User.id)
+        .where(AccessLog.created_at >= since_30)
+        .group_by(User.id, User.display_name, User.email)
+        .order_by(func.count(AccessLog.id).desc())
+        .limit(10)
+    )
+    top_users = [
+        {
+            "id": user_id,
+            "name": display_name,
+            "email": email,
+            "hits": hits,
+            "last_seen": last_seen.isoformat() if last_seen else None,
+        }
+        for user_id, display_name, email, hits, last_seen in top_users_result.all()
+    ]
+
+    top_paths_result = await db.execute(
+        select(AccessLog.path, func.count(AccessLog.id).label("hits"), func.avg(AccessLog.duration_ms).label("avg_ms"))
+        .where(AccessLog.created_at >= since_30)
+        .group_by(AccessLog.path)
+        .order_by(func.count(AccessLog.id).desc())
+        .limit(12)
+    )
+    top_paths = [
+        {"path": path, "hits": hits, "avg_ms": round(avg_ms or 0)}
+        for path, hits, avg_ms in top_paths_result.all()
+    ]
+
+    device_result = await db.execute(
+        select(AccessLog.device, func.count(AccessLog.id).label("hits"))
+        .where(AccessLog.created_at >= since_30)
+        .group_by(AccessLog.device)
+        .order_by(func.count(AccessLog.id).desc())
+    )
+    by_device = [{"device": device or "Desconhecido", "hits": hits} for device, hits in device_result.all()]
+
+    browser_result = await db.execute(
+        select(AccessLog.browser, func.count(AccessLog.id).label("hits"))
+        .where(AccessLog.created_at >= since_30)
+        .group_by(AccessLog.browser)
+        .order_by(func.count(AccessLog.id).desc())
+    )
+    by_browser = [{"browser": browser or "Desconhecido", "hits": hits} for browser, hits in browser_result.all()]
+
+    return {
+        "visits_7": visits_7,
+        "visits_30": visits_30,
+        "unique_users_7": unique_users_7,
+        "unique_users_30": unique_users_30,
+        "daily": daily,
+        "top_users": top_users,
+        "top_paths": top_paths,
+        "by_device": by_device,
+        "by_browser": by_browser,
     }
 
 

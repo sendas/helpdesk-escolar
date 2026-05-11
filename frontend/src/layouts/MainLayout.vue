@@ -37,7 +37,7 @@
         <router-link class="hd-nav-item" :class="{ active: $route.path === '/tickets/new' }" to="/tickets/new" @click="mobileMenuOpen = false">
           <span class="material-icons" style="font-size:16px">add_circle</span> Novo ticket
         </router-link>
-        <router-link class="hd-nav-item" :class="{ active: $route.path === '/knowledge' }" to="/knowledge" @click="mobileMenuOpen = false">
+        <router-link v-if="settings.knowledge_enabled" class="hd-nav-item" :class="{ active: $route.path === '/knowledge' }" to="/knowledge" @click="mobileMenuOpen = false">
           <span class="material-icons" style="font-size:16px">menu_book</span> Base de conhecimento
         </router-link>
         <router-link class="hd-nav-item" :class="{ active: $route.path === '/version' }" to="/version" @click="mobileMenuOpen = false">
@@ -230,7 +230,7 @@ const openCount = ref(0)
 const adminOpenCount = ref(0)
 const showNotifications = ref(false)
 const mobileMenuOpen = ref(false)
-const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
+const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '', knowledge_enabled: true })
 const versionLabelText = versionLabel()
 
 const roleLabel = computed(() => {

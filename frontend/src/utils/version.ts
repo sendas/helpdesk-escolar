@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.41'
+export const APP_VERSION = '1.7.42'
 export const APP_VERSION_DATE = '2026-05-11'
-export const APP_VERSION_TIME = '14:57'
+export const APP_VERSION_TIME = '15:38'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.42',
+    date: '2026-05-11',
+    time: '15:38',
+    title: 'Base de conhecimento configurável e estatísticas de acesso',
+    changes: [
+      'Novo botão nas Configurações para ativar ou esconder a Base de conhecimento sem apagar artigos existentes.',
+      'Quando a Base de conhecimento está escondida, deixa de aparecer no menu dos utilizadores e o acesso público aos artigos fica bloqueado.',
+      'A página Estatísticas passa a mostrar acessos à plataforma, utilizadores ativos, evolução diária, dispositivos, browsers, utilizadores mais ativos e áreas mais usadas.',
+      'O backend passa a registar acessos autenticados às APIs da plataforma para alimentar as estatísticas detalhadas.',
+    ],
+  },
   {
     version: '1.7.41',
     date: '2026-05-11',

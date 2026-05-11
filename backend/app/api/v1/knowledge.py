@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, get_current_user, require_admin
+from app.api.v1.settings import _read_settings
 from app.models.knowledge import KnowledgeArticle
 from app.models.user import User
 from app.schemas.knowledge import KnowledgeArticleCreate, KnowledgeArticleRead, KnowledgeArticleUpdate
@@ -13,6 +14,8 @@ router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
 @router.get("", response_model=list[KnowledgeArticleRead])
 async def list_articles(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+    if not _read_settings().get("knowledge_enabled", True):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Base de conhecimento inativa")
     result = await db.execute(
         select(KnowledgeArticle)
         .where(KnowledgeArticle.is_published.is_(True))
