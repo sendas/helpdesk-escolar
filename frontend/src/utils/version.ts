@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.37'
+export const APP_VERSION = '1.7.38'
 export const APP_VERSION_DATE = '2026-05-11'
-export const APP_VERSION_TIME = '10:34'
+export const APP_VERSION_TIME = '12:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.38',
+    date: '2026-05-11',
+    time: '12:00',
+    title: 'Instrução de resposta nos emails',
+    changes: [
+      'Os emails enviados ao utilizador passam a indicar claramente que pode responder ao email para atualizar o pedido de ajuda / ticket.',
+      'A indicação aparece nos emails de criação, atualização, atribuição, comentário e alteração de conteúdo do ticket.',
+    ],
+  },
   {
     version: '1.7.37',
     date: '2026-05-11',
