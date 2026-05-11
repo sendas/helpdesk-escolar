@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.36'
+export const APP_VERSION = '1.7.37'
 export const APP_VERSION_DATE = '2026-05-11'
-export const APP_VERSION_TIME = '10:18'
+export const APP_VERSION_TIME = '10:34'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.37',
+    date: '2026-05-11',
+    time: '10:34',
+    title: 'Correção do scroll no Chrome',
+    changes: [
+      'O layout principal passa a ter um contentor de conteúdo dedicado ao scroll, com altura e overflow definidos de forma explícita.',
+      'Corrigido um comportamento em que o Chrome podia ficar sem permitir scroll nas páginas, apesar de Safari e iPhone continuarem a funcionar.',
+    ],
+  },
   {
     version: '1.7.36',
     date: '2026-05-11',

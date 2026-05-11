@@ -202,7 +202,7 @@
       </div>
 
       <!-- Page content -->
-      <main style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain">
+      <main class="app-content">
         <router-view />
         <div style="height:env(safe-area-inset-bottom,0px)"></div>
       </main>
@@ -331,7 +331,9 @@ onBeforeUnmount(() => {
 
 .app-shell {
   display: flex;
+  height: 100vh;
   min-height: 100vh;
+  overflow: hidden;
   background: var(--c-bg);
 }
 .app-sidebar {
@@ -346,7 +348,18 @@ onBeforeUnmount(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
+}
+.app-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .app-version-link {
@@ -506,6 +519,11 @@ onBeforeUnmount(() => {
 @media (max-width: 820px) {
   .app-shell {
     display: block;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
     padding-top: 0;  /* hd-header is now sticky at top:0, no fixed topbar */
   }
   /* Hide the old fixed topbar — it was covered by the browser chrome */
@@ -549,6 +567,7 @@ onBeforeUnmount(() => {
     margin-left: 0;
     height: 100vh;
     height: 100dvh;
+    min-height: 0;
     overflow: hidden;
   }
   :deep(.hd-sidebar) {
