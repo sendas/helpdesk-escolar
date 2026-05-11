@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.35'
+export const APP_VERSION = '1.7.36'
 export const APP_VERSION_DATE = '2026-05-11'
-export const APP_VERSION_TIME = '09:14'
+export const APP_VERSION_TIME = '10:18'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.36',
+    date: '2026-05-11',
+    time: '10:18',
+    title: 'Respostas por email via Microsoft Graph',
+    changes: [
+      'A importação de respostas por email passa a suportar Microsoft Graph, evitando bloqueios de IMAP/password em tenants Microsoft 365 modernos.',
+      'Nova configuração MAIL_REPLY_PROVIDER=graph e GRAPH_MAIL_USER para indicar a mailbox de suporte a ler.',
+      'O modo IMAP continua disponível como fallback com MAIL_REPLY_PROVIDER=imap.',
+      'O botão "Ler respostas" e a sincronização automática passam a indicar nos resultados se a origem usada foi graph ou imap.',
+    ],
+  },
   {
     version: '1.7.35',
     date: '2026-05-11',

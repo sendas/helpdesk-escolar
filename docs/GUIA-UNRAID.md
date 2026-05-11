@@ -149,10 +149,23 @@ Com SMTP ativo, o sistema envia emails quando um ticket e criado, atualizado, at
 
 `PUSH_VAPID_SUBJECT` e o contacto usado pelos servicos Web Push do browser. Usa sempre `mailto:` seguido de uma conta valida.
 
-Para permitir que respostas aos emails entrem automaticamente como comentarios no ticket, ativa tambem IMAP no `app.env`:
+Para permitir que respostas aos emails entrem automaticamente como comentarios no ticket, usa Microsoft Graph no `app.env`:
 
 ```
 MAIL_REPLY_ENABLED=true
+MAIL_REPLY_PROVIDER=graph
+GRAPH_MAIL_USER=helpdesk@techpro.pt
+IMAP_FOLDER=INBOX
+IMAP_POLL_SECONDS=120
+```
+
+Para o modo Graph funcionar, a aplicacao registada no Entra ID precisa da permissao **Microsoft Graph → Application permissions → Mail.ReadWrite** com consentimento de administrador. Este modo e recomendado para Microsoft 365 porque nao depende de IMAP por password.
+
+Se a tua organizacao ainda permitir IMAP, tambem podes usar o modo antigo:
+
+```
+MAIL_REPLY_ENABLED=true
+MAIL_REPLY_PROVIDER=imap
 IMAP_SERVER=outlook.office365.com
 IMAP_PORT=993
 IMAP_SSL=true

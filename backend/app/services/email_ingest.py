@@ -10,6 +10,8 @@ from email.header import decode_header, make_header
 from email.message import Message
 from email.utils import parseaddr
 
+import httpx
+import msal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -27,60 +29,151 @@ logger = logging.getLogger(__name__)
 async def sync_inbound_replies(db: AsyncSession, limit: int = 25) -> dict:
     if not settings.mail_reply_enabled:
         logger.info("Mail reply sync disabled: MAIL_REPLY_ENABLED is false")
-        return {"processed": 0, "skipped": 0}
-    if not settings.imap_server:
-        logger.warning("Mail reply sync disabled: IMAP_SERVER is empty")
-        return {"processed": 0, "skipped": 0}
+        return {"processed": 0, "skipped": 0, "provider": _reply_provider()}
 
-    messages = await asyncio.to_thread(_fetch_unseen_messages, limit)
-    logger.info("Mail reply sync fetched %s candidate message(s)", len(messages))
+    provider = _reply_provider()
+    if provider == "graph":
+        messages = await _fetch_graph_unread_messages(limit)
+    elif provider == "imap":
+        if not settings.imap_server:
+            logger.warning("Mail reply sync disabled: IMAP_SERVER is empty")
+            return {"processed": 0, "skipped": 0, "provider": provider}
+        messages = await asyncio.to_thread(_fetch_unseen_messages, limit)
+    else:
+        logger.warning("Mail reply sync disabled: unsupported MAIL_REPLY_PROVIDER=%s", settings.mail_reply_provider)
+        return {"processed": 0, "skipped": 0, "provider": provider}
+
+    logger.info("Mail reply sync fetched %s candidate message(s) via %s", len(messages), provider)
+    result = await _import_messages(db, messages)
+    result["provider"] = provider
+    return result
+
+
+def _reply_provider() -> str:
+    return (settings.mail_reply_provider or "imap").strip().lower()
+
+
+async def _fetch_graph_unread_messages(limit: int) -> list[dict]:
+    mailbox = (settings.graph_mail_user or settings.imap_username or settings.mail_username or settings.mail_from).strip()
+    if not mailbox:
+        logger.warning("Graph mail reply sync disabled: GRAPH_MAIL_USER/MAIL_USERNAME is empty")
+        return []
+    if not settings.azure_tenant_id or not settings.azure_client_id or not settings.azure_client_secret:
+        logger.warning("Graph mail reply sync disabled: Azure app credentials are incomplete")
+        return []
+
+    token = await asyncio.to_thread(_get_graph_token)
+    if not token:
+        return []
+
+    folder = _graph_folder_id(settings.imap_folder)
+    select_fields = "id,subject,from,body,uniqueBody,internetMessageId,isRead"
+    params = {
+        "$top": str(max(1, min(limit, 50))),
+        "$filter": "isRead eq false",
+        "$orderby": "receivedDateTime desc",
+        "$select": select_fields,
+    }
+    base_url = f"https://graph.microsoft.com/v1.0/users/{mailbox}/mailFolders/{folder}/messages"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "Prefer": 'outlook.body-content-type="text"',
+    }
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        try:
+            resp = await client.get(base_url, headers=headers, params=params)
+        except Exception:
+            logger.exception("Graph mail reply sync failed while fetching messages")
+            return []
+        if resp.status_code != 200:
+            logger.warning("Graph mail reply sync failed: %s %s", resp.status_code, resp.text[:500])
+            return []
+
+        data = resp.json()
+        raw_messages = data.get("value") or []
+        logger.info("Graph mail search found %s unread message(s)", len(raw_messages))
+
+        results: list[dict] = []
+        for raw in raw_messages:
+            item = _parse_graph_message(raw)
+            if item:
+                results.append(item)
+                await _mark_graph_message_read(client, mailbox, raw["id"], headers)
+            else:
+                logger.info("Graph mail message ignored: subject does not contain ticket marker")
+        return results
+
+
+def _get_graph_token() -> str | None:
+    app = msal.ConfidentialClientApplication(
+        client_id=settings.azure_client_id,
+        client_credential=settings.azure_client_secret,
+        authority=f"https://login.microsoftonline.com/{settings.azure_tenant_id}",
+    )
+    result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+    if "access_token" in result:
+        return result["access_token"]
+    logger.warning("Graph mail token failed: %s %s", result.get("error"), result.get("error_description"))
+    return None
+
+
+def _graph_folder_id(folder: str) -> str:
+    normalized = (folder or "inbox").strip().lower()
+    if normalized in {"inbox", "caixa de entrada", "entrada"}:
+        return "inbox"
+    return folder.strip()
+
+
+def _parse_graph_message(msg: dict) -> dict | None:
+    subject = msg.get("subject") or ""
+    match = TICKET_RE.search(subject)
+    if not match:
+        return None
+
+    sender_email = (
+        ((msg.get("from") or {}).get("emailAddress") or {}).get("address") or ""
+    ).strip().lower()
+    body_info = msg.get("uniqueBody") or msg.get("body") or {}
+    body_content = body_info.get("content") or ""
+    content_type = (body_info.get("contentType") or "text").lower()
+    if content_type == "html":
+        body_content = _html_to_text(body_content)
+
+    body = _clean_reply_body(body_content)
+    message_id = (msg.get("internetMessageId") or msg.get("id") or f"{sender_email}:{subject}:{hash(body)}").strip()
+    return {
+        "message_id": message_id,
+        "ticket_id": int(match.group(1)),
+        "sender_email": sender_email,
+        "body": body,
+    }
+
+
+async def _mark_graph_message_read(client: httpx.AsyncClient, mailbox: str, message_id: str, headers: dict) -> None:
+    try:
+        resp = await client.patch(
+            f"https://graph.microsoft.com/v1.0/users/{mailbox}/messages/{message_id}",
+            headers={**headers, "Content-Type": "application/json"},
+            json={"isRead": True},
+        )
+        if resp.status_code not in (200, 202):
+            logger.warning("Graph mail could not mark message as read: %s %s", resp.status_code, resp.text[:300])
+    except Exception:
+        logger.exception("Graph mail failed while marking message as read")
+
+
+async def _import_messages(db: AsyncSession, messages: list[dict]) -> dict:
     processed = 0
     skipped = 0
 
     for msg in messages:
-        if not msg["message_id"]:
-            logger.info("Mail reply skipped: missing Message-ID for ticket #%s", msg.get("ticket_id"))
+        processed_one = await _import_message(db, msg)
+        if processed_one:
+            processed += 1
+        else:
             skipped += 1
-            continue
-        exists = await db.execute(select(ProcessedEmail).where(ProcessedEmail.message_id == msg["message_id"]))
-        if exists.scalar_one_or_none():
-            logger.info("Mail reply skipped: duplicate Message-ID %s", msg["message_id"])
-            skipped += 1
-            continue
-
-        ticket = (
-            await db.execute(
-                select(Ticket)
-                .where(Ticket.id == msg["ticket_id"])
-                .options(
-                    selectinload(Ticket.creator),
-                    selectinload(Ticket.assignee),
-                    selectinload(Ticket.watchers),
-                    selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
-                )
-            )
-        ).scalar_one_or_none()
-        user = (await db.execute(select(User).where(User.email.ilike(msg["sender_email"])))).scalar_one_or_none()
-        if not ticket:
-            logger.info("Mail reply skipped: ticket #%s not found", msg["ticket_id"])
-            skipped += 1
-            continue
-        if not user:
-            logger.info("Mail reply skipped: sender %s is not a helpdesk user", msg["sender_email"])
-            skipped += 1
-            continue
-        if not msg["body"]:
-            logger.info("Mail reply skipped: empty body for ticket #%s from %s", msg["ticket_id"], msg["sender_email"])
-            skipped += 1
-            continue
-
-        db.add(Comment(body=msg["body"], is_internal=False, ticket_id=ticket.id, author_id=user.id))
-        db.add(TicketEvent(ticket_id=ticket.id, actor_id=user.id, event_type="email_reply", message="Resposta recebida por email"))
-        db.add(ProcessedEmail(message_id=msg["message_id"], ticket_id=ticket.id, sender_email=msg["sender_email"]))
-        ticket.updated_at = datetime.utcnow()
-        msg["processed"] = True
-        processed += 1
-        logger.info("Mail reply imported: ticket #%s from %s", ticket.id, msg["sender_email"])
 
     await db.commit()
     for msg in messages:
@@ -88,6 +181,46 @@ async def sync_inbound_replies(db: AsyncSession, limit: int = 25) -> dict:
             await _notify_ticket_recipients(db, msg["ticket_id"], msg["sender_email"])
     return {"processed": processed, "skipped": skipped}
 
+
+async def _import_message(db: AsyncSession, msg: dict) -> bool:
+    if not msg["message_id"]:
+        logger.info("Mail reply skipped: missing Message-ID for ticket #%s", msg.get("ticket_id"))
+        return False
+    exists = await db.execute(select(ProcessedEmail).where(ProcessedEmail.message_id == msg["message_id"]))
+    if exists.scalar_one_or_none():
+        logger.info("Mail reply skipped: duplicate Message-ID %s", msg["message_id"])
+        return False
+
+    ticket = (
+        await db.execute(
+            select(Ticket)
+            .where(Ticket.id == msg["ticket_id"])
+            .options(
+                selectinload(Ticket.creator),
+                selectinload(Ticket.assignee),
+                selectinload(Ticket.watchers),
+                selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
+            )
+        )
+    ).scalar_one_or_none()
+    user = (await db.execute(select(User).where(User.email.ilike(msg["sender_email"])))).scalar_one_or_none()
+    if not ticket:
+        logger.info("Mail reply skipped: ticket #%s not found", msg["ticket_id"])
+        return False
+    if not user:
+        logger.info("Mail reply skipped: sender %s is not a helpdesk user", msg["sender_email"])
+        return False
+    if not msg["body"]:
+        logger.info("Mail reply skipped: empty body for ticket #%s from %s", msg["ticket_id"], msg["sender_email"])
+        return False
+
+    db.add(Comment(body=msg["body"], is_internal=False, ticket_id=ticket.id, author_id=user.id))
+    db.add(TicketEvent(ticket_id=ticket.id, actor_id=user.id, event_type="email_reply", message="Resposta recebida por email"))
+    db.add(ProcessedEmail(message_id=msg["message_id"], ticket_id=ticket.id, sender_email=msg["sender_email"]))
+    ticket.updated_at = datetime.utcnow()
+    msg["processed"] = True
+    logger.info("Mail reply imported: ticket #%s from %s", ticket.id, msg["sender_email"])
+    return True
 
 def _fetch_unseen_messages(limit: int) -> list[dict]:
     username = settings.imap_username or settings.mail_username

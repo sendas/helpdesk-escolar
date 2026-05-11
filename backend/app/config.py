@@ -72,6 +72,8 @@ class Settings(BaseSettings):
 
     # Incoming mail replies
     mail_reply_enabled: bool = False
+    mail_reply_provider: str = "imap"  # imap or graph
+    graph_mail_user: str = ""
     imap_server: str = ""
     imap_port: int = 993
     imap_ssl: bool = True
