@@ -12,6 +12,6 @@ class Category(Base):
     email_to: Mapped[str | None] = mapped_column(String(200), nullable=True)
     color: Mapped[str] = mapped_column(String(20), default="#1976D2")
     icon: Mapped[str] = mapped_column(String(50), default="help_outline")
-    sla_hours: Mapped[int] = mapped_column(Integer, default=24)
+    sla_hours: Mapped[int] = mapped_column(Integer, default=48)
 
     tickets: Mapped[list["Ticket"]] = relationship("Ticket", back_populates="category")

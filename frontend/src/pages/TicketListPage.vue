@@ -24,7 +24,7 @@
       <div v-if="loading" style="padding:48px;text-align:center;color:var(--c-muted)">A carregar...</div>
       <table v-else class="hd-table">
         <thead>
-          <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SLA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
+          <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>TEMPO DE RESPOSTA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
         </thead>
         <tbody>
           <tr v-for="t in tickets" :key="t.id" @click="$router.push(`/tickets/${t.id}`)">
@@ -46,7 +46,7 @@
             <td style="color:var(--c-muted)">{{ timeAgo(t.updated_at) }}</td>
           </tr>
           <tr v-if="!tickets.length">
-            <td colspan="6" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets.</td>
+            <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets.</td>
           </tr>
         </tbody>
       </table>

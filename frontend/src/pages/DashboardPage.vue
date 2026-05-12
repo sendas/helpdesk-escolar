@@ -61,7 +61,7 @@
             </div>
             <div style="flex:1;min-width:0">
               <div class="hd-sel-title" style="font-size:12.5px">{{ cat.name }}</div>
-              <div style="font-size:11px;color:var(--c-muted)">SLA: {{ cat.sla_hours }}h</div>
+              <div style="font-size:11px;color:var(--c-muted)">Resposta: {{ cat.sla_hours }}h</div>
             </div>
             <span class="material-icons" style="font-size:14px;color:var(--c-muted)">chevron_right</span>
           </div>

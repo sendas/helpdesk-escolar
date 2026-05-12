@@ -177,7 +177,7 @@ const selectedDemoLabel = computed(() => demoProfiles.find(profile => profile.ro
 const features = [
   { title: 'Aberto → Atribuído → Em Curso → Resolvido', sub: 'Estados claros e auditáveis', color: '#0D9488', icon: 'task_alt' },
   { title: 'Integração com Microsoft Entra ID', sub: 'Login institucional com a conta Microsoft', color: '#0078D4', icon: 'shield' },
-  { title: 'Notificações e SLAs configuráveis', sub: 'Cada categoria com o seu prazo', color: '#D97706', icon: 'notifications_active' },
+  { title: 'Notificações e tempos de resposta configuráveis', sub: 'Cada categoria com o seu prazo', color: '#D97706', icon: 'notifications_active' },
 ]
 
 onMounted(async () => {

@@ -105,7 +105,7 @@
           </label>
           <label>
             Email de login
-            <input class="hd-input" v-model="manualUserForm.email" type="email" placeholder="controlink@queiroz.pt" />
+            <input class="hd-input" v-model="manualUserForm.email" type="email" placeholder="suporte@empresa.pt" />
           </label>
           <label>
             Papel
@@ -124,6 +124,10 @@
           <label class="manual-active-option full">
             <input type="checkbox" v-model="manualUserForm.is_active" />
             <span>Utilizador ativo</span>
+          </label>
+          <label class="manual-active-option full">
+            <input type="checkbox" v-model="manualUserForm.is_technician" />
+            <span>Pode receber e assumir tickets como técnico</span>
           </label>
         </div>
 
@@ -190,6 +194,8 @@
         <button class="hd-btn hd-btn-outline" @click="applyBulkRole" :disabled="!bulkRole">Aplicar papel</button>
         <button class="hd-btn hd-btn-outline" @click="applyBulkActive(true)">Ativar</button>
         <button class="hd-btn hd-btn-outline" @click="applyBulkActive(false)">Desativar</button>
+        <button class="hd-btn hd-btn-outline" @click="applyBulkTechnician(true)">Marcar técnico</button>
+        <button class="hd-btn hd-btn-outline" @click="applyBulkTechnician(false)">Retirar técnico</button>
         <button class="hd-btn hd-btn-outline" @click="applyBulkLock(true)">Bloquear papel</button>
         <button class="hd-btn hd-btn-outline" @click="applyBulkLock(false)">Libertar papel</button>
       </div>
@@ -205,6 +211,7 @@
               <th>UTILIZADOR</th>
               <th>EMAIL</th>
               <th>PAPEL</th>
+              <th>TÉCNICO</th>
               <th>ORIGEM</th>
               <th>DEPARTAMENTO / OU</th>
               <th>ATIVO</th>
@@ -227,6 +234,12 @@
                 <select class="hd-select compact" :value="u.role" @change="changeRole(u, ($event.target as HTMLSelectElement).value)">
                   <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
                 </select>
+              </td>
+              <td>
+                <button class="role-source" :class="{ locked: u.is_technician }" @click="toggleTechnician(u)">
+                  <span class="material-icons">{{ u.is_technician ? 'engineering' : 'person' }}</span>
+                  {{ u.is_technician ? 'Recebe tickets' : 'Não recebe' }}
+                </button>
               </td>
               <td>
                 <button class="role-source" :class="{ locked: u.role_locked }" @click="toggleRoleLock(u)">
@@ -252,7 +265,7 @@
               </td>
             </tr>
             <tr v-if="!filteredUsers.length">
-              <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">Sem utilizadores.</td>
+              <td colspan="8" style="text-align:center;color:var(--c-muted);padding:40px">Sem utilizadores.</td>
             </tr>
           </tbody>
         </table>
@@ -279,6 +292,13 @@
                 <button class="role-source" :class="{ locked: u.role_locked }" @click="toggleRoleLock(u)">
                   <span class="material-icons">{{ u.role_locked ? 'lock' : 'sync' }}</span>
                   {{ u.role_locked ? 'Manual' : 'Entra ID' }}
+                </button>
+              </label>
+              <label>
+                <span>Técnico</span>
+                <button class="role-source" :class="{ locked: u.is_technician }" @click="toggleTechnician(u)">
+                  <span class="material-icons">{{ u.is_technician ? 'engineering' : 'person' }}</span>
+                  {{ u.is_technician ? 'Recebe tickets' : 'Não recebe' }}
                 </button>
               </label>
               <label>
@@ -438,6 +458,7 @@ const manualUserForm = ref({
   role: 'teacher',
   department: '',
   is_active: true,
+  is_technician: false,
 })
 const syncAllOus = ref(true)
 const selectedSyncOus = ref<string[]>([])
@@ -501,7 +522,7 @@ const roleDefinitions = [
   { name: 'non_teaching', label: 'Não docente', icon: 'badge', color: '#64748B', permissions: ['Criar e gerir os próprios tickets', 'Adicionar comentários', 'Ver estado dos pedidos'] },
   { name: 'secretary', label: 'Secretaria', icon: 'business_center', color: '#0D9488', permissions: ['Criar e gerir os próprios tickets', 'Adicionar comentários', 'Ver estado dos pedidos'] },
   { name: 'technician', label: 'Técnico', icon: 'build', color: '#F59E0B', permissions: ['Ver e gerir todos os tickets', 'Atribuir e atualizar estados', 'Adicionar notas internas'] },
-  { name: 'admin', label: 'Administrador', icon: 'admin_panel_settings', color: '#EF4444', permissions: ['Gerir utilizadores e papéis', 'Configurar categorias e SLAs', 'Exportar dados e fazer backup', 'Configurar integrações'] },
+  { name: 'admin', label: 'Administrador', icon: 'admin_panel_settings', color: '#EF4444', permissions: ['Gerir utilizadores e papéis', 'Configurar categorias e tempos de resposta', 'Exportar dados e fazer backup', 'Configurar integrações'] },
 ]
 
 onMounted(async () => {
@@ -543,6 +564,7 @@ function resetManualUserForm() {
     role: 'teacher',
     department: '',
     is_active: true,
+    is_technician: false,
   }
   manualUserError.value = ''
 }
@@ -573,6 +595,7 @@ async function addManualUser() {
       email,
       password,
       role: manualUserForm.value.role,
+      is_technician: manualUserForm.value.is_technician || manualUserForm.value.role === 'technician',
       department: manualUserForm.value.department.trim(),
       is_active: manualUserForm.value.is_active,
     })
@@ -659,6 +682,13 @@ async function toggleActive(user: any) {
   } catch { /* ignore */ }
 }
 
+async function toggleTechnician(user: any) {
+  try {
+    const updated = await updateUser(user.id, { is_technician: !user.is_technician })
+    replaceUser(updated)
+  } catch { /* ignore */ }
+}
+
 async function changeDepartment(user: any, department: string) {
   const value = department.trim()
   if ((user.department || '') === value) return
@@ -704,6 +734,10 @@ async function applyBulkRole() {
 
 async function applyBulkActive(is_active: boolean) {
   await applyBulk({ is_active })
+}
+
+async function applyBulkTechnician(is_technician: boolean) {
+  await applyBulk({ is_technician })
 }
 
 async function applyBulkLock(role_locked: boolean) {

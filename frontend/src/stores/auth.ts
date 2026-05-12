@@ -10,6 +10,7 @@ interface User {
   display_name: string
   department?: string
   role: 'teacher' | 'non_teaching' | 'secretary' | 'technician' | 'admin'
+  is_technician?: boolean
   auth_provider: string
 }
 
@@ -20,7 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
-  const isStaff = computed(() => user.value?.role === 'technician' || user.value?.role === 'admin')
+  const isStaff = computed(() => user.value?.role === 'technician' || user.value?.role === 'admin' || !!user.value?.is_technician)
   const isDemo = computed(() => user.value?.auth_provider === 'demo')
 
   function applyDark() {

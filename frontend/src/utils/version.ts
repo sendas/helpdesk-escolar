@@ -1,8 +1,22 @@
-export const APP_VERSION = '1.7.43'
+export const APP_VERSION = '1.7.44'
 export const APP_VERSION_DATE = '2026-05-12'
-export const APP_VERSION_TIME = '18:23'
+export const APP_VERSION_TIME = '19:43'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.44',
+    date: '2026-05-12',
+    time: '19:43',
+    title: 'Atribuição por técnicos e emails mais completos',
+    changes: [
+      'O campo "Atribuído a" passa a abrir imediatamente a lista de técnicos ativos disponíveis, sem obrigar a saber ou escrever o nome.',
+      'Um utilizador pode manter o papel de Administrador e ser marcado também como técnico para poder receber tickets.',
+      'Tickets só podem ser atribuídos a técnicos ativos ou utilizadores marcados como técnicos, evitando atribuições diretas a administradores puros.',
+      'Utilizadores locais podem ser criados com emails externos ao domínio @queiroz.pt.',
+      'Os emails de criação de ticket passam a incluir o conteúdo do pedido enviado pelo utilizador.',
+      'SLA foi renomeado para Tempo de resposta, com 48h por defeito e ajuste para o próximo dia útil quando o prazo cai ao fim de semana.',
+    ],
+  },
   {
     version: '1.7.43',
     date: '2026-05-12',

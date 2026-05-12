@@ -18,12 +18,17 @@ const DONE = new Set(['resolved', 'closed'])
 
 const isDone = computed(() => DONE.has(props.status ?? ''))
 
-const elapsedHours = computed(() => {
+const dueAt = computed(() => {
   if (!props.createdAt) return 0
-  return (Date.now() - new Date(props.createdAt).getTime()) / 3_600_000
+  const due = new Date(new Date(props.createdAt).getTime() + (props.slaHours ?? 0) * 3_600_000)
+  while (due.getDay() === 0 || due.getDay() === 6) {
+    due.setDate(due.getDate() + 1)
+    due.setHours(9, 0, 0, 0)
+  }
+  return due.getTime()
 })
 
-const remaining = computed(() => (props.slaHours ?? 0) - elapsedHours.value)
+const remaining = computed(() => (dueAt.value - Date.now()) / 3_600_000)
 
 const urgency = computed(() => {
   if (remaining.value < 0) return 'breached'
@@ -42,8 +47,8 @@ const label = computed(() => {
 })
 
 const title = computed(() => {
-  if (remaining.value < 0) return `SLA ultrapassado há ${label.value.slice(1)}`
-  return `${label.value} restantes (SLA: ${props.slaHours}h)`
+  if (remaining.value < 0) return `Tempo de resposta ultrapassado há ${label.value.slice(1)}`
+  return `${label.value} restantes (tempo de resposta: ${props.slaHours}h)`
 })
 </script>
 

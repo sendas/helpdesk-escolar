@@ -219,7 +219,8 @@
                     placeholder="Pesquisar por nome ou email..."
                     autocomplete="off"
                   />
-                  <div v-if="watcherSearch.trim().length >= 2 && filteredWatcherUsers.length" class="person-search-menu">
+                  <div v-if="watcherSearch.trim().length >= 2 && (watcherLoading || filteredWatcherUsers.length)" class="person-search-menu">
+                    <div v-if="watcherLoading" class="person-search-empty">A pesquisar...</div>
                     <button v-for="u in filteredWatcherUsers" :key="u.id" type="button" @mousedown.prevent="addWatcherCandidate(u)">
                       <AvatarCircle :name="u.display_name" size="22" />
                       <span>
@@ -259,8 +260,11 @@
                     v-model="assigneeSearch"
                     placeholder="Adicionar técnico..."
                     autocomplete="off"
+                    @focus="assigneeSearchOpen = true"
+                    @click="assigneeSearchOpen = true"
+                    @keydown.escape="assigneeSearchOpen = false"
                   />
-                  <div v-if="assigneeSearch.trim().length >= 2 && filteredAssigneeUsers.length" class="person-search-menu">
+                  <div v-if="assigneeSearchOpen && filteredAssigneeUsers.length" class="person-search-menu">
                     <button v-for="u in filteredAssigneeUsers" :key="u.id" type="button" @mousedown.prevent="addAssignee(u)">
                       <AvatarCircle :name="u.display_name" size="22" />
                       <span>
@@ -321,7 +325,7 @@
             </div>
 
             <div class="hd-detail-row" style="border-bottom:none">
-              <div class="hd-detail-label">SLA</div>
+              <div class="hd-detail-label">Tempo de resposta</div>
               <span style="font-size:13px">{{ ticket.category.sla_hours }}h</span>
             </div>
 
@@ -376,10 +380,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob } from '../api/tickets'
-import { getGroups, getUsers } from '../api/users'
+import { getGroups, getUsers, searchUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
@@ -395,6 +399,7 @@ const commentError = ref('')
 const staffUsers = ref<any[]>([])
 const groups = ref<any[]>([])
 const assigneeSearch = ref('')
+const assigneeSearchOpen = ref(false)
 const groupId = ref('')
 const ticketStatus = ref('')
 const editingCommentId = ref<number | null>(null)
@@ -404,8 +409,10 @@ const escalationMessage = ref('')
 const escalationError = ref(false)
 const savingEmailPreference = ref(false)
 const watcherSearch = ref('')
+const watcherResults = ref<any[]>([])
+const watcherLoading = ref(false)
 const addingWatcher = ref(false)
-const allUsers = ref<any[]>([])
+let watcherSearchTimer: ReturnType<typeof setTimeout> | null = null
 const attachBlobUrls = ref<Record<number, string>>({})
 const lightboxSrc = ref<string | null>(null)
 const editingContent = ref(false)
@@ -439,20 +446,14 @@ const canEditWatchers = computed(() => {
   return auth.isStaff || ticket.value.creator?.id === auth.user.id
 })
 
-const availableWatcherUsers = computed(() => {
-  const addedIds = new Set((ticket.value?.watchers ?? []).map((w: any) => w.id))
-  return allUsers.value.filter(u => !addedIds.has(u.id) && u.id !== ticket.value?.creator?.id)
-})
-
 const filteredWatcherUsers = computed(() => {
-  const term = watcherSearch.value.trim().toLowerCase()
-  if (term.length < 2) return []
-  return availableWatcherUsers.value.filter(u => watcherSearchText(u).includes(term)).slice(0, 8)
+  const addedIds = new Set((ticket.value?.watchers ?? []).map((w: any) => w.id))
+  return watcherResults.value.filter(u => !addedIds.has(u.id) && u.id !== ticket.value?.creator?.id).slice(0, 8)
 })
 
 const resolvedWatcherId = computed(() => {
   const term = watcherSearch.value.trim().toLowerCase()
-  const exactMatch = availableWatcherUsers.value.find(u =>
+  const exactMatch = filteredWatcherUsers.value.find(u =>
     String(u.email || '').toLowerCase() === term || String(u.username || '').toLowerCase() === term
   )
   if (exactMatch) return exactMatch.id
@@ -476,11 +477,11 @@ const assignedTechnicianNames = computed(() =>
 
 const filteredAssigneeUsers = computed(() => {
   const term = assigneeSearch.value.trim().toLowerCase()
-  if (term.length < 2) return []
   const assignedIds = new Set(assignedTechnicians.value.map((user: any) => user.id))
   return staffUsers.value
-    .filter((user: any) => !assignedIds.has(user.id) && userSearchText(user).includes(term))
-    .slice(0, 8)
+    .filter((user: any) => !assignedIds.has(user.id))
+    .filter((user: any) => !term || userSearchText(user).includes(term))
+    .slice(0, 12)
 })
 
 const statusOpts = [
@@ -513,19 +514,35 @@ function isStatusDone(status: string) {
 onMounted(async () => {
   await load()
   loadImageBlobs()
-  const isCreator = ticket.value?.creator?.id === auth.user?.id
   if (auth.isStaff) {
     const [users, grps] = await Promise.all([getUsers(), getGroups()])
-    staffUsers.value = users.filter((u: any) => u.is_active && u.role === 'technician')
+    staffUsers.value = users.filter(isAssignableTechnician)
     groups.value = grps
-    allUsers.value = users.filter((u: any) => u.is_active)
-  } else if (isCreator) {
-    allUsers.value = (await getUsers()).filter((u: any) => u.is_active)
   }
 })
 
 onUnmounted(() => {
+  if (watcherSearchTimer) clearTimeout(watcherSearchTimer)
   Object.values(attachBlobUrls.value).forEach(url => URL.revokeObjectURL(url))
+})
+
+watch(watcherSearch, value => {
+  if (watcherSearchTimer) clearTimeout(watcherSearchTimer)
+  const term = value.trim()
+  if (term.length < 2) {
+    watcherResults.value = []
+    watcherLoading.value = false
+    return
+  }
+  watcherLoading.value = true
+  watcherSearchTimer = setTimeout(async () => {
+    try {
+      const results = await searchUsers(term, { limit: 8 })
+      if (watcherSearch.value.trim() === term) watcherResults.value = results
+    } finally {
+      if (watcherSearch.value.trim() === term) watcherLoading.value = false
+    }
+  }, 250)
 })
 
 async function load() {
@@ -621,9 +638,11 @@ async function saveAssignees(ids: number[]) {
   try {
     ticket.value = await adminUpdateTicket(ticket.value.id, { assignee_ids: ids })
     assigneeSearch.value = ''
+    assigneeSearchOpen.value = false
     await load()
   } catch {
     assigneeSearch.value = ''
+    assigneeSearchOpen.value = false
   }
 }
 
@@ -742,9 +761,8 @@ function userSearchText(u: any) {
   return `${u.display_name} ${u.email} ${emailPrefix} ${u.username}`.toLowerCase()
 }
 
-function watcherSearchText(u: any) {
-  const emailPrefix = String(u.email || '').split('@')[0]
-  return `${u.display_name} ${u.email} ${emailPrefix} ${u.username}`.toLowerCase()
+function isAssignableTechnician(u: any) {
+  return u?.is_active && (u.role === 'technician' || u.is_technician)
 }
 
 function statusLabel(s: string) {
@@ -969,6 +987,12 @@ function formatSize(size: number) {
   color: var(--c-muted);
   font-size: 11px;
   margin-top: 1px;
+}
+
+.person-search-empty {
+  color: var(--c-muted);
+  font-size: 12px;
+  padding: 8px;
 }
 
 .assignee-editor {

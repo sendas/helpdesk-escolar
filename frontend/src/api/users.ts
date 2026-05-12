@@ -4,6 +4,7 @@ import type { UserBrief } from './tickets'
 export interface UserFull extends UserBrief {
   auth_provider: string
   is_active: boolean
+  is_technician: boolean
   role_source: string
   role_locked: boolean
   onprem_path?: string
@@ -29,12 +30,12 @@ export async function getUsers() {
   return data
 }
 
-export async function searchUsers(q: string) {
-  const { data } = await api.get<UserFull[]>('/api/v1/users/search', { params: { q } })
+export async function searchUsers(q: string, options: { technicians_only?: boolean; limit?: number } = {}) {
+  const { data } = await api.get<UserFull[]>('/api/v1/users/search', { params: { q, ...options } })
   return data
 }
 
-export async function updateUser(id: number, payload: { role?: string; is_active?: boolean; department?: string; role_locked?: boolean }) {
+export async function updateUser(id: number, payload: { role?: string; is_technician?: boolean; is_active?: boolean; department?: string; role_locked?: boolean }) {
   const { data } = await api.patch<UserFull>(`/api/v1/users/${id}`, payload)
   return data
 }
@@ -44,6 +45,7 @@ export async function createUser(payload: {
   email: string
   password: string
   role: string
+  is_technician?: boolean
   department?: string
   is_active: boolean
   username?: string
@@ -60,7 +62,7 @@ export async function importAzureUsers() {
   return data
 }
 
-export async function bulkUpdateUsers(payload: { ids: number[]; role?: string; is_active?: boolean; role_locked?: boolean }) {
+export async function bulkUpdateUsers(payload: { ids: number[]; role?: string; is_technician?: boolean; is_active?: boolean; role_locked?: boolean }) {
   const { data } = await api.patch<UserFull[]>('/api/v1/users/bulk', payload)
   return data
 }

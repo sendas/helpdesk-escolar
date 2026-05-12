@@ -94,7 +94,7 @@
                 <th>Categoria</th>
                 <th>Solicitante</th>
                 <th>Prioridade</th>
-                <th>SLA</th>
+                <th>Tempo de resposta</th>
                 <th>Estado</th>
                 <th>Responsável</th>
                 <th>Grupo</th>
@@ -306,7 +306,7 @@ onMounted(async () => {
   categories.value = cats
   schools.value = schs
   groups.value = grps
-  staffUsers.value = users.filter((u: any) => u.is_active && u.role === 'technician')
+  staffUsers.value = users.filter(isAssignableTechnician)
   await load()
 })
 
@@ -397,6 +397,10 @@ function assigneeSummary(ticket: any) {
   if (!assignees.length) return ''
   if (assignees.length === 1) return assignees[0].display_name
   return `${assignees[0].display_name} +${assignees.length - 1}`
+}
+
+function isAssignableTechnician(u: any) {
+  return u?.is_active && (u.role === 'technician' || u.is_technician)
 }
 
 async function applyBulkGroup() {

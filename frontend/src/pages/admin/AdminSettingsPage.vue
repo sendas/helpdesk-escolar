@@ -14,7 +14,7 @@
         <span class="material-icons" style="font-size:15px">email</span> Notificações
       </button>
       <button class="hd-tab" :class="{ active: tab === 'categories' }" @click="tab = 'categories'">
-        <span class="material-icons" style="font-size:15px">category</span> Categorias e SLAs
+        <span class="material-icons" style="font-size:15px">category</span> Categorias e tempos de resposta
       </button>
       <button class="hd-tab" :class="{ active: tab === 'schools' }" @click="tab = 'schools'">
         <span class="material-icons" style="font-size:15px">account_balance</span> Escolas
@@ -281,7 +281,7 @@
     <!-- Categories -->
     <div v-if="tab === 'categories'" class="hd-card" style="padding:28px;max-width:980px">
       <div class="hd-row" style="margin-bottom:20px">
-        <div style="font-weight:600;font-size:15px">Categorias e SLAs</div>
+        <div style="font-weight:600;font-size:15px">Categorias e tempos de resposta</div>
         <div class="hd-spacer"></div>
         <button class="hd-btn hd-btn-primary" style="font-size:12px;padding:6px 14px" @click="showNewCat = true">
           <span class="material-icons" style="font-size:14px">add</span> Nova categoria
@@ -289,7 +289,7 @@
       </div>
       <div v-if="loadingCats" style="color:var(--c-muted)">A carregar...</div>
       <table v-else class="hd-table">
-        <thead><tr><th>ÍCONE</th><th>NOME</th><th>DESCRIÇÃO</th><th>EMAIL</th><th>SLA</th><th></th></tr></thead>
+        <thead><tr><th>ÍCONE</th><th>NOME</th><th>DESCRIÇÃO</th><th>EMAIL</th><th>TEMPO DE RESPOSTA</th><th></th></tr></thead>
         <tbody>
           <tr v-for="cat in categories" :key="cat.id">
             <td>
@@ -331,8 +331,8 @@
             <input class="hd-input" v-model="newCat.name" placeholder="Ex: Equipamento TI" />
           </div>
           <div class="hd-field">
-            <label class="hd-label">SLA (horas)</label>
-            <input class="hd-input" type="number" v-model="newCat.sla_hours" placeholder="24" />
+            <label class="hd-label">Tempo de resposta (horas)</label>
+            <input class="hd-input" type="number" v-model="newCat.sla_hours" placeholder="48" />
           </div>
         </div>
         <div class="hd-field" style="margin-bottom:12px">
@@ -504,7 +504,7 @@ const notifications = ref([
   { key: 'ticket_resolved', label: 'Ticket resolvido', desc: 'Notifica o solicitante quando o ticket é resolvido', enabled: true },
 ])
 
-const newCat = ref({ name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 24 })
+const newCat = ref({ name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 48 })
 const newSchool = ref({ name: '', short_name: '', address: '' })
 const newRoute = ref({ category_id: '', school_id: '', group_id: '', assignee_id: '', priority: 100 })
 const newArticle = ref({ title: '', body: '', category_id: '', is_published: true })
@@ -522,7 +522,7 @@ onMounted(async () => {
     categories.value = cats
     schools.value = schs
     groups.value = grps
-    staffUsers.value = users.filter((u: any) => u.is_active && u.role === 'technician')
+    staffUsers.value = users.filter((u: any) => u.is_active && (u.role === 'technician' || u.is_technician))
     routingRules.value = routes
     articles.value = kb
   } finally {
@@ -603,7 +603,7 @@ async function createCat() {
     const cat = await createCategory({ ...newCat.value })
     categories.value.push(cat)
     showNewCat.value = false
-    newCat.value = { name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 24 }
+    newCat.value = { name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 48 }
   } catch { /* ignore */ }
 }
 

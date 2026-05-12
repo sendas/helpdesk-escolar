@@ -25,7 +25,7 @@ ALLOWED_CONTENT_TYPES_EXACT = {"application/pdf", "application/octet-stream"}
 
 
 def _can_access_ticket(ticket, user: User, *, allow_watcher: bool = True) -> bool:
-    if user.role in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+    if user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or user.is_technician:
         return True
     if ticket.creator_id == user.id:
         return True
@@ -67,7 +67,7 @@ async def create_ticket(
         await email_service.send_ticket_notification(
             current_user.email,
             "created",
-            {"id": ticket.id, "title": ticket.title, "category": ticket.category.name, "priority": ticket.priority.value},
+            {"id": ticket.id, "title": ticket.title, "description": ticket.description, "category": ticket.category.name, "priority": ticket.priority.value, "school": ticket.school.name if ticket.school else ""},
         )
         notified.add(current_user.email.lower())
     if ticket.category.email_to:
@@ -77,6 +77,7 @@ async def create_ticket(
             {
                 "id": ticket.id,
                 "title": ticket.title,
+                "description": ticket.description,
                 "category": ticket.category.name,
                 "priority": ticket.priority.value,
                 "requester": current_user.display_name,
@@ -119,7 +120,7 @@ async def create_ticket(
             )
             notified.add(email)
 
-    if data.escalate and current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+    if data.escalate and (current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or current_user.is_technician):
         app_settings = _read_settings()
         provider_email = (app_settings.get("support_provider_email") or "").strip()
         provider_name = (app_settings.get("support_provider_name") or "Fornecedor externo").strip()
@@ -287,7 +288,7 @@ async def escalate_ticket(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     ticket = await ticket_service.get_ticket(db, ticket_id)
@@ -329,7 +330,7 @@ async def deescalate_ticket(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
@@ -354,7 +355,7 @@ async def add_watcher(
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     is_creator = ticket.creator_id == current_user.id
-    is_staff = current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN}
+    is_staff = current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or current_user.is_technician
     if not is_creator and not is_staff:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     person = await db.get(User, data.user_id)
@@ -385,7 +386,7 @@ async def remove_watcher(
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     is_creator = ticket.creator_id == current_user.id
-    is_staff = current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN}
+    is_staff = current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or current_user.is_technician
     if not is_creator and not is_staff:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     person = next((w for w in ticket.watchers if w.id == user_id), None)
@@ -415,7 +416,7 @@ async def add_comment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     if not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
         data.is_internal = False
     comment = await ticket_service.add_comment(db, ticket, data, current_user)
 
@@ -484,7 +485,7 @@ async def update_comment(
     comment = result.scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and comment.author_id != current_user.id:
+    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician and comment.author_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     comment.ticket = ticket
     updated = await ticket_service.update_comment(db, comment, data.body)
@@ -518,7 +519,7 @@ async def delete_comment(
     comment = result.scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
-    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and comment.author_id != current_user.id:
+    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician and comment.author_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     comment.ticket = ticket
     await ticket_service.delete_comment(db, comment)

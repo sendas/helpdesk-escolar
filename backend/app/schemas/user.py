@@ -12,6 +12,7 @@ class UserRead(BaseModel):
     display_name: str
     department: str | None = None
     role: UserRole
+    is_technician: bool = False
     role_source: str = "entra"
     role_locked: bool = False
     onprem_path: str | None = None
@@ -23,6 +24,7 @@ class UserRead(BaseModel):
 
 class UserUpdate(BaseModel):
     role: UserRole | None = None
+    is_technician: bool | None = None
     is_active: bool | None = None
     department: str | None = None
     role_locked: bool | None = None
@@ -33,6 +35,7 @@ class UserCreate(BaseModel):
     email: str
     password: str
     role: UserRole = UserRole.TEACHER
+    is_technician: bool = False
     department: str | None = None
     is_active: bool = True
     username: str | None = None
@@ -41,6 +44,7 @@ class UserCreate(BaseModel):
 class UserBulkUpdate(BaseModel):
     ids: list[int]
     role: UserRole | None = None
+    is_technician: bool | None = None
     is_active: bool | None = None
     role_locked: bool | None = None
 

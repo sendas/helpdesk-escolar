@@ -7,7 +7,7 @@ class CategoryCreate(BaseModel):
     email_to: str | None = None
     color: str = "#1976D2"
     icon: str = "help_outline"
-    sla_hours: int = 24
+    sla_hours: int = 48
 
 
 class CategoryUpdate(BaseModel):

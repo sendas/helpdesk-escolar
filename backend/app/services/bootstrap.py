@@ -21,7 +21,7 @@ DEFAULT_CATEGORIES = [
         "email_to": "",
         "color": "#4F46E5",
         "icon": "school",
-        "sla_hours": 24,
+        "sla_hours": 48,
     },
     {
         "name": "Mail e Teams",
@@ -29,7 +29,7 @@ DEFAULT_CATEGORIES = [
         "email_to": "",
         "color": "#2563EB",
         "icon": "mail",
-        "sla_hours": 24,
+        "sla_hours": 48,
     },
     {
         "name": "Internet e Wi-Fi",
@@ -37,7 +37,7 @@ DEFAULT_CATEGORIES = [
         "email_to": "",
         "color": "#0891B2",
         "icon": "wifi",
-        "sla_hours": 24,
+        "sla_hours": 48,
     },
     {
         "name": "Computadores",
@@ -45,7 +45,7 @@ DEFAULT_CATEGORIES = [
         "email_to": "",
         "color": "#0F766E",
         "icon": "computer",
-        "sla_hours": 24,
+        "sla_hours": 48,
     },
     {
         "name": "Impressoras",
@@ -53,7 +53,7 @@ DEFAULT_CATEGORIES = [
         "email_to": "",
         "color": "#16A34A",
         "icon": "print",
-        "sla_hours": 24,
+        "sla_hours": 48,
     },
     {
         "name": "Projetores",
@@ -61,7 +61,7 @@ DEFAULT_CATEGORIES = [
         "email_to": "",
         "color": "#D97706",
         "icon": "videocam",
-        "sla_hours": 24,
+        "sla_hours": 48,
     },
     {
         "name": "Passwords",
@@ -69,7 +69,7 @@ DEFAULT_CATEGORIES = [
         "email_to": "",
         "color": "#DC2626",
         "icon": "key",
-        "sla_hours": 24,
+        "sla_hours": 48,
     },
     {
         "name": "Outros",
@@ -77,7 +77,7 @@ DEFAULT_CATEGORIES = [
         "email_to": "",
         "color": "#64748B",
         "icon": "help_outline",
-        "sla_hours": 24,
+        "sla_hours": 48,
     },
 ]
 
@@ -155,6 +155,7 @@ async def ensure_schema(db: AsyncSession) -> None:
     result = await db.execute(text("PRAGMA table_info(users)"))
     user_columns = {row[1] for row in result.fetchall()}
     user_migrations = [
+        ("is_technician", "ALTER TABLE users ADD COLUMN is_technician BOOLEAN DEFAULT 0"),
         ("role_source", "ALTER TABLE users ADD COLUMN role_source VARCHAR(20) DEFAULT 'entra'"),
         ("role_locked", "ALTER TABLE users ADD COLUMN role_locked BOOLEAN DEFAULT 0"),
         ("onprem_dn", "ALTER TABLE users ADD COLUMN onprem_dn VARCHAR(500)"),
@@ -167,6 +168,8 @@ async def ensure_schema(db: AsyncSession) -> None:
             await db.execute(text(statement))
             changed = True
     if changed:
+        await db.execute(text("UPDATE users SET is_technician = 1 WHERE role IN ('TECHNICIAN', 'technician')"))
+        await db.execute(text("UPDATE categories SET sla_hours = 48 WHERE sla_hours = 24"))
         await db.execute(text("UPDATE users SET role_source = 'manual', role_locked = 1 WHERE role = 'ADMIN'"))
         await db.commit()
 

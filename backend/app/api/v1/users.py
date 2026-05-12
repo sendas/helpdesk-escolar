@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, get_current_user, require_admin, require_staff
 from app.models.group import HelpdeskGroup
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.user import (
     HelpdeskGroupCreate,
     HelpdeskGroupMembersUpdate,
@@ -38,11 +38,14 @@ async def list_users(
 async def search_users(
     q: str = Query("", max_length=100),
     limit: int = Query(20, ge=1, le=50),
+    technicians_only: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     term = q.strip()
     query = select(User).where(User.is_active.is_(True), User.id != current_user.id)
+    if technicians_only:
+        query = query.where(or_(User.role == UserRole.TECHNICIAN, User.is_technician.is_(True)))
     if term:
         like = f"%{term}%"
         query = query.where(
@@ -92,6 +95,7 @@ async def create_manual_user(
         auth_provider="manual",
         password_hash=passwords.hash_password(password),
         is_active=data.is_active,
+        is_technician=data.is_technician or data.role == UserRole.TECHNICIAN,
     )
     db.add(user)
     await db.commit()
@@ -231,6 +235,10 @@ async def bulk_update_users(
             user.role = data.role
             user.role_source = "manual"
             user.role_locked = True
+            if data.role == UserRole.TECHNICIAN:
+                user.is_technician = True
+        if data.is_technician is not None:
+            user.is_technician = data.is_technician
         if data.is_active is not None:
             user.is_active = data.is_active
         if data.role_locked is not None:
@@ -255,6 +263,10 @@ async def update_user(
         user.role = data.role
         user.role_source = "manual"
         user.role_locked = True
+        if data.role == UserRole.TECHNICIAN:
+            user.is_technician = True
+    if data.is_technician is not None:
+        user.is_technician = data.is_technician
     if data.is_active is not None:
         user.is_active = data.is_active
     if data.department is not None:

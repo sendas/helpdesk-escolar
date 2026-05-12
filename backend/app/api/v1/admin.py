@@ -284,7 +284,7 @@ async def _validate_routing_assignee(db: AsyncSession, assignee_id: int | None) 
         return
     result = await db.execute(select(User).where(User.id == assignee_id))
     user = result.scalar_one_or_none()
-    if not user or not user.is_active or user.role != UserRole.TECHNICIAN:
+    if not user or not user.is_active or not (user.role == UserRole.TECHNICIAN or user.is_technician):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="O responsável da regra tem de ser um técnico ativo.",
@@ -342,7 +342,7 @@ async def admin_stats(
     category_count = len(cats)
     staff_roles = [UserRole.TECHNICIAN, UserRole.ADMIN]
     staff_count = (await db.execute(
-        select(func.count()).select_from(UserModel).where(UserModel.role.in_(staff_roles))
+        select(func.count()).select_from(UserModel).where(or_(UserModel.role.in_(staff_roles), UserModel.is_technician.is_(True)))
     )).scalar_one()
 
     # weekly (last 4 weeks)
@@ -365,7 +365,7 @@ async def admin_stats(
 
     # by assignee
     staff_users = (await db.execute(
-        select(UserModel).where(UserModel.role.in_(staff_roles))
+        select(UserModel).where(or_(UserModel.role == UserRole.TECHNICIAN, UserModel.is_technician.is_(True)))
     )).scalars().all()
     by_assignee = []
     for u in staff_users:

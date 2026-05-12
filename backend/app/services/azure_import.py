@@ -117,6 +117,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
             display_name=display_name,
             department=department,
             role=imported_role,
+            is_technician=imported_role == UserRole.TECHNICIAN,
             role_source="entra",
             role_locked=False,
             onprem_dn=onprem_dn,

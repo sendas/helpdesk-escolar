@@ -12,6 +12,14 @@ class TicketValidationError(ValueError):
     pass
 
 
+def is_staff_user(user: User) -> bool:
+    return user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or user.is_technician
+
+
+def is_assignable_technician(user: User | None) -> bool:
+    return bool(user and user.is_active and (user.role == UserRole.TECHNICIAN or user.is_technician))
+
+
 async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> Ticket:
     group_id, assignee_id = await _resolve_route(db, data.category_id, data.school_id)
     assignee_ids = [uid for uid in dict.fromkeys([assignee_id, *data.assignee_ids]) if uid is not None]
@@ -122,7 +130,7 @@ async def list_tickets(
         selectinload(Ticket.category),
         selectinload(Ticket.school),
     ).where(Ticket.archived_at.is_(None))
-    if user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
+    if not is_staff_user(user):
         query = query.where(or_(Ticket.creator_id == user.id, Ticket.watchers.any(User.id == user.id), Ticket.assignees.any(User.id == user.id)))
     if status:
         query = query.where(Ticket.status == status)
@@ -250,7 +258,7 @@ async def validate_active_technician(db: AsyncSession, assignee_id: int | None) 
         return
     result = await db.execute(select(User).where(User.id == assignee_id))
     user = result.scalar_one_or_none()
-    if not user or not user.is_active or user.role != UserRole.TECHNICIAN:
+    if not is_assignable_technician(user):
         raise TicketValidationError("O responsável tem de ser um técnico ativo.")
 
 
@@ -262,6 +270,6 @@ async def validate_active_technicians(db: AsyncSession, assignee_ids: list[int] 
     users = result.scalars().all()
     by_id = {user.id: user for user in users}
     ordered = [by_id.get(uid) for uid in ids]
-    if any(user is None or not user.is_active or user.role != UserRole.TECHNICIAN for user in ordered):
+    if any(not is_assignable_technician(user) for user in ordered):
         raise TicketValidationError("Todos os responsáveis têm de ser técnicos ativos.")
     return [user for user in ordered if user is not None]

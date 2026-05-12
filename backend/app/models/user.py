@@ -22,6 +22,7 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(200))
     department: Mapped[str | None] = mapped_column(String(100), nullable=True)
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), default=UserRole.TEACHER)
+    is_technician: Mapped[bool] = mapped_column(Boolean, default=False)
     role_source: Mapped[str] = mapped_column(String(20), default="entra")
     role_locked: Mapped[bool] = mapped_column(Boolean, default=False)
     onprem_dn: Mapped[str | None] = mapped_column(String(500), nullable=True)
