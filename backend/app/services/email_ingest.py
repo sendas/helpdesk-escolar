@@ -198,6 +198,7 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
             .options(
                 selectinload(Ticket.creator),
                 selectinload(Ticket.assignee),
+                selectinload(Ticket.assignees),
                 selectinload(Ticket.watchers),
                 selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
             )
@@ -351,6 +352,7 @@ async def _notify_ticket_recipients(db: AsyncSession, ticket_id: int, sender_ema
         .options(
             selectinload(Ticket.creator),
             selectinload(Ticket.assignee),
+            selectinload(Ticket.assignees),
             selectinload(Ticket.watchers),
             selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
         )
@@ -365,6 +367,9 @@ async def _notify_ticket_recipients(db: AsyncSession, ticket_id: int, sender_ema
         recipients.add(ticket.creator.email.lower())
     if ticket.assignee and ticket.assignee.email:
         recipients.add(ticket.assignee.email.lower())
+    for assignee in getattr(ticket, "assignees", []):
+        if assignee.email:
+            recipients.add(assignee.email.lower())
     for watcher in ticket.watchers:
         if watcher.email:
             recipients.add(watcher.email.lower())

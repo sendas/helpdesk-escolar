@@ -38,6 +38,11 @@ class User(Base):
     assigned_tickets: Mapped[list["Ticket"]] = relationship(
         "Ticket", foreign_keys="Ticket.assignee_id", back_populates="assignee"
     )
+    assigned_many_tickets: Mapped[list["Ticket"]] = relationship(
+        "Ticket",
+        secondary="ticket_assignees",
+        back_populates="assignees",
+    )
     comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="author")
     helpdesk_groups: Mapped[list["HelpdeskGroup"]] = relationship(
         "HelpdeskGroup",

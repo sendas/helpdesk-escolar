@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.42'
-export const APP_VERSION_DATE = '2026-05-11'
-export const APP_VERSION_TIME = '15:38'
+export const APP_VERSION = '1.7.43'
+export const APP_VERSION_DATE = '2026-05-12'
+export const APP_VERSION_TIME = '18:23'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.43',
+    date: '2026-05-12',
+    time: '18:23',
+    title: 'Pesquisa móvel em conhecimento e vários técnicos por ticket',
+    changes: [
+      'Corrigido o campo "Em conhecimento" no detalhe do ticket em dispositivos móveis: deixa de carregar uma lista gigante e passa a mostrar apenas resultados filtrados por nome, email ou utilizador.',
+      'Tickets criados por regras de encaminhamento passam a guardar também o técnico da categoria na nova lista de responsáveis.',
+      'O detalhe do ticket permite agora atribuir vários técnicos ativos ao mesmo pedido, removendo ou acrescentando responsáveis sem recriar o ticket.',
+      'As notificações por email e push passam a considerar todos os técnicos atribuídos, não apenas o primeiro responsável.',
+    ],
+  },
   {
     version: '1.7.42',
     date: '2026-05-11',

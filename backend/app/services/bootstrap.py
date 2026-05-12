@@ -196,6 +196,21 @@ async def ensure_schema(db: AsyncSession) -> None:
     """))
     await db.commit()
 
+    await db.execute(text("""
+        CREATE TABLE IF NOT EXISTS ticket_assignees (
+            ticket_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            PRIMARY KEY (ticket_id, user_id),
+            FOREIGN KEY(ticket_id) REFERENCES tickets(id),
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """))
+    await db.execute(text("""
+        INSERT OR IGNORE INTO ticket_assignees (ticket_id, user_id)
+        SELECT id, assignee_id FROM tickets WHERE assignee_id IS NOT NULL
+    """))
+    await db.commit()
+
     result = await db.execute(text("PRAGMA table_info(comments)"))
     comment_columns = {row[1] for row in result.fetchall()}
     comment_changed = False

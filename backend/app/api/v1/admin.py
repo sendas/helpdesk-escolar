@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse, StreamingResponse
-from sqlalchemy import distinct, select, func
+from sqlalchemy import distinct, select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.api.deps import get_db, require_staff, require_admin
@@ -89,10 +89,10 @@ async def admin_list_tickets(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
-    from sqlalchemy import or_
     query = select(Ticket).options(
         selectinload(Ticket.creator),
         selectinload(Ticket.assignee),
+        selectinload(Ticket.assignees),
         selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
         selectinload(Ticket.watchers),
         selectinload(Ticket.category),
@@ -105,7 +105,7 @@ async def admin_list_tickets(
     if school_id:
         query = query.where(Ticket.school_id == school_id)
     if assignee_id:
-        query = query.where(Ticket.assignee_id == assignee_id)
+        query = query.where(or_(Ticket.assignee_id == assignee_id, Ticket.assignees.any(User.id == assignee_id)))
     if priority:
         query = query.where(Ticket.priority == priority)
     if search:
@@ -135,6 +135,7 @@ async def admin_bulk_update_tickets(
         .options(
             selectinload(Ticket.creator),
             selectinload(Ticket.assignee),
+            selectinload(Ticket.assignees),
             selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
             selectinload(Ticket.watchers),
             selectinload(Ticket.category),
@@ -147,7 +148,7 @@ async def admin_bulk_update_tickets(
     updated_tickets = []
     only_email_preference = data.model_fields_set == {"ids", "creator_email_notifications"}
     for ticket in tickets:
-        prev_assignee_id = ticket.assignee_id
+        prev_assignee_ids = _ticket_assignee_ids(ticket)
         try:
             updated = await ticket_service.update_ticket(db, ticket, data)
         except ticket_service.TicketValidationError as exc:
@@ -167,12 +168,7 @@ async def admin_bulk_update_tickets(
                     "updated",
                     {"id": updated.id, "title": updated.title, "status": updated.status.value},
                 )
-        if data.assignee_id and data.assignee_id != prev_assignee_id and updated.assignee:
-            await email_service.send_ticket_notification(
-                updated.assignee.email,
-                "assigned",
-                {"id": updated.id, "title": updated.title, "assignee": updated.assignee.display_name},
-            )
+        await _notify_new_assignees(updated, prev_assignee_ids)
         if "group_id" in data.model_fields_set and data.group_id and updated.group:
             for member in updated.group.members:
                 if member.email:
@@ -195,7 +191,11 @@ async def admin_bulk_action_tickets(
     if data.action not in {"archive", "delete"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported bulk action")
 
-    result = await db.execute(select(Ticket).where(Ticket.id.in_(data.ids)))
+    result = await db.execute(
+        select(Ticket)
+        .where(Ticket.id.in_(data.ids))
+        .options(selectinload(Ticket.assignees), selectinload(Ticket.watchers))
+    )
     tickets = result.scalars().all()
     now = datetime.utcnow()
     affected = 0
@@ -226,7 +226,7 @@ async def admin_update_ticket(
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
 
-    prev_assignee_id = ticket.assignee_id
+    prev_assignee_ids = _ticket_assignee_ids(ticket)
     only_email_preference = data.model_fields_set == {"creator_email_notifications"}
     content_changed = bool(data.model_fields_set & {"title", "description"})
     try:
@@ -247,12 +247,7 @@ async def admin_update_ticket(
     for watcher in updated.watchers:
         if watcher.email:
             await email_service.send_ticket_notification(watcher.email, notif_type, base_payload)
-    if data.assignee_id and data.assignee_id != prev_assignee_id and updated.assignee:
-        await email_service.send_ticket_notification(
-            updated.assignee.email,
-            "assigned",
-            {"id": updated.id, "title": updated.title, "assignee": updated.assignee.display_name},
-        )
+    await _notify_new_assignees(updated, prev_assignee_ids)
     if "group_id" in data.model_fields_set and data.group_id and updated.group:
         for member in updated.group.members:
             if member.email:
@@ -293,6 +288,24 @@ async def _validate_routing_assignee(db: AsyncSession, assignee_id: int | None) 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="O responsável da regra tem de ser um técnico ativo.",
+        )
+
+
+def _ticket_assignee_ids(ticket: Ticket) -> set[int]:
+    ids = {ticket.assignee_id} if ticket.assignee_id else set()
+    ids.update(user.id for user in getattr(ticket, "assignees", []))
+    return ids
+
+
+async def _notify_new_assignees(ticket: Ticket, previous_ids: set[int]) -> None:
+    users = list(ticket.assignees or ([] if not ticket.assignee else [ticket.assignee]))
+    for assignee in users:
+        if assignee.id in previous_ids or not assignee.email:
+            continue
+        await email_service.send_ticket_notification(
+            assignee.email,
+            "assigned",
+            {"id": ticket.id, "title": ticket.title, "assignee": assignee.display_name},
         )
 
 

@@ -29,6 +29,14 @@ ticket_watchers = Table(
 )
 
 
+ticket_assignees = Table(
+    "ticket_assignees",
+    Base.metadata,
+    Column("ticket_id", ForeignKey("tickets.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
 class Ticket(Base):
     __tablename__ = "tickets"
 
@@ -50,6 +58,11 @@ class Ticket(Base):
 
     creator: Mapped["User"] = relationship("User", foreign_keys=[creator_id], back_populates="created_tickets")
     assignee: Mapped["User | None"] = relationship("User", foreign_keys=[assignee_id], back_populates="assigned_tickets")
+    assignees: Mapped[list["User"]] = relationship(
+        "User",
+        secondary=ticket_assignees,
+        back_populates="assigned_many_tickets",
+    )
     group: Mapped["HelpdeskGroup | None"] = relationship("HelpdeskGroup")
     category: Mapped["Category"] = relationship("Category", back_populates="tickets")
     school: Mapped["School | None"] = relationship("School", back_populates="tickets")

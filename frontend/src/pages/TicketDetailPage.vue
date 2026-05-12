@@ -212,17 +212,23 @@
               </div>
               <span v-else style="font-size:13px;color:var(--c-muted)">Nenhuma pessoa adicionada.</span>
               <div v-if="canEditWatchers" class="watcher-add-row">
-                <input
-                  class="hd-input"
-                  style="flex:1;font-size:12px;padding:5px 8px"
-                  v-model="watcherSearch"
-                  list="watcher-users-list"
-                  placeholder="Pesquisar por email..."
-                  autocomplete="off"
-                />
-                <datalist id="watcher-users-list">
-                  <option v-for="u in filteredWatcherUsers" :key="u.id" :value="u.email" :label="u.display_name" />
-                </datalist>
+                <div class="person-search">
+                  <input
+                    class="hd-input"
+                    v-model="watcherSearch"
+                    placeholder="Pesquisar por nome ou email..."
+                    autocomplete="off"
+                  />
+                  <div v-if="watcherSearch.trim().length >= 2 && filteredWatcherUsers.length" class="person-search-menu">
+                    <button v-for="u in filteredWatcherUsers" :key="u.id" type="button" @mousedown.prevent="addWatcherCandidate(u)">
+                      <AvatarCircle :name="u.display_name" size="22" />
+                      <span>
+                        <strong>{{ u.display_name }}</strong>
+                        <small>{{ u.email }}</small>
+                      </span>
+                    </button>
+                  </div>
+                </div>
                 <button
                   class="hd-btn hd-btn-primary"
                   style="padding:5px 12px;font-size:12px;white-space:nowrap"
@@ -236,24 +242,37 @@
 
             <div class="hd-detail-row">
               <div class="hd-detail-label">Atribuído a</div>
-              <div v-if="auth.isStaff" class="hd-row" style="gap:6px;align-items:center">
-                <input
-                  class="hd-input"
-                  style="font-size:12px;padding:5px 8px;min-width:220px"
-                  v-model="assigneeSearch"
-                  list="ticket-assignees"
-                  placeholder="Pesquisar técnico"
-                  @change="onAssigneeSearchChange"
-                />
-                <datalist id="ticket-assignees">
-                  <option v-for="u in staffUsers" :key="u.id" :value="userOptionLabel(u)" />
-                </datalist>
-                <button class="hd-icon-btn" title="Remover atribuição" @click="clearAssignee">
-                  <span class="material-icons" style="font-size:15px">close</span>
-                </button>
+              <div v-if="auth.isStaff" class="assignee-editor">
+                <div v-if="assignedTechnicians.length" class="assignee-chip-list">
+                  <span v-for="user in assignedTechnicians" :key="user.id" class="assignee-chip">
+                    <AvatarCircle :name="user.display_name" size="20" />
+                    {{ user.display_name }}
+                    <button type="button" title="Remover técnico" @click="removeAssignee(user.id)">
+                      <span class="material-icons">close</span>
+                    </button>
+                  </span>
+                </div>
+                <span v-else class="muted-mini">— Nenhum técnico atribuído</span>
+                <div class="person-search">
+                  <input
+                    class="hd-input"
+                    v-model="assigneeSearch"
+                    placeholder="Adicionar técnico..."
+                    autocomplete="off"
+                  />
+                  <div v-if="assigneeSearch.trim().length >= 2 && filteredAssigneeUsers.length" class="person-search-menu">
+                    <button v-for="u in filteredAssigneeUsers" :key="u.id" type="button" @mousedown.prevent="addAssignee(u)">
+                      <AvatarCircle :name="u.display_name" size="22" />
+                      <span>
+                        <strong>{{ u.display_name }}</strong>
+                        <small>{{ u.email }}</small>
+                      </span>
+                    </button>
+                  </div>
+                </div>
               </div>
               <div v-else style="font-size:13px">
-                {{ ticket.assignee ? ticket.assignee.display_name : '—' }}
+                {{ assignedTechnicianNames || '—' }}
               </div>
             </div>
 
@@ -375,7 +394,6 @@ const commenting = ref(false)
 const commentError = ref('')
 const staffUsers = ref<any[]>([])
 const groups = ref<any[]>([])
-const assigneeId = ref<number | null>(null)
 const assigneeSearch = ref('')
 const groupId = ref('')
 const ticketStatus = ref('')
@@ -428,16 +446,41 @@ const availableWatcherUsers = computed(() => {
 
 const filteredWatcherUsers = computed(() => {
   const term = watcherSearch.value.trim().toLowerCase()
-  if (!term) return availableWatcherUsers.value
-  return availableWatcherUsers.value.filter(u => String(u.email || '').toLowerCase().includes(term))
+  if (term.length < 2) return []
+  return availableWatcherUsers.value.filter(u => watcherSearchText(u).includes(term)).slice(0, 8)
 })
 
 const resolvedWatcherId = computed(() => {
   const term = watcherSearch.value.trim().toLowerCase()
-  const exactMatch = availableWatcherUsers.value.find(u => String(u.email || '').toLowerCase() === term)
+  const exactMatch = availableWatcherUsers.value.find(u =>
+    String(u.email || '').toLowerCase() === term || String(u.username || '').toLowerCase() === term
+  )
   if (exactMatch) return exactMatch.id
   if (filteredWatcherUsers.value.length === 1) return filteredWatcherUsers.value[0].id
   return null
+})
+
+const assignedTechnicians = computed(() => {
+  const assignees = ticket.value?.assignees?.length ? ticket.value.assignees : (ticket.value?.assignee ? [ticket.value.assignee] : [])
+  const seen = new Set<number>()
+  return assignees.filter((user: any) => {
+    if (!user?.id || seen.has(user.id)) return false
+    seen.add(user.id)
+    return true
+  })
+})
+
+const assignedTechnicianNames = computed(() =>
+  assignedTechnicians.value.map((user: any) => user.display_name).join(', ')
+)
+
+const filteredAssigneeUsers = computed(() => {
+  const term = assigneeSearch.value.trim().toLowerCase()
+  if (term.length < 2) return []
+  const assignedIds = new Set(assignedTechnicians.value.map((user: any) => user.id))
+  return staffUsers.value
+    .filter((user: any) => !assignedIds.has(user.id) && userSearchText(user).includes(term))
+    .slice(0, 8)
 })
 
 const statusOpts = [
@@ -488,8 +531,7 @@ onUnmounted(() => {
 async function load() {
   const t = await getTicket(Number(route.params.id))
   ticket.value = t
-  assigneeId.value = t.assignee?.id ?? null
-  assigneeSearch.value = t.assignee ? userOptionLabel(t.assignee) : ''
+  assigneeSearch.value = ''
   groupId.value = t.group?.id ? String(t.group.id) : ''
   ticketStatus.value = t.status
 }
@@ -575,27 +617,23 @@ async function onStatusChange() {
   } catch { ticketStatus.value = ticket.value.status }
 }
 
-async function onAssigneeChange() {
+async function saveAssignees(ids: number[]) {
   try {
-    await adminUpdateTicket(ticket.value.id, { assignee_id: assigneeId.value })
+    ticket.value = await adminUpdateTicket(ticket.value.id, { assignee_ids: ids })
+    assigneeSearch.value = ''
     await load()
-  } catch { assigneeId.value = ticket.value.assignee?.id ?? null }
-}
-
-async function onAssigneeSearchChange() {
-  const selected = staffUsers.value.find((u: any) => userOptionLabel(u) === assigneeSearch.value)
-  if (!selected) {
-    assigneeSearch.value = ticket.value.assignee ? userOptionLabel(ticket.value.assignee) : ''
-    return
+  } catch {
+    assigneeSearch.value = ''
   }
-  assigneeId.value = selected.id
-  await onAssigneeChange()
 }
 
-async function clearAssignee() {
-  assigneeId.value = null
-  assigneeSearch.value = ''
-  await onAssigneeChange()
+async function addAssignee(user: any) {
+  const ids = Array.from(new Set([...assignedTechnicians.value.map((u: any) => u.id), user.id]))
+  await saveAssignees(ids)
+}
+
+async function removeAssignee(userId: number) {
+  await saveAssignees(assignedTechnicians.value.map((u: any) => u.id).filter((id: number) => id !== userId))
 }
 
 async function onGroupChange() {
@@ -658,6 +696,17 @@ async function onAddWatcher() {
   }
 }
 
+async function addWatcherCandidate(user: any) {
+  if (!user?.id || addingWatcher.value) return
+  addingWatcher.value = true
+  try {
+    ticket.value = await addWatcher(ticket.value.id, user.id)
+    watcherSearch.value = ''
+  } finally {
+    addingWatcher.value = false
+  }
+}
+
 async function onRemoveWatcher(userId: number) {
   ticket.value = await removeWatcher(ticket.value.id, userId)
 }
@@ -688,12 +737,9 @@ async function onDeescalate() {
   }
 }
 
-function userOptionLabel(u: any) {
-  return `${u.display_name} — ${u.email} (Técnico)`
-}
-
-function watcherOptionLabel(u: any) {
-  return `${u.display_name} — ${u.email} (@${u.username})`
+function userSearchText(u: any) {
+  const emailPrefix = String(u.email || '').split('@')[0]
+  return `${u.display_name} ${u.email} ${emailPrefix} ${u.username}`.toLowerCase()
 }
 
 function watcherSearchText(u: any) {
@@ -858,6 +904,117 @@ function formatSize(size: number) {
   gap: 8px;
   align-items: center;
   width: 100%;
+}
+
+.person-search {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  width: 100%;
+}
+
+.person-search .hd-input {
+  font-size: 12px;
+  padding: 6px 9px;
+  width: 100%;
+}
+
+.person-search-menu {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
+  left: 0;
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 4px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+}
+
+.person-search-menu button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--c-text);
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  padding: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.person-search-menu button:hover {
+  background: var(--c-surface-soft);
+}
+
+.person-search-menu strong,
+.person-search-menu small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-search-menu strong {
+  font-size: 12px;
+}
+
+.person-search-menu small {
+  color: var(--c-muted);
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+.assignee-editor {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.assignee-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.assignee-chip {
+  align-items: center;
+  background: rgba(61, 82, 213, 0.10);
+  border: 1px solid rgba(61, 82, 213, 0.18);
+  border-radius: 999px;
+  color: var(--c-text);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 7px 4px 4px;
+}
+
+.assignee-chip button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--c-muted);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 0;
+}
+
+.assignee-chip .material-icons {
+  font-size: 14px;
+}
+
+.muted-mini {
+  color: var(--c-muted);
+  font-size: 13px;
 }
 
 .provider-escalation {

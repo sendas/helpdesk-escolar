@@ -18,6 +18,7 @@ class TicketCreate(BaseModel):
     priority: TicketPriority = TicketPriority.MEDIUM
     watcher_ids: list[int] = []
     group_ids: list[int] = []
+    assignee_ids: list[int] = []
     creator_email_notifications: bool = True
     escalate: bool = False
 
@@ -25,6 +26,7 @@ class TicketCreate(BaseModel):
 class TicketUpdate(BaseModel):
     status: TicketStatus | None = None
     assignee_id: int | None = None
+    assignee_ids: list[int] | None = None
     group_id: int | None = None
     priority: TicketPriority | None = None
     creator_email_notifications: bool | None = None
@@ -36,6 +38,7 @@ class TicketBulkUpdate(BaseModel):
     ids: list[int]
     status: TicketStatus | None = None
     assignee_id: int | None = None
+    assignee_ids: list[int] | None = None
     group_id: int | None = None
     priority: TicketPriority | None = None
     creator_email_notifications: bool | None = None
@@ -101,6 +104,7 @@ class TicketRead(BaseModel):
     creator_email_notifications: bool = True
     creator: UserRead
     assignee: UserRead | None = None
+    assignees: list[UserRead] = []
     group: HelpdeskGroupRead | None = None
     category: CategoryRead
     school: SchoolRead | None = None
@@ -123,6 +127,7 @@ class TicketListItem(BaseModel):
     creator_email_notifications: bool = True
     creator: UserRead
     assignee: UserRead | None = None
+    assignees: list[UserRead] = []
     group: HelpdeskGroupRead | None = None
     watchers: list[UserRead] = []
     category: CategoryRead

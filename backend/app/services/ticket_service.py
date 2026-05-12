@@ -14,6 +14,12 @@ class TicketValidationError(ValueError):
 
 async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> Ticket:
     group_id, assignee_id = await _resolve_route(db, data.category_id, data.school_id)
+    assignee_ids = [uid for uid in dict.fromkeys([assignee_id, *data.assignee_ids]) if uid is not None]
+    if creator.role != UserRole.ADMIN:
+        assignee_ids = [uid for uid in assignee_ids if uid == assignee_id]
+    assignees = await validate_active_technicians(db, assignee_ids)
+    if not assignee_id and assignees:
+        assignee_id = assignees[0].id
     selected_groups: list[HelpdeskGroup] = []
     if creator.role == UserRole.ADMIN and data.group_ids:
         group_ids = list(dict.fromkeys(data.group_ids))
@@ -36,8 +42,10 @@ async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> 
         creator_email_notifications=data.creator_email_notifications,
         group_id=group_id,
         assignee_id=assignee_id,
-        status=TicketStatus.ASSIGNED if group_id or assignee_id else TicketStatus.OPEN,
+        status=TicketStatus.ASSIGNED if group_id or assignee_id or assignees else TicketStatus.OPEN,
     )
+    if assignees:
+        ticket.assignees = assignees
     watcher_ids = [uid for uid in dict.fromkeys(data.watcher_ids) if uid != creator.id]
     if selected_groups:
         for group in selected_groups:
@@ -83,6 +91,7 @@ async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
         .options(
             selectinload(Ticket.creator),
             selectinload(Ticket.assignee),
+            selectinload(Ticket.assignees),
             selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
             selectinload(Ticket.watchers),
             selectinload(Ticket.category),
@@ -107,13 +116,14 @@ async def list_tickets(
     query = select(Ticket).options(
         selectinload(Ticket.creator),
         selectinload(Ticket.assignee),
+        selectinload(Ticket.assignees),
         selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
         selectinload(Ticket.watchers),
         selectinload(Ticket.category),
         selectinload(Ticket.school),
     ).where(Ticket.archived_at.is_(None))
     if user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN}:
-        query = query.where(or_(Ticket.creator_id == user.id, Ticket.watchers.any(User.id == user.id)))
+        query = query.where(or_(Ticket.creator_id == user.id, Ticket.watchers.any(User.id == user.id), Ticket.assignees.any(User.id == user.id)))
     if status:
         query = query.where(Ticket.status == status)
     if category_id:
@@ -138,9 +148,23 @@ async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) ->
     if "assignee_id" in data.model_fields_set:
         await validate_active_technician(db, data.assignee_id)
         ticket.assignee_id = data.assignee_id
+        if data.assignee_id is None:
+            ticket.assignees = []
+        else:
+            current = {u.id: u for u in ticket.assignees}
+            if data.assignee_id not in current:
+                user = (await db.execute(select(User).where(User.id == data.assignee_id))).scalar_one()
+                ticket.assignees = [*ticket.assignees, user]
         if data.assignee_id is not None and ticket.status == TicketStatus.OPEN:
             ticket.status = TicketStatus.ASSIGNED
         changes.append("Responsável atualizado")
+    if "assignee_ids" in data.model_fields_set and data.assignee_ids is not None:
+        assignees = await validate_active_technicians(db, data.assignee_ids)
+        ticket.assignees = assignees
+        ticket.assignee_id = assignees[0].id if assignees else None
+        if assignees and ticket.status == TicketStatus.OPEN:
+            ticket.status = TicketStatus.ASSIGNED
+        changes.append("Responsáveis atualizados")
     if "group_id" in data.model_fields_set:
         ticket.group_id = data.group_id
         if data.group_id is not None and ticket.status == TicketStatus.OPEN:
@@ -228,3 +252,16 @@ async def validate_active_technician(db: AsyncSession, assignee_id: int | None) 
     user = result.scalar_one_or_none()
     if not user or not user.is_active or user.role != UserRole.TECHNICIAN:
         raise TicketValidationError("O responsável tem de ser um técnico ativo.")
+
+
+async def validate_active_technicians(db: AsyncSession, assignee_ids: list[int] | None) -> list[User]:
+    ids = [uid for uid in dict.fromkeys(assignee_ids or []) if uid is not None]
+    if not ids:
+        return []
+    result = await db.execute(select(User).where(User.id.in_(ids)))
+    users = result.scalars().all()
+    by_id = {user.id: user for user in users}
+    ordered = [by_id.get(uid) for uid in ids]
+    if any(user is None or not user.is_active or user.role != UserRole.TECHNICIAN for user in ordered):
+        raise TicketValidationError("Todos os responsáveis têm de ser técnicos ativos.")
+    return [user for user in ordered if user is not None]

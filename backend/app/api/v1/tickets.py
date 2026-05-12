@@ -29,6 +29,8 @@ def _can_access_ticket(ticket, user: User, *, allow_watcher: bool = True) -> boo
         return True
     if ticket.creator_id == user.id:
         return True
+    if any(assignee.id == user.id for assignee in getattr(ticket, "assignees", [])):
+        return True
     return allow_watcher and any(watcher.id == user.id for watcher in ticket.watchers)
 
 
@@ -82,13 +84,16 @@ async def create_ticket(
             },
         )
         notified.add(ticket.category.email_to.lower())
-    if ticket.assignee and ticket.assignee.email:
+    assigned_users = list(ticket.assignees or ([] if not ticket.assignee else [ticket.assignee]))
+    for assignee in assigned_users:
+        if not assignee.email:
+            continue
         await email_service.send_ticket_notification(
-            ticket.assignee.email,
+            assignee.email,
             "assigned",
-            {"id": ticket.id, "title": ticket.title, "assignee": ticket.assignee.display_name},
+            {"id": ticket.id, "title": ticket.title, "assignee": assignee.display_name},
         )
-        notified.add(ticket.assignee.email.lower())
+        notified.add(assignee.email.lower())
     if ticket.group:
         for member in ticket.group.members:
             email = member.email.lower() if member.email else ""
@@ -142,6 +147,8 @@ async def create_ticket(
     push_user_ids: set[int] = set()
     if ticket.assignee_id:
         push_user_ids.add(ticket.assignee_id)
+    for assignee in ticket.assignees:
+        push_user_ids.add(assignee.id)
     if ticket.group:
         for m in ticket.group.members:
             push_user_ids.add(m.id)
@@ -416,6 +423,7 @@ async def add_comment(
     is_linked = (
         current_user.id == ticket.creator_id
         or current_user.id == ticket.assignee_id
+        or any(a.id == current_user.id for a in getattr(ticket, "assignees", []))
         or any(w.id == current_user.id for w in ticket.watchers)
     )
     if not is_linked:
@@ -445,6 +453,7 @@ async def add_comment(
             uid for uid in [
                 ticket.creator_id,
                 ticket.assignee_id,
+                *(a.id for a in ticket.assignees),
                 *(m.id for m in (ticket.group.members if ticket.group else [])),
                 *(w.id for w in ticket.watchers),
             ]
@@ -521,6 +530,9 @@ def _ticket_update_recipients(ticket, current_user: User) -> set[str]:
         recipients.add(ticket.creator.email)
     if ticket.assignee and ticket.assignee.email and current_user.id != ticket.assignee_id:
         recipients.add(ticket.assignee.email)
+    for assignee in getattr(ticket, "assignees", []):
+        if assignee.email and assignee.id != current_user.id:
+            recipients.add(assignee.email)
     if ticket.group:
         for member in ticket.group.members:
             if member.email and member.id != current_user.id:

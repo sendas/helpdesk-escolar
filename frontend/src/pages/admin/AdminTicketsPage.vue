@@ -121,7 +121,10 @@
                 <td><PriorityBadge :priority="t.priority" /></td>
                 <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
                 <td><StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></td>
-                <td><AssigneeSelect :value="t.assignee?.id ?? ''" :users="staffUsers" @change="changeAssignee(t, $event)" /></td>
+                <td>
+                  <AssigneeSelect :value="primaryAssigneeId(t)" :users="staffUsers" @change="changeAssignee(t, $event)" />
+                  <small v-if="assigneeSummary(t)" class="assignee-summary">{{ assigneeSummary(t) }}</small>
+                </td>
                 <td><GroupSelect :value="t.group?.id ?? ''" :groups="groups" @change="changeGroup(t, $event)" /></td>
                 <td>
                   <button
@@ -165,7 +168,11 @@
             </div>
             <div class="ticket-card-controls">
               <label>Estado<StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></label>
-              <label>Responsável<AssigneeSelect :value="t.assignee?.id ?? ''" :users="staffUsers" @change="changeAssignee(t, $event)" /></label>
+              <label>
+                Responsável
+                <AssigneeSelect :value="primaryAssigneeId(t)" :users="staffUsers" @change="changeAssignee(t, $event)" />
+                <small v-if="assigneeSummary(t)" class="assignee-summary">{{ assigneeSummary(t) }}</small>
+              </label>
               <label>Grupo<GroupSelect :value="t.group?.id ?? ''" :groups="groups" @change="changeGroup(t, $event)" /></label>
               <label v-if="auth.isAdmin">
                 Emails
@@ -336,7 +343,7 @@ async function changeStatus(ticket: any, status: string) {
 }
 
 async function changeAssignee(ticket: any, value: string) {
-  await updateTicketInList(ticket.id, { assignee_id: value ? Number(value) : null })
+  await updateTicketInList(ticket.id, { assignee_ids: value ? [Number(value)] : [] })
 }
 
 async function changeGroup(ticket: any, value: string) {
@@ -377,8 +384,19 @@ async function applyBulkStatus() {
 
 async function applyBulkAssignee() {
   if (!bulkAssignee.value) return
-  await applyBulk({ assignee_id: bulkAssignee.value === 'none' ? null : Number(bulkAssignee.value) })
+  await applyBulk({ assignee_ids: bulkAssignee.value === 'none' ? [] : [Number(bulkAssignee.value)] })
   bulkAssignee.value = ''
+}
+
+function primaryAssigneeId(ticket: any) {
+  return ticket.assignees?.[0]?.id ?? ticket.assignee?.id ?? ''
+}
+
+function assigneeSummary(ticket: any) {
+  const assignees = ticket.assignees?.length ? ticket.assignees : (ticket.assignee ? [ticket.assignee] : [])
+  if (!assignees.length) return ''
+  if (assignees.length === 1) return assignees[0].display_name
+  return `${assignees[0].display_name} +${assignees.length - 1}`
 }
 
 async function applyBulkGroup() {
@@ -525,6 +543,16 @@ function timeAgo(date: string) {
   min-width: 132px;
   padding: 5px 8px;
   font-size: 12px;
+}
+.assignee-summary {
+  color: var(--c-muted);
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .email-pill {
   align-items: center;

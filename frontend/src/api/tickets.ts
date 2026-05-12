@@ -8,7 +8,7 @@ export interface HelpdeskGroupBrief { id: number; name: string; description?: st
 export interface TicketListItem {
   id: number; title: string; status: string; priority: string
   created_at: string; updated_at: string; creator_email_notifications: boolean
-  creator: UserBrief; assignee?: UserBrief; group?: HelpdeskGroupBrief; watchers?: UserBrief[]; category: Category; school?: School
+  creator: UserBrief; assignee?: UserBrief; assignees?: UserBrief[]; group?: HelpdeskGroupBrief; watchers?: UserBrief[]; category: Category; school?: School
 }
 export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; updated_at?: string; author: UserBrief }
 export interface Attachment { id: number; original_name: string; content_type: string; size: number; created_at: string }
@@ -30,7 +30,7 @@ export async function getTicket(id: number) {
   return data
 }
 
-export async function createTicket(payload: { title: string; description: string; category_id: number; school_id: number; priority: string; watcher_ids?: number[]; group_ids?: number[]; creator_email_notifications?: boolean; escalate?: boolean }) {
+export async function createTicket(payload: { title: string; description: string; category_id: number; school_id: number; priority: string; watcher_ids?: number[]; group_ids?: number[]; assignee_ids?: number[]; creator_email_notifications?: boolean; escalate?: boolean }) {
   const { data } = await api.post<TicketDetail>('/api/v1/tickets', payload)
   return data
 }
@@ -42,7 +42,7 @@ export async function uploadTicketAttachment(ticketId: number, file: File) {
   return data
 }
 
-export async function updateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string; creator_email_notifications: boolean; title: string; description: string }>) {
+export async function updateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; assignee_ids: number[]; group_id: number | null; priority: string; creator_email_notifications: boolean; title: string; description: string }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/tickets/${id}`, payload)
   return data
 }
@@ -63,7 +63,7 @@ export async function downloadAttachment(ticketId: number, attachmentId: number,
   setTimeout(() => URL.revokeObjectURL(url), 10000)
 }
 
-export async function adminUpdateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; group_id: number | null; priority: string; creator_email_notifications: boolean; title: string; description: string }>) {
+export async function adminUpdateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; assignee_ids: number[]; group_id: number | null; priority: string; creator_email_notifications: boolean; title: string; description: string }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/admin/tickets/${id}`, payload)
   return data
 }
@@ -112,7 +112,7 @@ export async function removeWatcher(ticketId: number, userId: number) {
   return data
 }
 
-export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: string; assignee_id?: number | null; group_id?: number | null; priority?: string; creator_email_notifications?: boolean }) {
+export async function adminBulkUpdateTickets(payload: { ids: number[]; status?: string; assignee_id?: number | null; assignee_ids?: number[]; group_id?: number | null; priority?: string; creator_email_notifications?: boolean }) {
   const { data } = await api.patch<TicketDetail[]>('/api/v1/admin/tickets/bulk', payload)
   return data
 }
