@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.45'
+export const APP_VERSION = '1.7.46'
 export const APP_VERSION_DATE = '2026-05-13'
-export const APP_VERSION_TIME = '09:18'
+export const APP_VERSION_TIME = '09:23'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.46',
+    date: '2026-05-13',
+    time: '09:23',
+    title: 'Lista de membros de grupos mais limpa',
+    changes: [
+      'A gestão de grupos passou a apresentar apenas os membros atuais do grupo por defeito.',
+      'Os restantes utilizadores só aparecem se utilizar a caixa de pesquisa, tornando a gestão de equipas muito mais simples sem uma lista interminável de utilizadores.',
+    ],
+  },
   {
     version: '1.7.45',
     date: '2026-05-13',

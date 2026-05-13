@@ -514,7 +514,7 @@ const groupCandidateUsers = computed(() => {
   const q = groupUserSearch.value.trim().toLowerCase()
   return users.value
     .filter(u => u.is_active)
-    .filter(u => !q || `${u.display_name} ${u.email} ${u.username} ${u.department || ''}`.toLowerCase().includes(q))
+    .filter(u => groupMemberIds.value.includes(u.id) || (q && `${u.display_name} ${u.email} ${u.username} ${u.department || ''}`.toLowerCase().includes(q)))
 })
 
 const roleDefinitions = [
