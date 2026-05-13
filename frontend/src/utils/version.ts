@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.46'
+export const APP_VERSION = '1.7.47'
 export const APP_VERSION_DATE = '2026-05-13'
-export const APP_VERSION_TIME = '09:23'
+export const APP_VERSION_TIME = '09:28'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.47',
+    date: '2026-05-13',
+    time: '09:28',
+    title: 'Menus de navegação mais modernos',
+    changes: [
+      'O design dos menus de navegação (separadores) nas Configurações e nos Utilizadores foi totalmente modernizado.',
+      'Os separadores funcionam agora num formato "pílula" (segmented control) com melhor contraste, legibilidade e aspeto premium, tanto em modo claro como escuro.',
+    ],
+  },
   {
     version: '1.7.46',
     date: '2026-05-13',
