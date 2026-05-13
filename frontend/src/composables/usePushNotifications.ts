@@ -129,9 +129,19 @@ export function usePushNotifications() {
 
   // Nuclear reset: unregister all SWs, clear all push subscriptions, re-register.
   async function hardReset() {
+    if (!isSupported || needsInstall) return
     loading.value = true
     error.value = ''
     try {
+      // 1. Synchronous permission request for iOS Safari
+      const perm = await Notification.requestPermission()
+      permission.value = perm
+      if (perm !== 'granted') {
+        error.value = 'Permissão negada. Ative nas definições do browser.'
+        loading.value = false
+        return
+      }
+
       const regs = await navigator.serviceWorker.getRegistrations()
       for (const reg of regs) {
         try { const sub = await reg.pushManager.getSubscription(); if (sub) { await unsubscribePush(sub.endpoint).catch(() => {}); await sub.unsubscribe() } } catch {}

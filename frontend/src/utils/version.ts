@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.48'
+export const APP_VERSION = '1.7.49'
 export const APP_VERSION_DATE = '2026-05-13'
-export const APP_VERSION_TIME = '09:35'
+export const APP_VERSION_TIME = '09:47'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.49',
+    date: '2026-05-13',
+    time: '09:47',
+    title: 'Estabilidade do PWA e Emails silenciados',
+    changes: [
+      'O botão de reiniciar a subscrição de alertas deixará de ficar preso ("A reiniciar..."). O Service Worker é agora forçado a ativar-se imediatamente após ser gerado.',
+      'Corrigido um problema onde autores que desativavam "Atualizações por e-mail" continuavam a recebê-las se pertencessem a uma equipa ou grupo designado para resolver esse pedido.',
+    ],
+  },
   {
     version: '1.7.48',
     date: '2026-05-13',

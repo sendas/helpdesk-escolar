@@ -36,6 +36,8 @@ export default defineConfig((ctx) => {
     pwa: { 
       workboxMode: 'GenerateSW',
       workboxOptions: {
+        skipWaiting: true,
+        clientsClaim: true,
         importScripts: ['/push-handler.js']
       }
     },

@@ -527,20 +527,28 @@ async def delete_comment(
 
 def _ticket_update_recipients(ticket, current_user: User) -> set[str]:
     recipients: set[str] = set()
-    if current_user.id != ticket.creator_id and ticket.creator.email and ticket.creator_email_notifications:
+
+    def add_recipient(user_id: int, email: str | None):
+        if not email or user_id == current_user.id:
+            return
+        if user_id == ticket.creator_id and not ticket.creator_email_notifications:
+            return
+        recipients.add(email)
+
+    if ticket.creator.email and ticket.creator_email_notifications and current_user.id != ticket.creator_id:
         recipients.add(ticket.creator.email)
-    if ticket.assignee and ticket.assignee.email and current_user.id != ticket.assignee_id:
-        recipients.add(ticket.assignee.email)
+
+    if ticket.assignee:
+        add_recipient(ticket.assignee_id, ticket.assignee.email)
     for assignee in getattr(ticket, "assignees", []):
-        if assignee.email and assignee.id != current_user.id:
-            recipients.add(assignee.email)
+        add_recipient(assignee.id, assignee.email)
     if ticket.group:
         for member in ticket.group.members:
-            if member.email and member.id != current_user.id:
-                recipients.add(member.email)
+            add_recipient(member.id, member.email)
     for watcher in ticket.watchers:
-        if watcher.email and watcher.id != current_user.id:
-            recipients.add(watcher.email)
+        add_recipient(watcher.id, watcher.email)
+    
     if ticket.category.email_to:
         recipients.add(ticket.category.email_to)
+        
     return recipients
