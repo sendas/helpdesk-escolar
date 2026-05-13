@@ -33,7 +33,12 @@ export default defineConfig((ctx) => {
     animations: [],
 
     ssr: { pwa: false, prodPort: 3000, middlewares: ['render'] },
-    pwa: { workboxMode: 'GenerateSW' },
+    pwa: { 
+      workboxMode: 'GenerateSW',
+      workboxOptions: {
+        importScripts: ['/push-handler.js']
+      }
+    },
 
     cordova: {},
     capacitor: { hideSplashscreen: true },

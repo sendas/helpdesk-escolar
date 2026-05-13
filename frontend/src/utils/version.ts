@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.47'
+export const APP_VERSION = '1.7.48'
 export const APP_VERSION_DATE = '2026-05-13'
-export const APP_VERSION_TIME = '09:28'
+export const APP_VERSION_TIME = '09:35'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.48',
+    date: '2026-05-13',
+    time: '09:35',
+    title: 'Correção de notificações Push e usabilidade móvel',
+    changes: [
+      'Corrigido um problema na compilação da PWA (Service Worker) que impedia o processamento e visualização das notificações Push no telemóvel e PC.',
+      'A barra de navegação (separadores) no telemóvel permite agora deslizar suavemente com o dedo de forma muito fluida, e as barras de scroll foram escondidas para um aspeto mais limpo.',
+    ],
+  },
   {
     version: '1.7.47',
     date: '2026-05-13',
