@@ -550,5 +550,11 @@ def _ticket_update_recipients(ticket, current_user: User) -> set[str]:
     
     if ticket.category.email_to:
         recipients.add(ticket.category.email_to)
-        
+
+    # Foolproof final filters
+    if current_user.email:
+        recipients.discard(current_user.email)
+    if not ticket.creator_email_notifications and ticket.creator.email:
+        recipients.discard(ticket.creator.email)
+
     return recipients

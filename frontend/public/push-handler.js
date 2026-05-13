@@ -1,6 +1,14 @@
 // Push notification handler — loaded via importScripts() in the generated service worker
 // Written in plain ES5 to avoid any transpilation issues.
 
+self.addEventListener('install', function (event) {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function (event) {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('push', function (event) {
   if (!event.data) return;
   var data;
