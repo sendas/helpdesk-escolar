@@ -82,12 +82,19 @@ export function usePushNotifications() {
     } catch { /* non-fatal */ }
   }
 
+  async function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms))
+    ])
+  }
+
   async function requestAndSubscribe() {
     if (!isSupported || needsInstall) return
     loading.value = true
     error.value = ''
     try {
-      const result = await Notification.requestPermission()
+      const result = await withTimeout(Notification.requestPermission(), 10000, 'timeout-perm')
       permission.value = result
       if (result !== 'granted') { error.value = 'Permissão negada. Ative nas definições do browser.'; return }
 
@@ -95,18 +102,21 @@ export function usePushNotifications() {
       if (!reg) { error.value = 'O service worker não está pronto. Tente o botão "Reiniciar subscrição" abaixo.'; return }
       swState.value = 'ok'
 
-      // Drop any existing browser subscription first (may have stale VAPID key).
-      const old = await reg.pushManager.getSubscription()
-      if (old) await old.unsubscribe()
+      const old = await withTimeout(reg.pushManager.getSubscription(), 5000, 'timeout-sub')
+      if (old) await withTimeout(old.unsubscribe(), 5000, 'timeout-unsub')
 
-      const publicKey = await getVapidPublicKey()
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) })
-      await subscribePush(sub.toJSON() as PushSubscriptionJSON)
+      const publicKey = await withTimeout(getVapidPublicKey(), 10000, 'timeout-vapid')
+      const sub = await withTimeout(
+        reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) }),
+        15000, 'timeout-subscribe'
+      )
+      await withTimeout(subscribePush(sub.toJSON() as PushSubscriptionJSON), 10000, 'timeout-api')
       isSubscribed.value = true
     } catch (err: any) {
       console.error('[Push] subscribe error:', err)
       if (err?.name === 'NotAllowedError') error.value = 'Permissão negada. Ative nas definições do browser.'
       else if (err?.message === 'sw-timeout') error.value = 'Service worker não activou. Tente "Reiniciar subscrição".'
+      else if (err?.message?.startsWith('timeout-')) error.value = 'A operação demorou demasiado tempo. Tente reiniciar.'
       else error.value = err?.message || 'Erro desconhecido. Tente "Reiniciar subscrição".'
     } finally { loading.value = false }
   }
@@ -115,10 +125,13 @@ export function usePushNotifications() {
     loading.value = true
     error.value = ''
     try {
-      const reg = await getAnyRegistration()  // does NOT wait for activation
+      const reg = await getAnyRegistration()
       if (reg) {
-        const sub = await reg.pushManager.getSubscription()
-        if (sub) { await unsubscribePush(sub.endpoint).catch(() => {}); await sub.unsubscribe() }
+        const sub = await withTimeout(reg.pushManager.getSubscription(), 5000, 'timeout')
+        if (sub) {
+          await withTimeout(unsubscribePush(sub.endpoint), 5000, 'timeout').catch(() => {})
+          await withTimeout(sub.unsubscribe(), 5000, 'timeout')
+        }
       }
       isSubscribed.value = false
     } catch (err: any) {
@@ -127,14 +140,12 @@ export function usePushNotifications() {
     } finally { loading.value = false }
   }
 
-  // Nuclear reset: unregister all SWs, clear all push subscriptions, re-register.
   async function hardReset() {
     if (!isSupported || needsInstall) return
     loading.value = true
     error.value = ''
     try {
-      // 1. Synchronous permission request for iOS Safari
-      const perm = await Notification.requestPermission()
+      const perm = await withTimeout(Notification.requestPermission(), 10000, 'timeout-perm')
       permission.value = perm
       if (perm !== 'granted') {
         error.value = 'Permissão negada. Ative nas definições do browser.'
@@ -142,17 +153,23 @@ export function usePushNotifications() {
         return
       }
 
-      const regs = await navigator.serviceWorker.getRegistrations()
+      const regs = await withTimeout(navigator.serviceWorker.getRegistrations(), 5000, 'timeout-regs')
       for (const reg of regs) {
-        try { const sub = await reg.pushManager.getSubscription(); if (sub) { await unsubscribePush(sub.endpoint).catch(() => {}); await sub.unsubscribe() } } catch {}
-        await reg.unregister()
+        try { 
+          const sub = await withTimeout(reg.pushManager.getSubscription(), 3000, 'timeout');
+          if (sub) { 
+            await withTimeout(unsubscribePush(sub.endpoint), 3000, 'timeout').catch(() => {});
+            await withTimeout(sub.unsubscribe(), 3000, 'timeout')
+          } 
+        } catch {}
+        await withTimeout(reg.unregister(), 3000, 'timeout')
       }
       isSubscribed.value = false
       swState.value = 'missing'
-      // Re-register SW and subscribe.
       await requestAndSubscribe()
     } catch (err: any) {
       error.value = 'Erro no reset: ' + (err?.message || 'desconhecido')
+    } finally {
       loading.value = false
     }
   }
