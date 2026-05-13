@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.44'
-export const APP_VERSION_DATE = '2026-05-12'
-export const APP_VERSION_TIME = '19:43'
+export const APP_VERSION = '1.7.45'
+export const APP_VERSION_DATE = '2026-05-13'
+export const APP_VERSION_TIME = '09:18'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.45',
+    date: '2026-05-13',
+    time: '09:18',
+    title: 'Cor da nota interna no modo escuro',
+    changes: [
+      'Corrigida a legibilidade do texto das notas internas quando o modo escuro está ativo, alterando a cor de fundo para uma tonalidade adequada.',
+    ],
+  },
   {
     version: '1.7.44',
     date: '2026-05-12',

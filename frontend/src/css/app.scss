@@ -488,6 +488,10 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
   background: #FFFBEB;
   border: 1px solid #FDE68A;
 }
+.dark .hd-msg-internal .hd-msg-bubble {
+  background: #451A03;
+  border-color: #78350F;
+}
 .hd-internal-tag {
   display: inline-block;
   background: #F59E0B;
