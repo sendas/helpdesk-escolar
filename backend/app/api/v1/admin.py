@@ -718,3 +718,29 @@ async def test_mail(current_admin: User = Depends(require_admin)):
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao enviar email: {exc}") from exc
     return {"sent_to": current_admin.email}
+
+
+@router.post("/fix-resolved-tickets")
+async def fix_resolved_tickets(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    """Close tickets where the 'Resolvido ✓' quick reply was used but status was never changed."""
+    from sqlalchemy import text, update
+    result = await db.execute(text("""
+        SELECT DISTINCT c.ticket_id FROM comments c
+        JOIN tickets t ON t.id = c.ticket_id
+        WHERE t.status != 'closed'
+        AND (
+            c.body LIKE '%foi resolvida%'
+            OR c.body LIKE '%situa%o foi resolvida%'
+        )
+        AND c.deleted_at IS NULL
+    """))
+    ticket_ids = [row[0] for row in result.fetchall()]
+    if not ticket_ids:
+        return {"fixed": 0, "message": "Nenhum ticket para corrigir."}
+    await db.execute(text(f"""
+        UPDATE tickets SET status = 'closed'
+        WHERE id IN ({','.join(str(i) for i in ticket_ids)})
+        AND status != 'closed'
+    """))
+    await db.commit()
+    return {"fixed": len(ticket_ids), "ticket_ids": ticket_ids}

@@ -1,8 +1,15 @@
-export const APP_VERSION = '1.7.61'
+export const APP_VERSION = '1.7.62'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '23:18'
+export const APP_VERSION_TIME = '23:20'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.62',
+    date: '2026-05-14',
+    time: '23:20',
+    title: 'Endpoint de correção manual de tickets resolvidos',
+    changes: ['Adicionado endpoint admin POST /api/v1/admin/fix-resolved-tickets para fechar manualmente tickets com resposta "Resolvido ✓"'],
+  },
   {
     version: '1.7.61',
     date: '2026-05-14',
