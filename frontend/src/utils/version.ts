@@ -1,8 +1,15 @@
-export const APP_VERSION = '1.7.62'
+export const APP_VERSION = '1.7.63'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '23:20'
+export const APP_VERSION_TIME = '23:26'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.63',
+    date: '2026-05-14',
+    time: '23:26',
+    title: 'Botão de manutenção para fechar tickets resolvidos',
+    changes: ['Configurações → Manutenção: botão "Executar correção" fecha todos os tickets com resposta "A situação foi resolvida…" que ainda estavam abertos'],
+  },
   {
     version: '1.7.62',
     date: '2026-05-14',
