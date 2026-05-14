@@ -32,16 +32,13 @@ async def _add_missing_columns(conn) -> None:
         ) AND is_escalated = 0
     """))
 
-    # 3. Close all tickets that are in 'resolved' status (resolved → closed rule)
-    await conn.execute(text("UPDATE tickets SET status = 'closed' WHERE status = 'resolved'"))
-
-    # 4. Close tickets where the "Resolvido ✓" quick reply was used but status was never updated
+    # 3. Reopen tickets closed by erroneous migration scripts (no matching ticket_event)
     await conn.execute(text("""
-        UPDATE tickets SET status = 'closed'
-        WHERE status NOT IN ('closed')
-        AND id IN (
-            SELECT DISTINCT ticket_id FROM comments
-            WHERE body LIKE '%A situa%o foi resolvida%'
+        UPDATE tickets SET status = 'open'
+        WHERE status = 'closed'
+        AND id NOT IN (
+            SELECT ticket_id FROM ticket_events
+            WHERE event_type = 'status_changed' AND new_value = 'closed'
         )
     """))
 
