@@ -148,10 +148,26 @@ async def list_tickets(
     return result.scalars().all(), total
 
 
+_STATUS_PT: dict[str, str] = {
+    "open": "Aberto",
+    "assigned": "Atribuído",
+    "in_progress": "Em Curso",
+    "waiting_user": "A aguardar utilizador",
+    "resolved": "Resolvido",
+    "closed": "Fechado",
+}
+_PRIORITY_PT: dict[str, str] = {
+    "low": "Baixa",
+    "medium": "Média",
+    "high": "Alta",
+    "urgent": "Urgente",
+}
+
+
 async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) -> Ticket:
     changes: list[str] = []
     if data.status is not None:
-        changes.append(f"Estado alterado para {data.status.value}")
+        changes.append(f"Estado alterado para {_STATUS_PT.get(data.status.value, data.status.value)}")
         ticket.status = data.status
     if "assignee_id" in data.model_fields_set:
         await validate_active_technician(db, data.assignee_id)
@@ -180,7 +196,7 @@ async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) ->
         changes.append("Grupo interno atualizado")
     if data.priority is not None:
         ticket.priority = data.priority
-        changes.append(f"Prioridade alterada para {data.priority.value}")
+        changes.append(f"Prioridade alterada para {_PRIORITY_PT.get(data.priority.value, data.priority.value)}")
     if "creator_email_notifications" in data.model_fields_set and data.creator_email_notifications is not None:
         ticket.creator_email_notifications = data.creator_email_notifications
         changes.append("Preferência de notificações por email atualizada")

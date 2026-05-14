@@ -46,6 +46,9 @@
         <router-link class="hd-nav-item" :class="{ active: $route.path === '/about' }" to="/about" @click="mobileMenuOpen = false">
           <span class="material-icons" style="font-size:16px">info</span> Sobre
         </router-link>
+        <router-link class="hd-nav-item" :class="{ active: $route.path === '/suggestions' }" to="/suggestions" @click="mobileMenuOpen = false">
+          <span class="material-icons" style="font-size:16px">lightbulb</span> Sugestões
+        </router-link>
 
         <template v-if="auth.isStaff">
           <div class="hd-nav-section" style="margin-top:8px">Administração</div>
@@ -253,6 +256,7 @@ const titleMap: Record<string, string> = {
   '/knowledge': 'Base de conhecimento',
   '/version': 'Versão / Atualizações',
   '/about': 'Sobre',
+  '/suggestions': 'Sugestões',
   '/admin/tickets': 'Gestão de tickets',
   '/admin/users': 'Utilizadores e permissões',
   '/admin/stats': 'Estatísticas',

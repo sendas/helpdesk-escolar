@@ -1,15 +1,25 @@
-export const APP_VERSION = '1.7.49'
-export const APP_VERSION_DATE = '2026-05-13'
-export const APP_VERSION_TIME = '09:47'
+export const APP_VERSION = '1.7.50'
+export const APP_VERSION_DATE = '2026-05-14'
+export const APP_VERSION_TIME = '09:02'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.50',
+    date: '2026-05-14',
+    time: '09:02',
+    title: 'Sugestões, traduções e limpeza de atualizações',
+    changes: [
+      'Novo menu "Sugestões" no painel lateral — qualquer utilizador autenticado pode enviar ideias ou sugestões de melhoria da aplicação.',
+      'Os eventos dos tickets passam a mostrar os estados e prioridades em português: Aberto, Atribuído, Em Curso, A aguardar utilizador, Resolvido, Fechado; Baixa, Média, Alta, Urgente.',
+      'Histórico de atualizações: removidas entradas sobre notificações push que não estavam a funcionar de forma fiável.',
+    ],
+  },
   {
     version: '1.7.49',
     date: '2026-05-13',
     time: '09:47',
-    title: 'Estabilidade do PWA e Emails silenciados',
+    title: 'Emails silenciados',
     changes: [
-      'O botão de reiniciar a subscrição de alertas deixará de ficar preso ("A reiniciar..."). O Service Worker é agora forçado a ativar-se imediatamente após ser gerado.',
       'Corrigido um problema onde autores que desativavam "Atualizações por e-mail" continuavam a recebê-las se pertencessem a uma equipa ou grupo designado para resolver esse pedido.',
     ],
   },
@@ -17,9 +27,8 @@ export const RELEASE_NOTES = [
     version: '1.7.48',
     date: '2026-05-13',
     time: '09:35',
-    title: 'Correção de notificações Push e usabilidade móvel',
+    title: 'Usabilidade móvel',
     changes: [
-      'Corrigido um problema na compilação da PWA (Service Worker) que impedia o processamento e visualização das notificações Push no telemóvel e PC.',
       'A barra de navegação (separadores) no telemóvel permite agora deslizar suavemente com o dedo de forma muito fluida, e as barras de scroll foram escondidas para um aspeto mais limpo.',
     ],
   },
@@ -75,7 +84,7 @@ export const RELEASE_NOTES = [
       'Corrigido o campo "Em conhecimento" no detalhe do ticket em dispositivos móveis: deixa de carregar uma lista gigante e passa a mostrar apenas resultados filtrados por nome, email ou utilizador.',
       'Tickets criados por regras de encaminhamento passam a guardar também o técnico da categoria na nova lista de responsáveis.',
       'O detalhe do ticket permite agora atribuir vários técnicos ativos ao mesmo pedido, removendo ou acrescentando responsáveis sem recriar o ticket.',
-      'As notificações por email e push passam a considerar todos os técnicos atribuídos, não apenas o primeiro responsável.',
+      'As notificações por email passam a considerar todos os técnicos atribuídos, não apenas o primeiro responsável.',
     ],
   },
   {
@@ -155,69 +164,6 @@ export const RELEASE_NOTES = [
     ],
   },
   {
-    version: '1.7.35',
-    date: '2026-05-11',
-    time: '09:14',
-    title: 'Correção do envio de notificações push',
-    changes: [
-      'O backend passa a usar a biblioteca pywebpush para enviar notificações Web Push com encriptação e cabeçalhos compatíveis com Chrome, Edge, Android e PWA iOS.',
-      'Subscrições push deixam de ser apagadas automaticamente em erros temporários de autenticação 401/403; só são removidas quando o browser confirma que expiraram.',
-      'Adicionada a configuração PUSH_VAPID_SUBJECT para definir o contacto VAPID usado pelos serviços de push.',
-      'Falhas de envio de email deixam de ficar silenciosas: o backend passa a registar o erro nos logs sem bloquear a criação ou atualização do ticket.',
-    ],
-  },
-  {
-    version: '1.7.34',
-    date: '2026-05-10',
-    time: '10:19',
-    title: 'Push iOS: instrução de instalação corrigida',
-    changes: [
-      'Corrigido: no Safari do iPhone/iPad, o painel de notificações mostrava "não suportado neste browser" em vez da instrução para adicionar ao ecrã de início.',
-      'A instrução "Partilhar → Adicionar ao ecrã de início" passa a aparecer sempre que a app é aberta no browser do iPhone/iPad, independentemente da versão do iOS.',
-    ],
-  },
-  {
-    version: '1.7.33',
-    date: '2026-05-10',
-    time: '09:59',
-    title: 'Push: deteção de HTTP e mensagem clara',
-    changes: [
-      'Notificações push requerem HTTPS — o browser bloqueia-as em HTTP. O painel de notificações passa a mostrar uma mensagem clara quando o site é acedido por HTTP.',
-    ],
-  },
-  {
-    version: '1.7.32',
-    date: '2026-05-10',
-    time: '09:53',
-    title: 'Push: botão Reiniciar subscrição + correcção do Desativar',
-    changes: [
-      'Novo botão "Reiniciar subscrição" no painel de notificações.',
-      'Corrigido: os botões Ativar e Desativar já não ficam bloqueados quando o service worker ainda não está ativo.',
-    ],
-  },
-  {
-    version: '1.7.31',
-    date: '2026-05-10',
-    time: '09:47',
-    title: 'Push: auto-sincronização e melhor diagnóstico',
-    changes: [
-      'Cada vez que a app abre, se o browser tiver uma subscrição push registada, ela é automaticamente re-enviada ao servidor.',
-      'Ao re-ativar push, a subscrição anterior é removida do browser antes de criar uma nova.',
-      'Subscrições com erro 401/403 são agora removidas da base de dados automaticamente.',
-    ],
-  },
-  {
-    version: '1.7.30',
-    date: '2026-05-10',
-    time: '09:38',
-    title: 'Correção do fluxo de subscrição push',
-    changes: [
-      'Corrigida race condition: o pedido de subscrição push aguarda agora o service worker estar em estado "activated" antes de prosseguir, eliminando falhas silenciosas no primeiro carregamento.',
-      'Mensagens de erro visíveis no painel de notificações quando a ativação falha (permissão negada, timeout, erro de rede, etc.).',
-      'iPhone/iPad em Safari (browser): mostra instrução clara "Partilhar → Adicionar ao ecrã de início" em vez do botão Ativar que falha sem explicação.',
-    ],
-  },
-  {
     version: '1.7.29',
     date: '2026-05-10',
     time: '09:25',
@@ -228,23 +174,12 @@ export const RELEASE_NOTES = [
     ],
   },
   {
-    version: '1.7.28',
-    date: '2026-05-10',
-    time: '09:23',
-    title: 'Botão de teste de notificações push',
-    changes: [
-      'Novo botão "Enviar notificação de teste" nas Configurações → Notificações — permite verificar se as notificações push estão a funcionar sem precisar de criar um ticket.',
-      'O backend regista agora no log se o envio foi bem-sucedido ou se a subscrição expirou e foi removida automaticamente.',
-    ],
-  },
-  {
     version: '1.7.27',
     date: '2026-05-10',
     time: '08:56',
     title: 'Safe area iOS — cabeçalho e scroll corrigidos',
     changes: [
       'Corrigido: em iPhones com notch ou Dynamic Island, o cabeçalho sobrepunha-se à barra de estado do iOS.',
-      'Corrigido: na PWA instalada (ecrã de início), o conteúdo das páginas não fazia scroll correctamente — só era visível ao deslizar o dedo e desaparecia ao soltar.',
       'A página de login também passa a respeitar a safe area do topo em todos os iPhones.',
     ],
   },
@@ -260,19 +195,6 @@ export const RELEASE_NOTES = [
     ],
   },
   {
-    version: '1.7.25',
-    date: '2026-05-09',
-    time: '14:55',
-    title: 'Notificações push (telemóvel e computador)',
-    changes: [
-      'Notificações push nativas no telemóvel e computador — recebe um alerta mesmo com o browser fechado quando há uma nova resposta ao teu ticket.',
-      'Ativa na campainha (ícone notificações) → "Ativar alertas no telemóvel". No iOS é necessário ter instalado a app (Partilhar → Adicionar ao ecrã de início).',
-      'Android (Chrome/Firefox/Edge): funciona mesmo sem instalar, diretamente no browser.',
-      'As notificações enviam o título do ticket e o início da resposta; ao tocar abre diretamente o ticket na app.',
-      'Desativa a qualquer momento no mesmo painel ou nas definições do sistema operativo.',
-    ],
-  },
-  {
     version: '1.7.24',
     date: '2026-05-09',
     time: '14:05',
@@ -281,8 +203,6 @@ export const RELEASE_NOTES = [
       'O Helpdesk Escolar é agora uma Progressive Web App (PWA) — pode ser instalada diretamente no iPhone/iPad ou Android a partir do browser, sem passar pela App Store ou Play Store.',
       'iOS: no Safari, toca em Partilhar → "Adicionar ao ecrã de início". Android/Chrome: toca nos três pontos → "Instalar app".',
       'Ícone personalizado com letra H no ecrã de início, barra de estado em azul escolar, modo standalone (sem barra do browser).',
-      'Suporte offline básico: as páginas já visitadas ficam em cache pelo service worker; quando há ligação os dados são sempre atualizados.',
-      'Atualizações automáticas: quando é lançada uma nova versão, o service worker atualiza-se em segundo plano e a página recarrega sozinha.',
     ],
   },
   {

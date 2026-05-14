@@ -25,6 +25,7 @@ const routes = [
       { path: 'knowledge', component: () => import('../pages/KnowledgePage.vue') },
       { path: 'version', component: () => import('../pages/VersionPage.vue') },
       { path: 'about', component: () => import('../pages/AboutPage.vue') },
+      { path: 'suggestions', component: () => import('../pages/SuggestionsPage.vue') },
       {
         path: 'admin',
         meta: { requiresStaff: true },
