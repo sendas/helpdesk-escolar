@@ -12,6 +12,19 @@ from app.config import settings
 from app.api.v1.router import router
 
 
+async def _add_missing_columns(conn) -> None:
+    """Add columns introduced after initial schema creation (SQLite-safe ALTER TABLE)."""
+    from sqlalchemy import text
+    migrations = [
+        ("tickets", "is_escalated", "BOOLEAN NOT NULL DEFAULT 0"),
+    ]
+    for table, column, definition in migrations:
+        rows = await conn.execute(text(f"PRAGMA table_info({table})"))
+        existing = {row[1] for row in rows}
+        if column not in existing:
+            await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create all tables on startup (no Alembic needed for simple deployments)
@@ -19,6 +32,7 @@ async def lifespan(app: FastAPI):
     import app.models  # noqa: F401 — registers all models with Base
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _add_missing_columns(conn)
     from app.database import AsyncSessionLocal
     from app.services.bootstrap import ensure_defaults
     async with AsyncSessionLocal() as db:
