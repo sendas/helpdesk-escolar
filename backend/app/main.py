@@ -41,7 +41,7 @@ async def _add_missing_columns(conn) -> None:
         WHERE status NOT IN ('closed')
         AND id IN (
             SELECT DISTINCT ticket_id FROM comments
-            WHERE body = 'A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.'
+            WHERE body LIKE '%A situa%o foi resolvida%'
         )
     """))
 
