@@ -723,24 +723,28 @@ async def test_mail(current_admin: User = Depends(require_admin)):
 @router.post("/fix-resolved-tickets")
 async def fix_resolved_tickets(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
     """Close tickets where the 'Resolvido ✓' quick reply was used but status was never changed."""
-    from sqlalchemy import text, update
+    from sqlalchemy import text
+    # Fetch sample comments from open tickets so we can diagnose text mismatches
+    sample_r = await db.execute(text("""
+        SELECT c.ticket_id, t.status, substr(c.body, 1, 100) AS snippet
+        FROM comments c JOIN tickets t ON t.id = c.ticket_id
+        WHERE t.status != 'closed' AND c.deleted_at IS NULL
+        LIMIT 15
+    """))
+    samples = [{"id": r[0], "status": r[1], "text": r[2]} for r in sample_r.fetchall()]
+
+    # Close ALL open tickets that have any comment (remove text filter for now)
     result = await db.execute(text("""
         SELECT DISTINCT c.ticket_id FROM comments c
         JOIN tickets t ON t.id = c.ticket_id
-        WHERE t.status != 'closed'
+        WHERE t.status != 'closed' AND c.deleted_at IS NULL
         AND (
-            c.body LIKE '%foi resolvida%'
-            OR c.body LIKE '%situa%o foi resolvida%'
+            c.body LIKE '%resolvida%'
+            OR c.body LIKE '%resolvido%'
         )
-        AND c.deleted_at IS NULL
     """))
     ticket_ids = [row[0] for row in result.fetchall()]
-    if not ticket_ids:
-        return {"fixed": 0, "message": "Nenhum ticket para corrigir."}
-    await db.execute(text(f"""
-        UPDATE tickets SET status = 'closed'
-        WHERE id IN ({','.join(str(i) for i in ticket_ids)})
-        AND status != 'closed'
-    """))
-    await db.commit()
-    return {"fixed": len(ticket_ids), "ticket_ids": ticket_ids}
+    if ticket_ids:
+        await db.execute(text(f"UPDATE tickets SET status = 'closed' WHERE id IN ({','.join(str(i) for i in ticket_ids)}) AND status != 'closed'"))
+        await db.commit()
+    return {"fixed": len(ticket_ids), "ticket_ids": ticket_ids, "samples": samples}
