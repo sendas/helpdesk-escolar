@@ -63,6 +63,9 @@
             <span class="material-icons">bar_chart</span> Estatísticas
           </router-link>
           <template v-if="auth.isAdmin">
+            <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/suggestions' }" to="/admin/suggestions" @click="mobileMenuOpen = false">
+              <span class="material-icons">lightbulb</span> Sugestões
+            </router-link>
             <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/settings' }" to="/admin/settings" @click="mobileMenuOpen = false">
               <span class="material-icons">settings</span> Configurações
             </router-link>
@@ -260,6 +263,7 @@ const titleMap: Record<string, string> = {
   '/admin/tickets': 'Gestão de tickets',
   '/admin/users': 'Utilizadores e permissões',
   '/admin/stats': 'Estatísticas',
+  '/admin/suggestions': 'Sugestões recebidas',
   '/admin/settings': 'Configurações',
   '/admin/backup': 'Backup & Restauro',
 }

@@ -37,6 +37,7 @@ const routes = [
           { path: 'stats', component: () => import('../pages/admin/AdminStatsPage.vue') },
           { path: 'settings', meta: { requiresAdmin: true }, component: () => import('../pages/admin/AdminSettingsPage.vue') },
           { path: 'backup', meta: { requiresAdmin: true }, component: () => import('../pages/admin/AdminBackupPage.vue') },
+          { path: 'suggestions', meta: { requiresAdmin: true }, component: () => import('../pages/admin/AdminSuggestionsPage.vue') },
         ],
       },
     ],
