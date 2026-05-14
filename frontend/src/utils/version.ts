@@ -1,16 +1,16 @@
-export const APP_VERSION = '1.7.55'
+export const APP_VERSION = '1.7.56'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '11:23'
+export const APP_VERSION_TIME = '11:27'
 
 export const RELEASE_NOTES = [
   {
-    version: '1.7.55',
+    version: '1.7.56',
     date: '2026-05-14',
-    time: '11:23',
-    title: 'Correção: etiqueta Fornecedor em tickets já escalados',
+    time: '11:27',
+    title: 'Badge "F" laranja para tickets escalados ao fornecedor',
     changes: [
-      'Corrigido: tickets que já tinham sido escalados antes desta versão não mostravam a etiqueta "Fornecedor" nas listas.',
-      'O arranque passa a corrigir automaticamente o estado dos tickets existentes com base no histórico de eventos.',
+      'Nas listas de tickets, os tickets escalados para o fornecedor externo passam a mostrar um círculo laranja "F" ao lado do estado.',
+      'O indicador é visível tanto em "Os meus tickets" como em "Gestão de tickets".',
     ],
   },
   {

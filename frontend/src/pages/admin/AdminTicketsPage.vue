@@ -121,8 +121,10 @@
                 <td><PriorityBadge :priority="t.priority" /></td>
                 <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
                 <td style="white-space:nowrap">
-                  <StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" />
-                  <span v-if="t.is_escalated" class="hd-status escalated" style="margin-top:4px;display:inline-block">Fornecedor</span>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" />
+                    <span v-if="t.is_escalated" class="badge-fornecedor" title="Escalado para fornecedor externo">F</span>
+                  </div>
                 </td>
                 <td>
                   <AssigneeSelect :value="primaryAssigneeId(t)" :users="staffUsers" @change="changeAssignee(t, $event)" />
@@ -468,6 +470,21 @@ function timeAgo(date: string) {
 </script>
 
 <style scoped>
+.badge-fornecedor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #EA580C;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+  cursor: default;
+}
+
 .admin-tickets-page { max-width: 1400px; }
 .tickets-heading {
   display: flex;

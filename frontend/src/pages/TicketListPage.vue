@@ -30,9 +30,9 @@
           <tr v-for="t in tickets" :key="t.id" @click="$router.push(`/tickets/${t.id}`)">
             <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
             <td style="font-weight:500">{{ t.title }}</td>
-            <td style="white-space:nowrap">
+            <td style="white-space:nowrap;display:flex;align-items:center;gap:6px">
               <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
-              <span v-if="t.is_escalated" class="hd-status escalated" style="margin-left:4px">Fornecedor</span>
+              <span v-if="t.is_escalated" class="badge-fornecedor" title="Escalado para fornecedor externo">F</span>
             </td>
             <td><PriorityBadge :priority="t.priority" /></td>
             <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
@@ -112,6 +112,21 @@ async function toggleEmailNotifications(ticket: any) {
 </script>
 
 <style scoped>
+.badge-fornecedor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #EA580C;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+  cursor: default;
+}
+
 .email-pill {
   align-items: center;
   background: var(--c-bg);
