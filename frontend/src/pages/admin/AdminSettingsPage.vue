@@ -270,11 +270,23 @@
           </div>
         </div>
       </div>
+      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-top:4px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:6px">Destinatários das sugestões</div>
+        <p class="hd-hint" style="margin-bottom:12px">
+          Quando um utilizador envia uma sugestão, é enviado um email de notificação para os endereços abaixo.
+          Separe vários endereços com vírgula.
+        </p>
+        <input
+          class="hd-input"
+          v-model="suggestionEmailsRaw"
+          placeholder="admin@escola.pt, diretor@escola.pt"
+        />
+      </div>
       <div style="margin-top:20px">
-        <button class="hd-btn hd-btn-primary" @click="saved = true">
+        <button class="hd-btn hd-btn-primary" @click="saveEmailSettings">
           <span class="material-icons" style="font-size:16px">save</span> Guardar
         </button>
-        <span v-if="saved" style="margin-left:12px;font-size:13px;color:#22C55E">Guardado!</span>
+        <span v-if="savedEmail" style="margin-left:12px;font-size:13px;color:#22C55E">Guardado!</span>
       </div>
     </div>
 
@@ -467,6 +479,7 @@
 import { ref, onMounted } from 'vue'
 import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
 import { getPublicSettings, updateFeatureSettings, updateSettings } from '../../api/settings'
+import { api } from '../../boot/axios'
 import { getGroups, getUsers } from '../../api/users'
 
 const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools' | 'routing' | 'knowledge'>('general')
@@ -496,6 +509,8 @@ const knowledgeEnabled = ref(true)
 const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Fornecedor externo', support_provider_email: '' })
 const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
 const email = ref({ server: '', port: 587, from: '', username: '', password: '' })
+const suggestionEmailsRaw = ref('')
+const savedEmail = ref(false)
 
 const notifications = ref([
   { key: 'ticket_created', label: 'Ticket criado', desc: 'Notifica o solicitante quando o ticket é aberto', enabled: true },
@@ -519,6 +534,7 @@ onMounted(async () => {
     general.value.support_provider_name = settings.support_provider_name || 'Fornecedor externo'
     general.value.support_provider_email = settings.support_provider_email || ''
     knowledgeEnabled.value = settings.knowledge_enabled !== false
+    suggestionEmailsRaw.value = (settings.suggestion_emails || []).join(', ')
     categories.value = cats
     schools.value = schs
     groups.value = grps
@@ -587,6 +603,19 @@ async function testPushNow() {
   } finally {
     testingPush.value = false
   }
+}
+
+async function saveEmailSettings() {
+  savedEmail.value = false
+  const emails = suggestionEmailsRaw.value
+    .split(',')
+    .map((e: string) => e.trim())
+    .filter((e: string) => e.includes('@'))
+  try {
+    await api.put('/api/v1/settings/suggestion-emails', { emails })
+    savedEmail.value = true
+    setTimeout(() => { savedEmail.value = false }, 3000)
+  } catch { /* ignore */ }
 }
 
 async function testLdap() {

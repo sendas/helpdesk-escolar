@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.50'
+export const APP_VERSION = '1.7.51'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '09:02'
+export const APP_VERSION_TIME = '09:11'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.51',
+    date: '2026-05-14',
+    time: '09:11',
+    title: 'Destinatários de sugestões configuráveis',
+    changes: [
+      'Nas Configurações → Notificações, o administrador pode agora definir os emails que recebem uma notificação quando é enviada uma nova sugestão.',
+      'O email de notificação inclui o nome do autor, a data e o texto da sugestão.',
+    ],
+  },
   {
     version: '1.7.50',
     date: '2026-05-14',

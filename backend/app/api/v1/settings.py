@@ -22,6 +22,7 @@ DEFAULT_SETTINGS = {
     "support_provider_email": "",
     "azure_allowed_onprem_ous": [],
     "knowledge_enabled": True,
+    "suggestion_emails": [],
 }
 
 
@@ -31,6 +32,10 @@ class AzureSyncSettings(BaseModel):
 
 class FeatureSettings(BaseModel):
     knowledge_enabled: bool = True
+
+
+class SuggestionEmailSettings(BaseModel):
+    emails: list[str] = []
 
 
 @router.get("/public")
@@ -89,6 +94,15 @@ async def update_feature_settings(payload: FeatureSettings, _: User = Depends(re
     data["knowledge_enabled"] = payload.knowledge_enabled
     _write_settings(data)
     return {"knowledge_enabled": data["knowledge_enabled"]}
+
+
+@router.put("/suggestion-emails")
+async def update_suggestion_emails(payload: SuggestionEmailSettings, _: User = Depends(require_admin)):
+    data = _read_settings()
+    clean = [e.strip().lower() for e in payload.emails if e.strip()]
+    data["suggestion_emails"] = clean
+    _write_settings(data)
+    return {"suggestion_emails": data["suggestion_emails"]}
 
 
 def _read_settings() -> dict:

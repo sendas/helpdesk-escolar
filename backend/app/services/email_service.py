@@ -28,6 +28,29 @@ def build_ticket_url(ticket_id: int | str) -> str:
     return f"{settings.frontend_url.rstrip('/')}/tickets/{ticket_id}"
 
 
+async def send_suggestion_notification(recipients: list[str], suggestion_data: dict) -> None:
+    if not settings.mail_server or not recipients:
+        return
+    try:
+        template = jinja_env.get_template("suggestion_received.html")
+        html_body = template.render(**suggestion_data)
+    except Exception as exc:
+        logger.warning("Email template error for suggestion: %s", exc)
+        return
+    try:
+        message = MessageSchema(
+            subject=f"[Helpdesk] Nova sugestão de {suggestion_data.get('author_name', 'utilizador')}",
+            recipients=recipients,
+            body=html_body,
+            subtype=MessageType.html,
+        )
+        fm = FastMail(_get_conf())
+        await fm.send_message(message)
+        logger.info("Suggestion notification sent to %s", recipients)
+    except Exception as exc:
+        logger.warning("Suggestion notification failed: %s", exc)
+
+
 async def send_ticket_notification(to_email: str, event: str, ticket_data: dict) -> None:
     if not settings.mail_server:
         return
