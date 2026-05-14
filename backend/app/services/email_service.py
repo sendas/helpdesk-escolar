@@ -28,6 +28,22 @@ def build_ticket_url(ticket_id: int | str) -> str:
     return f"{settings.frontend_url.rstrip('/')}/tickets/{ticket_id}"
 
 
+_STATUS_PT: dict[str, str] = {
+    "open": "Aberto",
+    "assigned": "Atribuído",
+    "in_progress": "Em Curso",
+    "waiting_user": "A aguardar utilizador",
+    "resolved": "Resolvido",
+    "closed": "Fechado",
+}
+_PRIORITY_PT: dict[str, str] = {
+    "low": "Baixa",
+    "medium": "Média",
+    "high": "Alta",
+    "urgent": "Urgente",
+}
+
+
 async def send_suggestion_notification(recipients: list[str], suggestion_data: dict) -> None:
     if not settings.mail_server or not recipients:
         return
@@ -57,6 +73,10 @@ async def send_ticket_notification(to_email: str, event: str, ticket_data: dict)
     ticket_data = dict(ticket_data)
     if ticket_data.get("id") and not ticket_data.get("ticket_url"):
         ticket_data["ticket_url"] = build_ticket_url(ticket_data["id"])
+    if "status" in ticket_data:
+        ticket_data["status"] = _STATUS_PT.get(str(ticket_data["status"]), str(ticket_data["status"]))
+    if "priority" in ticket_data:
+        ticket_data["priority"] = _PRIORITY_PT.get(str(ticket_data["priority"]), str(ticket_data["priority"]))
 
     try:
         template = jinja_env.get_template(f"ticket_{event}.html")

@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.51'
+export const APP_VERSION = '1.7.52'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '09:11'
+export const APP_VERSION_TIME = '09:26'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.52',
+    date: '2026-05-14',
+    time: '09:26',
+    title: 'Estados e prioridades traduzidos nos emails',
+    changes: [
+      'Os emails de atualização de ticket passam a mostrar o estado e a prioridade em português: Aberto, Em Curso, A aguardar utilizador, Resolvido, Fechado; Baixa, Média, Alta, Urgente.',
+    ],
+  },
   {
     version: '1.7.51',
     date: '2026-05-14',
