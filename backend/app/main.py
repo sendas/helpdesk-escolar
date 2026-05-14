@@ -35,6 +35,16 @@ async def _add_missing_columns(conn) -> None:
     # 3. Close all tickets that are in 'resolved' status (resolved → closed rule)
     await conn.execute(text("UPDATE tickets SET status = 'closed' WHERE status = 'resolved'"))
 
+    # 4. Close tickets where the "Resolvido ✓" quick reply was used but status was never updated
+    await conn.execute(text("""
+        UPDATE tickets SET status = 'closed'
+        WHERE status NOT IN ('closed')
+        AND id IN (
+            SELECT DISTINCT ticket_id FROM comments
+            WHERE body = 'A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.'
+        )
+    """))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

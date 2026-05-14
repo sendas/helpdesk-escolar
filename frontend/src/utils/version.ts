@@ -1,8 +1,15 @@
-export const APP_VERSION = '1.7.59'
+export const APP_VERSION = '1.7.60'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '22:53'
+export const APP_VERSION_TIME = '23:05'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.60',
+    date: '2026-05-14',
+    time: '23:05',
+    title: 'Migração retroativa: tickets com "Resolvido ✓" fechados',
+    changes: ['Tickets onde a resposta "Resolvido ✓" foi usada anteriormente são agora fechados automaticamente na próxima reinicialização'],
+  },
   {
     version: '1.7.59',
     date: '2026-05-14',
