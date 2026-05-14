@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.56'
+export const APP_VERSION = '1.7.57'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '11:27'
+export const APP_VERSION_TIME = '13:14'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.57',
+    date: '2026-05-14',
+    time: '13:14',
+    title: 'Direitos de autor e propriedade intelectual',
+    changes: [
+      'Adicionada secção "Direitos de autor" na página Sobre com a declaração de propriedade exclusiva e proibição de utilização não autorizada.',
+      'Criado ficheiro LICENSE no repositório GitHub com aviso completo em português e inglês.',
+    ],
+  },
   {
     version: '1.7.56',
     date: '2026-05-14',

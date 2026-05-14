@@ -1,5 +1,10 @@
 # Helpdesk Escolar
 
+> **⚠️ Direitos de autor / Copyright**
+> Este software é propriedade exclusiva de **Pedro Sendas de Moura Pereira**.
+> A sua utilização, reprodução ou distribuição sem autorização escrita prévia é expressamente proibida.
+> Consulte o ficheiro [LICENSE](LICENSE) para mais informações.
+
 Sistema de helpdesk para professores com autenticação via Active Directory (LDAP/LDAPS + Azure AD / Entra ID).
 
 ## Stack
@@ -84,3 +89,11 @@ scp /mnt/cache/appdata/helpdesk/data/tickets.db user@servidor:/opt/helpdesk/data
 2. Alterar `DATABASE_URL` para `postgresql+asyncpg://user:pass@host/db`
 3. Adicionar serviço `postgres` no `docker-compose.yml`
 4. Zero alterações nos modelos
+
+---
+
+## Direitos de autor
+
+Copyright © 2026 Pedro Sendas de Moura Pereira — Todos os direitos reservados.
+
+Este software é propriedade exclusiva do autor. A sua utilização, reprodução, distribuição ou modificação, no todo ou em parte, sem autorização escrita prévia, é expressamente proibida. Consulte o ficheiro [LICENSE](LICENSE).

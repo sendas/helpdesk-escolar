@@ -103,6 +103,28 @@
       </div>
     </div>
 
+    <!-- Direitos de autor -->
+    <div class="hd-card about-card" style="padding:28px;max-width:720px;margin-bottom:24px">
+      <div class="about-section-title">
+        <span class="material-icons" style="font-size:20px;color:#3D52D5">gavel</span>
+        Direitos de autor e propriedade intelectual
+      </div>
+      <p style="font-size:14px;line-height:1.7;margin:0 0 12px">
+        O <strong>Helpdesk Escolar</strong> é propriedade exclusiva de
+        <strong>Pedro Sendas de Moura Pereira</strong>, docente do Grupo 550 — Informática
+        do Agrupamento de Escolas Eça de Queirós.
+      </p>
+      <p style="font-size:14px;line-height:1.7;margin:0">
+        A utilização, reprodução, distribuição, modificação ou qualquer outra forma de
+        exploração deste software — no todo ou em parte — sem autorização escrita prévia
+        do titular dos direitos de autor, é expressamente proibida.
+      </p>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:16px;padding:12px 16px;background:var(--c-bg-alt,rgba(61,82,213,.06));border-radius:8px">
+        <span class="material-icons" style="font-size:18px;color:#3D52D5;flex-shrink:0">copyright</span>
+        <span style="font-size:13px;font-weight:600;color:var(--c-text)">© 2026 Pedro Sendas de Moura Pereira — Todos os direitos reservados.</span>
+      </div>
+    </div>
+
     <!-- Rodapé -->
     <div style="max-width:720px;text-align:center;font-size:12px;color:var(--c-muted);padding:8px 0 32px">
       Helpdesk Escolar · maio de 2026 · desenvolvido com ❤ para o agrupamento
