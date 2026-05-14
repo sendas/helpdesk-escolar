@@ -32,13 +32,12 @@ async def _add_missing_columns(conn) -> None:
         ) AND is_escalated = 0
     """))
 
-    # 3. Reopen tickets closed by erroneous migration scripts (no matching ticket_event)
+    # 3. Reopen tickets that were closed by erroneous migration (closed with no comments)
     await conn.execute(text("""
         UPDATE tickets SET status = 'open'
         WHERE status = 'closed'
         AND id NOT IN (
-            SELECT ticket_id FROM ticket_events
-            WHERE event_type = 'status_changed' AND new_value = 'closed'
+            SELECT DISTINCT ticket_id FROM comments WHERE deleted_at IS NULL
         )
     """))
 
