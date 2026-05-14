@@ -131,7 +131,14 @@
           <div class="hd-card" style="padding:20px">
             <div style="font-weight:600;font-size:14px;margin-bottom:12px">Responder</div>
             <div v-if="auth.isStaff" class="quick-replies">
-              <button v-for="reply in quickReplies" :key="reply.label" class="quick-reply" type="button" @click="newComment = reply.body">
+              <button
+                v-for="reply in quickReplies"
+                :key="reply.label"
+                class="quick-reply"
+                :class="{ 'quick-reply-active': reply.autoClose && autoCloseOnSend }"
+                type="button"
+                @click="newComment = reply.body; autoCloseOnSend = !!reply.autoClose"
+              >
                 {{ reply.label }}
               </button>
             </div>
@@ -415,6 +422,7 @@ const addingWatcher = ref(false)
 let watcherSearchTimer: ReturnType<typeof setTimeout> | null = null
 const attachBlobUrls = ref<Record<number, string>>({})
 const lightboxSrc = ref<string | null>(null)
+const autoCloseOnSend = ref(false)
 const editingContent = ref(false)
 const editTitle = ref('')
 const editDescription = ref('')
@@ -503,7 +511,7 @@ const statusOrder = ['open', 'assigned', 'in_progress', 'waiting_user', 'resolve
 const quickReplies = [
   { label: 'Pedido recebido', body: 'O pedido foi recebido e está em análise. Daremos feedback assim que possível.' },
   { label: 'Preciso de mais dados', body: 'Para conseguirmos avançar, pode indicar mais detalhes sobre o problema e, se possível, anexar uma captura de ecrã?' },
-  { label: 'Resolvido', body: 'A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.' },
+  { label: 'Resolvido ✓', body: 'A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.', autoClose: true },
 ]
 
 function isStatusDone(status: string) {
@@ -615,10 +623,15 @@ async function onAddComment() {
   if (!newComment.value.trim()) return
   commenting.value = true
   commentError.value = ''
+  const shouldClose = autoCloseOnSend.value && auth.isStaff
+  autoCloseOnSend.value = false
   try {
     await addComment(ticket.value.id, newComment.value, isInternal.value)
     newComment.value = ''
     isInternal.value = false
+    if (shouldClose && ticket.value.status !== 'closed') {
+      await adminUpdateTicket(ticket.value.id, { status: 'closed' })
+    }
     await load()
   } catch {
     commentError.value = 'Erro ao enviar resposta'
@@ -876,6 +889,18 @@ function formatSize(size: number) {
 .quick-reply:hover {
   border-color: var(--c-primary);
   color: var(--c-primary);
+}
+
+.quick-reply-active {
+  background: #22C55E;
+  border-color: #16A34A;
+  color: #fff;
+}
+
+.quick-reply-active:hover {
+  background: #16A34A;
+  border-color: #15803D;
+  color: #fff;
 }
 
 .watcher-list {

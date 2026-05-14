@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.57'
+export const APP_VERSION = '1.7.58'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '13:14'
+export const APP_VERSION_TIME = '22:48'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.58',
+    date: '2026-05-14',
+    time: '22:48',
+    title: 'Resposta "Resolvido ✓" fecha o ticket automaticamente',
+    changes: [
+      'Quando um técnico ou administrador usa o botão "Resolvido ✓" para responder, o ticket é automaticamente fechado ao enviar.',
+      'O botão fica verde quando selecionado para indicar que o ticket será fechado com o envio.',
+      'Todos os tickets que já estavam em estado "Resolvido" foram automaticamente fechados no arranque.',
+    ],
+  },
   {
     version: '1.7.57',
     date: '2026-05-14',
