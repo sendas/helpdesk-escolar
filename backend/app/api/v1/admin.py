@@ -724,27 +724,39 @@ async def test_mail(current_admin: User = Depends(require_admin)):
 async def fix_resolved_tickets(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
     """Close tickets where the 'Resolvido ✓' quick reply was used but status was never changed."""
     from sqlalchemy import text
-    # Fetch sample comments from open tickets so we can diagnose text mismatches
-    sample_r = await db.execute(text("""
-        SELECT c.ticket_id, t.status, substr(c.body, 1, 100) AS snippet
-        FROM comments c JOIN tickets t ON t.id = c.ticket_id
-        WHERE t.status != 'closed' AND c.deleted_at IS NULL
-        LIMIT 15
-    """))
-    samples = [{"id": r[0], "status": r[1], "text": r[2]} for r in sample_r.fetchall()]
-
-    # Close ALL open tickets that have any comment (remove text filter for now)
+    # Only close tickets whose LAST comment matches the quick reply text exactly
     result = await db.execute(text("""
         SELECT DISTINCT c.ticket_id FROM comments c
         JOIN tickets t ON t.id = c.ticket_id
-        WHERE t.status != 'closed' AND c.deleted_at IS NULL
-        AND (
-            c.body LIKE '%resolvida%'
-            OR c.body LIKE '%resolvido%'
-        )
+        WHERE t.status != 'closed'
+        AND c.deleted_at IS NULL
+        AND c.body = 'A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.'
     """))
     ticket_ids = [row[0] for row in result.fetchall()]
     if ticket_ids:
         await db.execute(text(f"UPDATE tickets SET status = 'closed' WHERE id IN ({','.join(str(i) for i in ticket_ids)}) AND status != 'closed'"))
         await db.commit()
-    return {"fixed": len(ticket_ids), "ticket_ids": ticket_ids, "samples": samples}
+    return {"fixed": len(ticket_ids), "ticket_ids": ticket_ids}
+
+
+@router.post("/reopen-wrongly-closed")
+async def reopen_wrongly_closed(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    """Reopen tickets that were closed by the fix script but have no 'closed' event in ticket_events."""
+    from sqlalchemy import text
+    result = await db.execute(text("""
+        SELECT id FROM tickets
+        WHERE status = 'closed'
+        AND id NOT IN (
+            SELECT ticket_id FROM ticket_events WHERE event_type = 'status_changed' AND new_value = 'closed'
+        )
+        AND id NOT IN (
+            SELECT DISTINCT c.ticket_id FROM comments c
+            WHERE c.body = 'A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.'
+            AND c.deleted_at IS NULL
+        )
+    """))
+    ticket_ids = [row[0] for row in result.fetchall()]
+    if ticket_ids:
+        await db.execute(text(f"UPDATE tickets SET status = 'open' WHERE id IN ({','.join(str(i) for i in ticket_ids)})"))
+        await db.commit()
+    return {"reopened": len(ticket_ids), "ticket_ids": ticket_ids}

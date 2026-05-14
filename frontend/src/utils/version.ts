@@ -1,8 +1,15 @@
-export const APP_VERSION = '1.7.63'
+export const APP_VERSION = '1.7.64'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '23:26'
+export const APP_VERSION_TIME = '23:33'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.64',
+    date: '2026-05-14',
+    time: '23:33',
+    title: 'Botão de reversão de tickets fechados incorretamente',
+    changes: ['Configurações → Manutenção: botão vermelho "Reverter tickets fechados" reabre tickets fechados por engano pelo script de manutenção'],
+  },
   {
     version: '1.7.63',
     date: '2026-05-14',

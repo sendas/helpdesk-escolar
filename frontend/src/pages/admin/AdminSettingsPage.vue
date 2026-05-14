@@ -494,6 +494,22 @@
           {{ fixingTickets ? 'A processar…' : 'Executar correção' }}
         </button>
       </div>
+
+      <div style="border:1px solid #FCA5A5;border-radius:10px;padding:20px;background:#FFF5F5">
+        <div style="font-weight:600;font-size:14px;margin-bottom:6px;color:#B91C1C">Reverter tickets fechados incorretamente</div>
+        <p style="font-size:13px;color:var(--c-muted);margin:0 0 14px">
+          Reabre tickets que foram fechados por engano pelo botão acima (sem evento de fecho registado).
+        </p>
+        <div v-if="reopenResult" style="margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px"
+          :style="reopenResult.error ? 'background:#FEF2F2;color:#B91C1C' : 'background:#F0FDF4;color:#15803D'">
+          {{ reopenResult.error || `${reopenResult.reopened} ticket(s) reaberto(s).` }}
+          <span v-if="reopenResult.ticket_ids?.length"> (IDs: {{ reopenResult.ticket_ids.join(', ') }})</span>
+        </div>
+        <button class="hd-btn" style="background:#EF4444;color:#fff;border:none" :disabled="reopeningTickets" @click="reopenWronglyClosed">
+          <span class="material-icons" style="font-size:15px">undo</span>
+          {{ reopeningTickets ? 'A processar…' : 'Reverter tickets fechados' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -740,6 +756,21 @@ async function fixResolvedTickets() {
     fixResult.value = { error: 'Erro: ' + (e?.response?.data?.detail || e.message) }
   } finally {
     fixingTickets.value = false
+  }
+}
+
+const reopeningTickets = ref(false)
+const reopenResult = ref<{ reopened?: number; ticket_ids?: number[]; error?: string } | null>(null)
+async function reopenWronglyClosed() {
+  reopeningTickets.value = true
+  reopenResult.value = null
+  try {
+    const { data } = await api.post('/api/v1/admin/reopen-wrongly-closed')
+    reopenResult.value = data
+  } catch (e: any) {
+    reopenResult.value = { error: 'Erro: ' + (e?.response?.data?.detail || e.message) }
+  } finally {
+    reopeningTickets.value = false
   }
 }
 </script>
