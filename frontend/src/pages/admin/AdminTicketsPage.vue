@@ -120,7 +120,10 @@
                 </td>
                 <td><PriorityBadge :priority="t.priority" /></td>
                 <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
-                <td><StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></td>
+                <td style="white-space:nowrap">
+                  <StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" />
+                  <span v-if="t.is_escalated" class="hd-status escalated" style="margin-top:4px;display:inline-block">Fornecedor</span>
+                </td>
                 <td>
                   <AssigneeSelect :value="primaryAssigneeId(t)" :users="staffUsers" @change="changeAssignee(t, $event)" />
                   <small v-if="assigneeSummary(t)" class="assignee-summary">{{ assigneeSummary(t) }}</small>

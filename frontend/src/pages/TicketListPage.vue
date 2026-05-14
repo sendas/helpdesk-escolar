@@ -30,7 +30,10 @@
           <tr v-for="t in tickets" :key="t.id" @click="$router.push(`/tickets/${t.id}`)">
             <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
             <td style="font-weight:500">{{ t.title }}</td>
-            <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
+            <td style="white-space:nowrap">
+              <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
+              <span v-if="t.is_escalated" class="hd-status escalated" style="margin-left:4px">Fornecedor</span>
+            </td>
             <td><PriorityBadge :priority="t.priority" /></td>
             <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
             <td>

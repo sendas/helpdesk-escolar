@@ -102,6 +102,7 @@ class TicketRead(BaseModel):
     updated_at: datetime
     archived_at: datetime | None = None
     creator_email_notifications: bool = True
+    is_escalated: bool = False
     creator: UserRead
     assignee: UserRead | None = None
     assignees: list[UserRead] = []
@@ -125,6 +126,7 @@ class TicketListItem(BaseModel):
     updated_at: datetime
     archived_at: datetime | None = None
     creator_email_notifications: bool = True
+    is_escalated: bool = False
     creator: UserRead
     assignee: UserRead | None = None
     assignees: list[UserRead] = []

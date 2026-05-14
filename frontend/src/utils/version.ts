@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.52'
+export const APP_VERSION = '1.7.53'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '09:26'
+export const APP_VERSION_TIME = '11:09'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.53',
+    date: '2026-05-14',
+    time: '11:09',
+    title: 'Indicador "Fornecedor" nas listas de tickets',
+    changes: [
+      'Nas listas "Os meus tickets" e "Gestão de tickets", os tickets escalados para o fornecedor externo passam a mostrar uma etiqueta laranja "Fornecedor" ao lado do estado.',
+      'A etiqueta desaparece automaticamente quando o técnico regista que o fornecedor resolveu o problema.',
+    ],
+  },
   {
     version: '1.7.52',
     date: '2026-05-14',

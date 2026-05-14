@@ -141,6 +141,7 @@ async def create_ticket(
                     "escalated_by": current_user.display_name,
                 },
             )
+            ticket.is_escalated = True
             db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated", message=f"Ticket escalado para {provider_name} ({provider_email}) na criação"))
             await db.commit()
 
@@ -319,6 +320,7 @@ async def escalate_ticket(
             "escalated_by": current_user.display_name,
         },
     )
+    ticket.is_escalated = True
     db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated", message=f"Ticket escalado para {provider_name} ({provider_email})"))
     await db.commit()
     return await ticket_service.get_ticket(db, ticket_id)
@@ -339,6 +341,7 @@ async def deescalate_ticket(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket não está escalado")
     app_settings = _read_settings()
     provider_name = (app_settings.get("support_provider_name") or "Fornecedor externo").strip()
+    ticket.is_escalated = False
     db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="deescalated", message=f"Ticket resolvido pelo fornecedor ({provider_name})"))
     await db.commit()
     return await ticket_service.get_ticket(db, ticket_id)
