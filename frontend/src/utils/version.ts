@@ -1,16 +1,16 @@
-export const APP_VERSION = '1.7.54'
+export const APP_VERSION = '1.7.55'
 export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '11:20'
+export const APP_VERSION_TIME = '11:23'
 
 export const RELEASE_NOTES = [
   {
-    version: '1.7.54',
+    version: '1.7.55',
     date: '2026-05-14',
-    time: '11:20',
-    title: 'Correção urgente: migração automática da base de dados',
+    time: '11:23',
+    title: 'Correção: etiqueta Fornecedor em tickets já escalados',
     changes: [
-      'Corrigido: tickets desapareciam após a versão 1.7.53 porque a nova coluna is_escalated não era adicionada à base de dados existente.',
-      'O arranque da aplicação passa a verificar e adicionar automaticamente colunas em falta sem perder dados.',
+      'Corrigido: tickets que já tinham sido escalados antes desta versão não mostravam a etiqueta "Fornecedor" nas listas.',
+      'O arranque passa a corrigir automaticamente o estado dos tickets existentes com base no histórico de eventos.',
     ],
   },
   {

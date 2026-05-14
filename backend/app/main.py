@@ -13,16 +13,24 @@ from app.api.v1.router import router
 
 
 async def _add_missing_columns(conn) -> None:
-    """Add columns introduced after initial schema creation (SQLite-safe ALTER TABLE)."""
+    """Add columns and backfill data introduced after initial schema creation."""
     from sqlalchemy import text
-    migrations = [
-        ("tickets", "is_escalated", "BOOLEAN NOT NULL DEFAULT 0"),
-    ]
-    for table, column, definition in migrations:
-        rows = await conn.execute(text(f"PRAGMA table_info({table})"))
-        existing = {row[1] for row in rows}
-        if column not in existing:
-            await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}"))
+
+    # 1. Add is_escalated if missing
+    rows = await conn.execute(text("PRAGMA table_info(tickets)"))
+    existing = {row[1] for row in rows}
+    if "is_escalated" not in existing:
+        await conn.execute(text("ALTER TABLE tickets ADD COLUMN is_escalated BOOLEAN NOT NULL DEFAULT 0"))
+
+    # 2. Backfill: mark tickets that have an 'escalated' event with no later 'deescalated' event
+    await conn.execute(text("""
+        UPDATE tickets SET is_escalated = 1
+        WHERE id IN (
+            SELECT ticket_id FROM ticket_events WHERE event_type = 'escalated'
+        ) AND id NOT IN (
+            SELECT ticket_id FROM ticket_events WHERE event_type = 'deescalated'
+        ) AND is_escalated = 0
+    """))
 
 
 @asynccontextmanager
