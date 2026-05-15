@@ -1,4 +1,5 @@
 from datetime import datetime
+import random
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -191,8 +192,14 @@ async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) ->
         changes.append("Responsáveis atualizados")
     if "group_id" in data.model_fields_set:
         ticket.group_id = data.group_id
-        if data.group_id is not None and ticket.status == TicketStatus.OPEN:
-            ticket.status = TicketStatus.ASSIGNED
+        if data.group_id is not None:
+            if ticket.status == TicketStatus.OPEN:
+                ticket.status = TicketStatus.ASSIGNED
+            group = await db.get(HelpdeskGroup, data.group_id, options=[selectinload(HelpdeskGroup.members)])
+            if group and group.members and ticket.assignee_id is None:
+                chosen = random.choice(group.members)
+                ticket.assignee_id = chosen.id
+                changes.append(f"Responsável atribuído aleatoriamente: {chosen.display_name}")
         changes.append("Grupo interno atualizado")
     if data.priority is not None:
         ticket.priority = data.priority

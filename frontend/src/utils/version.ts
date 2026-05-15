@@ -1,14 +1,17 @@
-export const APP_VERSION = '1.7.64'
-export const APP_VERSION_DATE = '2026-05-14'
-export const APP_VERSION_TIME = '23:33'
+export const APP_VERSION = '1.7.65'
+export const APP_VERSION_DATE = '2026-05-15'
+export const APP_VERSION_TIME = '12:43'
 
 export const RELEASE_NOTES = [
   {
-    version: '1.7.64',
-    date: '2026-05-14',
-    time: '23:33',
-    title: 'Botão de reversão de tickets fechados incorretamente',
-    changes: ['Configurações → Manutenção: botão vermelho "Reverter tickets fechados" reabre tickets fechados por engano pelo script de manutenção'],
+    version: '1.7.65',
+    date: '2026-05-15',
+    time: '12:43',
+    title: 'Atribuição aleatória de responsável ao escolher grupo',
+    changes: [
+      'Ao atribuir um grupo a um ticket, um membro é automaticamente escolhido de forma aleatória como responsável',
+      'Removido separador de Manutenção das Configurações',
+    ],
   },
   {
     version: '1.7.63',
