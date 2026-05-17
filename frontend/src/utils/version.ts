@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.67'
+export const APP_VERSION = '1.7.68'
 export const APP_VERSION_DATE = '2026-05-17'
-export const APP_VERSION_TIME = '17:40'
+export const APP_VERSION_TIME = '18:34'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.68',
+    date: '2026-05-17',
+    time: '18:34',
+    title: 'Link "Categorias" no menu lateral de administração',
+    changes: [
+      'Adicionado item "Categorias" no menu lateral de administração — permite aceder diretamente à página de gestão de categorias (ícones, cores, avisos).',
+    ],
+  },
   {
     version: '1.7.67',
     date: '2026-05-17',

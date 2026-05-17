@@ -66,6 +66,9 @@
             <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/suggestions' }" to="/admin/suggestions" @click="mobileMenuOpen = false">
               <span class="material-icons">lightbulb</span> Sugestões
             </router-link>
+            <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/categories' }" to="/admin/categories" @click="mobileMenuOpen = false">
+              <span class="material-icons">category</span> Categorias
+            </router-link>
             <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/settings' }" to="/admin/settings" @click="mobileMenuOpen = false">
               <span class="material-icons">settings</span> Configurações
             </router-link>
@@ -264,6 +267,7 @@ const titleMap: Record<string, string> = {
   '/admin/users': 'Utilizadores e permissões',
   '/admin/stats': 'Estatísticas',
   '/admin/suggestions': 'Sugestões recebidas',
+  '/admin/categories': 'Categorias',
   '/admin/settings': 'Configurações',
   '/admin/backup': 'Backup & Restauro',
 }
