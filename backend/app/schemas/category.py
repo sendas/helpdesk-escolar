@@ -8,6 +8,8 @@ class CategoryCreate(BaseModel):
     color: str = "#1976D2"
     icon: str = "help_outline"
     sla_hours: int = 48
+    warning_enabled: bool = False
+    warning_text: str | None = None
 
 
 class CategoryUpdate(BaseModel):
@@ -17,6 +19,8 @@ class CategoryUpdate(BaseModel):
     color: str | None = None
     icon: str | None = None
     sla_hours: int | None = None
+    warning_enabled: bool | None = None
+    warning_text: str | None = None
 
 
 class CategoryRead(BaseModel):
@@ -29,3 +33,5 @@ class CategoryRead(BaseModel):
     color: str
     icon: str
     sla_hours: int
+    warning_enabled: bool = False
+    warning_text: str | None = None

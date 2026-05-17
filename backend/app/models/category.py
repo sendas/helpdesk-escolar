@@ -1,4 +1,4 @@
-from sqlalchemy import String, Text, Integer
+from sqlalchemy import Boolean, String, Text, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -13,5 +13,7 @@ class Category(Base):
     color: Mapped[str] = mapped_column(String(20), default="#1976D2")
     icon: Mapped[str] = mapped_column(String(50), default="help_outline")
     sla_hours: Mapped[int] = mapped_column(Integer, default=48)
+    warning_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    warning_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     tickets: Mapped[list["Ticket"]] = relationship("Ticket", back_populates="category")

@@ -8,6 +8,8 @@ export interface PublicSettings {
   support_provider_email: string
   azure_allowed_onprem_ous?: string[]
   knowledge_enabled: boolean
+  category_warnings_enabled: boolean
+  suggestion_emails?: string[]
 }
 
 export interface AzureSyncSettings {
@@ -39,7 +41,7 @@ export async function updateAzureSyncSettings(payload: AzureSyncSettings) {
   return data
 }
 
-export async function updateFeatureSettings(payload: { knowledge_enabled: boolean }) {
-  const { data } = await api.put<{ knowledge_enabled: boolean }>('/api/v1/settings/features', payload)
+export async function updateFeatureSettings(payload: { knowledge_enabled: boolean; category_warnings_enabled?: boolean }) {
+  const { data } = await api.put<{ knowledge_enabled: boolean; category_warnings_enabled: boolean }>('/api/v1/settings/features', payload)
   return data
 }

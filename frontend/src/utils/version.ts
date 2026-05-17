@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.65'
-export const APP_VERSION_DATE = '2026-05-15'
-export const APP_VERSION_TIME = '12:43'
+export const APP_VERSION = '1.7.66'
+export const APP_VERSION_DATE = '2026-05-17'
+export const APP_VERSION_TIME = '15:56'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.66',
+    date: '2026-05-17',
+    time: '15:56',
+    title: 'Ícones coloridos, avisos de categoria e anexos nas respostas',
+    changes: [
+      'Categorias com ícone colorido configurável — a cor e o ícone (Material Icons) são agora editáveis em Administração → Categorias.',
+      'Aviso ao selecionar categoria: cada categoria pode ter um texto de aviso configurável que aparece numa janela "Atenção" ao criar um ticket.',
+      'Ativar/desativar avisos de categoria globalmente em Configurações → Geral.',
+      'Novo botão "Anexar" na caixa de resposta de um ticket — permite juntar imagens ou ficheiros às respostas, tal como na criação de tickets.',
+    ],
+  },
   {
     version: '1.7.65',
     date: '2026-05-15',

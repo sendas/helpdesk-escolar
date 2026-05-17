@@ -148,19 +148,46 @@
               rows="4"
               placeholder="Escreva a sua resposta..."
             ></textarea>
+            <!-- Hidden file input -->
+            <input
+              ref="commentFileInput"
+              type="file"
+              style="display:none"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+              @change="commentFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
+            />
+            <!-- Selected file preview -->
+            <div v-if="commentFile" class="reply-file-preview">
+              <span class="material-icons" style="font-size:15px;color:var(--c-primary)">attach_file</span>
+              <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ commentFile.name }}</span>
+              <button type="button" class="hd-icon-btn" style="padding:2px" title="Remover" @click="commentFile = null; if (commentFileInput) commentFileInput.value = ''">
+                <span class="material-icons" style="font-size:14px">close</span>
+              </button>
+            </div>
             <div class="hd-row" style="justify-content:space-between;margin-top:12px">
-              <label v-if="auth.isStaff" class="hd-row" style="gap:8px;cursor:pointer;font-size:13px;color:var(--c-muted)">
-                <div class="hd-toggle-wrap" @click="isInternal = !isInternal">
-                  <div class="hd-toggle-track" :class="{ on: isInternal }">
-                    <div class="hd-toggle-thumb"></div>
+              <div class="hd-row" style="gap:8px">
+                <label v-if="auth.isStaff" class="hd-row" style="gap:8px;cursor:pointer;font-size:13px;color:var(--c-muted)">
+                  <div class="hd-toggle-wrap" @click="isInternal = !isInternal">
+                    <div class="hd-toggle-track" :class="{ on: isInternal }">
+                      <div class="hd-toggle-thumb"></div>
+                    </div>
                   </div>
-                </div>
-                Nota interna
-              </label>
-              <div v-else></div>
+                  Nota interna
+                </label>
+                <button
+                  type="button"
+                  class="hd-btn hd-btn-outline"
+                  style="font-size:12px;padding:5px 10px"
+                  title="Anexar ficheiro"
+                  @click="commentFileInput?.click()"
+                >
+                  <span class="material-icons" style="font-size:15px">attach_file</span>
+                  Anexar
+                </button>
+              </div>
               <button
                 class="hd-btn hd-btn-primary"
-                :disabled="!newComment.trim() || commenting"
+                :disabled="(!newComment.trim() && !commentFile) || commenting"
                 @click="onAddComment"
               >
                 <span class="material-icons" style="font-size:16px">send</span>
@@ -389,7 +416,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob } from '../api/tickets'
+import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, getUsers, searchUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -423,6 +450,8 @@ let watcherSearchTimer: ReturnType<typeof setTimeout> | null = null
 const attachBlobUrls = ref<Record<number, string>>({})
 const lightboxSrc = ref<string | null>(null)
 const autoCloseOnSend = ref(false)
+const commentFile = ref<File | null>(null)
+const commentFileInput = ref<HTMLInputElement | null>(null)
 const editingContent = ref(false)
 const editTitle = ref('')
 const editDescription = ref('')
@@ -620,15 +649,20 @@ async function saveContent() {
 }
 
 async function onAddComment() {
-  if (!newComment.value.trim()) return
+  if (!newComment.value.trim() && !commentFile.value) return
   commenting.value = true
   commentError.value = ''
   const shouldClose = autoCloseOnSend.value && auth.isStaff
   autoCloseOnSend.value = false
   try {
-    await addComment(ticket.value.id, newComment.value, isInternal.value)
+    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value)
     newComment.value = ''
     isInternal.value = false
+    if (commentFile.value) {
+      await uploadTicketAttachment(ticket.value.id, commentFile.value)
+      commentFile.value = null
+      if (commentFileInput.value) commentFileInput.value.value = ''
+    }
     if (shouldClose && ticket.value.status !== 'closed') {
       await adminUpdateTicket(ticket.value.id, { status: 'closed' })
     }
@@ -901,6 +935,18 @@ function formatSize(size: number) {
   background: #16A34A;
   border-color: #15803D;
   color: #fff;
+}
+
+.reply-file-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  min-width: 0;
 }
 
 .watcher-list {

@@ -22,7 +22,15 @@ async def _add_missing_columns(conn) -> None:
     if "is_escalated" not in existing:
         await conn.execute(text("ALTER TABLE tickets ADD COLUMN is_escalated BOOLEAN NOT NULL DEFAULT 0"))
 
-    # 2. Backfill: mark tickets that have an 'escalated' event with no later 'deescalated' event
+    # 2. Add category warning columns if missing
+    rows_cat = await conn.execute(text("PRAGMA table_info(categories)"))
+    existing_cat = {row[1] for row in rows_cat}
+    if "warning_enabled" not in existing_cat:
+        await conn.execute(text("ALTER TABLE categories ADD COLUMN warning_enabled BOOLEAN NOT NULL DEFAULT 0"))
+    if "warning_text" not in existing_cat:
+        await conn.execute(text("ALTER TABLE categories ADD COLUMN warning_text TEXT"))
+
+    # 3. Backfill: mark tickets that have an 'escalated' event with no later 'deescalated' event
     await conn.execute(text("""
         UPDATE tickets SET is_escalated = 1
         WHERE id IN (

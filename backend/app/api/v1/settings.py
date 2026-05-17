@@ -23,6 +23,7 @@ DEFAULT_SETTINGS = {
     "azure_allowed_onprem_ous": [],
     "knowledge_enabled": True,
     "suggestion_emails": [],
+    "category_warnings_enabled": True,
 }
 
 
@@ -32,6 +33,7 @@ class AzureSyncSettings(BaseModel):
 
 class FeatureSettings(BaseModel):
     knowledge_enabled: bool = True
+    category_warnings_enabled: bool = True
 
 
 class SuggestionEmailSettings(BaseModel):
@@ -92,8 +94,9 @@ async def update_azure_sync_settings(payload: AzureSyncSettings, _: User = Depen
 async def update_feature_settings(payload: FeatureSettings, _: User = Depends(require_admin)):
     data = _read_settings()
     data["knowledge_enabled"] = payload.knowledge_enabled
+    data["category_warnings_enabled"] = payload.category_warnings_enabled
     _write_settings(data)
-    return {"knowledge_enabled": data["knowledge_enabled"]}
+    return {"knowledge_enabled": data["knowledge_enabled"], "category_warnings_enabled": data["category_warnings_enabled"]}
 
 
 @router.put("/suggestion-emails")

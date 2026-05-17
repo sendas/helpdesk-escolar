@@ -44,7 +44,7 @@
             :key="cat.id"
             class="hd-sel-card"
             :class="{ selected: form.category_id === cat.id }"
-            @click="form.category_id = cat.id"
+            @click="selectCategory(cat)"
             style="flex-direction:column;align-items:flex-start;gap:8px"
           >
             <div class="hd-sel-icon" :style="{ background: cat.color + '22' }">
@@ -58,6 +58,23 @@
         </div>
         <p v-if="!categories.length" class="hd-hint">Ainda não existem categorias configuradas.</p>
       </div>
+
+      <!-- Category warning popup -->
+      <teleport to="body">
+        <div v-if="warningPopup" class="cat-warning-backdrop" @click.self="warningPopup = null">
+          <div class="cat-warning-modal">
+            <div class="cat-warning-header">
+              <span class="material-icons" style="color:#F59E0B;font-size:22px">warning</span>
+              <span style="font-weight:700;font-size:16px">Atenção</span>
+            </div>
+            <p style="font-size:14px;line-height:1.65;color:var(--c-text);white-space:pre-wrap">{{ warningPopup.text }}</p>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+              <button class="hd-btn hd-btn-outline" @click="warningPopup = null; form.category_id = null">Escolher outra</button>
+              <button class="hd-btn hd-btn-primary" @click="warningPopup = null">Compreendi</button>
+            </div>
+          </div>
+        </div>
+      </teleport>
 
       <!-- Title -->
       <div class="hd-field" :class="{ 'field-missing': !form.title.trim() }" style="margin-bottom:20px">
@@ -245,6 +262,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { createTicket, getCategories, getSchools, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, searchUsers, type HelpdeskGroup, type UserFull } from '../api/users'
+import { getPublicSettings } from '../api/settings'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -260,6 +278,8 @@ const watcherResults = ref<UserFull[]>([])
 const selectedWatchers = ref<UserFull[]>([])
 const groups = ref<HelpdeskGroup[]>([])
 const selectedGroupIds = ref<number[]>([])
+const warningPopup = ref<{ text: string } | null>(null)
+const categoryWarningsEnabled = ref(true)
 
 const form = ref({
   title: '',
@@ -283,11 +303,23 @@ const missingRequired = computed(() => {
 const canSubmit = computed(() => missingRequired.value.length === 0)
 
 onMounted(async () => {
-  const [cats, schs, grps] = await Promise.all([getCategories(), getSchools(), auth.isAdmin ? getGroups() : Promise.resolve([])])
+  const [cats, schs, grps, settings] = await Promise.all([
+    getCategories(), getSchools(),
+    auth.isAdmin ? getGroups() : Promise.resolve([]),
+    getPublicSettings(),
+  ])
   categories.value = cats
   schools.value = schs
   groups.value = grps as HelpdeskGroup[]
+  categoryWarningsEnabled.value = settings?.category_warnings_enabled !== false
 })
+
+function selectCategory(cat: any) {
+  form.value.category_id = cat.id
+  if (categoryWarningsEnabled.value && cat.warning_enabled && cat.warning_text?.trim()) {
+    warningPopup.value = { text: cat.warning_text.trim() }
+  }
+}
 
 async function onSubmit() {
   if (!canSubmit.value || !form.value.category_id || !form.value.school_id) {
@@ -688,6 +720,25 @@ function formatSize(size: number) {
 .group-pick-card small {
   color: var(--c-muted);
   font-size: 12px;
+}
+
+.cat-warning-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.cat-warning-modal {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  padding: 28px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+.cat-warning-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
 }
 
 @media (max-width: 820px) {

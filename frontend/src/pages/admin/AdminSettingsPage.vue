@@ -59,6 +59,18 @@
         <p class="hd-hint">Tempo até o token JWT expirar e o utilizador ter de iniciar sessão novamente.</p>
       </div>
       <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px">Funcionalidades</div>
+        <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
+          <div>
+            <div style="font-size:13px;font-weight:500">Avisos de categoria</div>
+            <div style="font-size:12px;color:var(--c-muted)">Mostra uma janela de aviso ao selecionar categorias com aviso configurado</div>
+          </div>
+          <div class="hd-toggle-wrap" @click="toggleCategoryWarnings">
+            <div class="hd-toggle" :class="{ active: categoryWarningsEnabled }"></div>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
         <div style="font-weight:600;font-size:14px;margin-bottom:12px">Fornecedor externo de suporte</div>
         <div class="hd-grid-2">
           <div class="hd-field">
@@ -505,6 +517,7 @@ const routingRules = ref<any[]>([])
 const articles = ref<any[]>([])
 const logoFile = ref<File | null>(null)
 const knowledgeEnabled = ref(true)
+const categoryWarningsEnabled = ref(true)
 
 const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Fornecedor externo', support_provider_email: '' })
 const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
@@ -534,6 +547,7 @@ onMounted(async () => {
     general.value.support_provider_name = settings.support_provider_name || 'Fornecedor externo'
     general.value.support_provider_email = settings.support_provider_email || ''
     knowledgeEnabled.value = settings.knowledge_enabled !== false
+    categoryWarningsEnabled.value = settings.category_warnings_enabled !== false
     suggestionEmailsRaw.value = (settings.suggestion_emails || []).join(', ')
     categories.value = cats
     schools.value = schs
@@ -571,8 +585,14 @@ async function saveGeneral() {
 
 async function toggleKnowledge() {
   const next = !knowledgeEnabled.value
-  const saved = await updateFeatureSettings({ knowledge_enabled: next })
+  const saved = await updateFeatureSettings({ knowledge_enabled: next, category_warnings_enabled: categoryWarningsEnabled.value })
   knowledgeEnabled.value = saved.knowledge_enabled
+}
+
+async function toggleCategoryWarnings() {
+  const next = !categoryWarningsEnabled.value
+  const saved = await updateFeatureSettings({ knowledge_enabled: knowledgeEnabled.value, category_warnings_enabled: next })
+  categoryWarningsEnabled.value = saved.category_warnings_enabled
 }
 
 async function testSmtpNow() {
