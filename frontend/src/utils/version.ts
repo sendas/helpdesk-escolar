@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.68'
+export const APP_VERSION = '1.7.69'
 export const APP_VERSION_DATE = '2026-05-17'
-export const APP_VERSION_TIME = '18:34'
+export const APP_VERSION_TIME = '18:40'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.69',
+    date: '2026-05-17',
+    time: '18:40',
+    title: 'Correção: popup de aviso de categoria não aparecia',
+    changes: [
+      'Corrigido: o popup de aviso não aparecia quando o aviso estava ativo mas o texto ainda não tinha sido configurado.',
+      'Ao clicar "Aviso ativo" numa categoria sem texto definido, o diálogo de edição abre automaticamente para configurar o texto.',
+      'Na criação de ticket, se o aviso estiver ativo mas sem texto, mostra uma mensagem genérica em vez de não mostrar nada.',
+    ],
+  },
   {
     version: '1.7.68',
     date: '2026-05-17',

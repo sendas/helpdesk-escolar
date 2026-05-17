@@ -373,6 +373,11 @@ async function onSave() {
 
 async function toggleWarning(cat: CategoryFull) {
   const next = !cat.warning_enabled
+  // Turning on but no text yet — open edit dialog so admin can write the warning
+  if (next && !cat.warning_text?.trim()) {
+    openEdit(cat)
+    return
+  }
   try {
     const updated = (await updateCategory(cat.id, { warning_enabled: next })) as CategoryFull
     const idx = categories.value.findIndex(c => c.id === cat.id)

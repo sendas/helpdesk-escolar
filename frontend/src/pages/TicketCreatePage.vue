@@ -316,8 +316,8 @@ onMounted(async () => {
 
 function selectCategory(cat: any) {
   form.value.category_id = cat.id
-  if (categoryWarningsEnabled.value && cat.warning_enabled && cat.warning_text?.trim()) {
-    warningPopup.value = { text: cat.warning_text.trim() }
+  if (categoryWarningsEnabled.value && cat.warning_enabled) {
+    warningPopup.value = { text: cat.warning_text?.trim() || 'Esta categoria pode requerer informação adicional. Certifique-se de que o seu pedido está correcto antes de submeter.' }
   }
 }
 
