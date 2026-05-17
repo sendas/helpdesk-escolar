@@ -63,10 +63,6 @@
             <span class="material-icons" style="font-size:12px">email</span>
             {{ cat.email_to }}
           </span>
-          <span v-if="cat.warning_enabled" class="warning-pill">
-            <span class="material-icons" style="font-size:12px">warning</span>
-            Aviso ativo
-          </span>
         </div>
 
         <!-- Actions -->
@@ -78,6 +74,16 @@
           >
             <span class="material-icons" style="font-size:14px">edit</span>
             Editar
+          </button>
+          <button
+            class="hd-btn"
+            :class="cat.warning_enabled ? 'hd-btn-warning-on' : 'hd-btn-outline'"
+            style="font-size:12px;padding:5px 12px"
+            :title="cat.warning_enabled ? 'Desativar aviso de categoria' : 'Ativar aviso de categoria'"
+            @click="toggleWarning(cat)"
+          >
+            <span class="material-icons" style="font-size:14px">{{ cat.warning_enabled ? 'warning' : 'warning_amber' }}</span>
+            {{ cat.warning_enabled ? 'Aviso ativo' : 'Aviso inativo' }}
           </button>
           <button class="hd-icon-btn" @click="onDelete(cat)" title="Eliminar categoria">
             <span class="material-icons" style="font-size:16px;color:#EF4444">delete</span>
@@ -365,6 +371,17 @@ async function onSave() {
   }
 }
 
+async function toggleWarning(cat: CategoryFull) {
+  const next = !cat.warning_enabled
+  try {
+    const updated = (await updateCategory(cat.id, { warning_enabled: next })) as CategoryFull
+    const idx = categories.value.findIndex(c => c.id === cat.id)
+    if (idx !== -1) categories.value[idx] = { ...categories.value[idx], ...updated }
+  } catch {
+    Notify.create({ type: 'negative', message: 'Erro ao atualizar aviso' })
+  }
+}
+
 async function onDelete(cat: CategoryFull) {
   if (!window.confirm(`Eliminar a categoria "${cat.name}"? Esta ação não pode ser desfeita.`)) return
   try {
@@ -607,6 +624,21 @@ async function onDelete(cat: CategoryFull) {
 
 .hd-toggle.active::after {
   transform: translateX(18px);
+}
+
+/* ── Warning toggle button on card ── */
+.hd-btn-warning-on {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #B45309;
+}
+
+.dark .hd-btn-warning-on {
+  color: #FCD34D;
+}
+
+.hd-btn-warning-on:hover {
+  background: rgba(245, 158, 11, 0.22);
 }
 
 /* ── Saving spinner ── */

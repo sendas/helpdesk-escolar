@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.66'
+export const APP_VERSION = '1.7.67'
 export const APP_VERSION_DATE = '2026-05-17'
-export const APP_VERSION_TIME = '15:56'
+export const APP_VERSION_TIME = '17:40'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.67',
+    date: '2026-05-17',
+    time: '17:40',
+    title: 'Aviso de categoria ativável diretamente no cartão',
+    changes: [
+      'Cada categoria tem agora um botão "Aviso ativo / Aviso inativo" no próprio cartão — clique para ativar ou desativar o aviso sem entrar no diálogo de edição.',
+    ],
+  },
   {
     version: '1.7.66',
     date: '2026-05-17',
