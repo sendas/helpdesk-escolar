@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.77'
+export const APP_VERSION = '1.7.78'
 export const APP_VERSION_DATE = '2026-05-19'
-export const APP_VERSION_TIME = '00:02'
+export const APP_VERSION_TIME = '00:08'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.78',
+    date: '2026-05-19',
+    time: '00:08',
+    title: 'Correção: página "Sobre" vazia; redesign "Versão / Atualizações"',
+    changes: [
+      'Corrigida a página "Sobre" que aparecia em branco — causado por <q-page> fora de um q-layout Quasar.',
+      'A página "Versão / Atualizações" foi redesenhada com o mesmo estilo: hero banner azul, timeline colorida e botão "Mostrar versões anteriores".',
+    ],
+  },
   {
     version: '1.7.77',
     date: '2026-05-19',

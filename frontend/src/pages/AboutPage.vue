@@ -1,5 +1,5 @@
 <template>
-  <q-page>
+  <div class="hd-page about-page">
     <!-- Hero banner -->
     <div class="hero">
       <div class="hero__icon-wrap">
@@ -74,7 +74,7 @@
         </div>
       </div>
     </div>
-  </q-page>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -93,8 +93,7 @@ function entryColor(idx: number) {
 
 const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
 function formatDate(iso: string) {
-  const [, m, d] = iso.split('-')
-  const year = iso.split('-')[0]
+  const [year, m, d] = iso.split('-')
   return `${parseInt(d)} de ${MONTHS[parseInt(m) - 1]} de ${year}`
 }
 
@@ -109,6 +108,8 @@ const techs = [
 </script>
 
 <style scoped>
+.about-page { padding: 0 0 40px; max-width: 100%; }
+
 /* ── Hero ─────────────────────────────────────────────────── */
 .hero {
   background: linear-gradient(135deg, #1a237e 0%, #283593 25%, #1565c0 60%, #0277bd 100%);
