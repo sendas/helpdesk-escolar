@@ -17,7 +17,7 @@ export interface TicketDetail extends TicketListItem { description: string; comm
 export interface PaginatedTickets { items: TicketListItem[]; total: number; page: number; size: number }
 export interface KnowledgeArticle { id: number; title: string; body: string; is_published: boolean; category_id?: number | null; category?: Category | null; updated_at: string }
 
-export async function getTickets(params: { page?: number; size?: number; status?: string; category_id?: number; school_id?: number; priority?: string; search?: string; admin?: boolean }) {
+export async function getTickets(params: { page?: number; size?: number; status?: string; category_id?: number; school_id?: number; priority?: string; search?: string; admin?: boolean; is_escalated?: boolean }) {
   const prefix = params.admin ? '/api/v1/admin' : '/api/v1'
   const p = { ...params }
   delete (p as any).admin

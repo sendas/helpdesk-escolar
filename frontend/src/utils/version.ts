@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.72'
+export const APP_VERSION = '1.7.73'
 export const APP_VERSION_DATE = '2026-05-18'
-export const APP_VERSION_TIME = '17:19'
+export const APP_VERSION_TIME = '17:27'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.73',
+    date: '2026-05-18',
+    time: '17:27',
+    title: 'Gestão de tickets: badge e filtro "Empresa de apoio"',
+    changes: [
+      'Adicionado filtro "Reportados à empresa de apoio" na página de gestão de tickets.',
+      'Badge laranja "E" agora visível também na vista de telemóvel.',
+      'Backend: suporte ao parâmetro is_escalated no endpoint de listagem admin.',
+    ],
+  },
   {
     version: '1.7.72',
     date: '2026-05-18',

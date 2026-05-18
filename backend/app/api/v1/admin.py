@@ -85,6 +85,7 @@ async def admin_list_tickets(
     school_id: int | None = None,
     assignee_id: int | None = None,
     priority: str | None = None,
+    is_escalated: bool | None = None,
     search: str | None = Query(None, max_length=200),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
@@ -108,6 +109,8 @@ async def admin_list_tickets(
         query = query.where(or_(Ticket.assignee_id == assignee_id, Ticket.assignees.any(User.id == assignee_id)))
     if priority:
         query = query.where(Ticket.priority == priority)
+    if is_escalated is not None:
+        query = query.where(Ticket.is_escalated == is_escalated)
     if search:
         term = f"%{search}%"
         query = query.where(or_(Ticket.title.ilike(term), Ticket.description.ilike(term)))

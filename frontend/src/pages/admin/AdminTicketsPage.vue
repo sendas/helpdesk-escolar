@@ -39,6 +39,11 @@
           <option value="">Todas as escolas</option>
           <option v-for="s in schools" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
+        <select class="hd-select" v-model="filterEscalated" @change="resetAndLoad">
+          <option value="">Todos os tickets</option>
+          <option value="true">Reportados à empresa de apoio</option>
+          <option value="false">Não reportados</option>
+        </select>
       </div>
 
       <div v-if="mailSyncMessage" class="mail-sync-message">{{ mailSyncMessage }}</div>
@@ -166,6 +171,7 @@
             <div class="ticket-card-meta">
               <CategoryPill :category="t.category" />
               <PriorityBadge :priority="t.priority" />
+              <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
             </div>
             <div class="ticket-card-user">
               <AvatarCircle :name="t.creator.display_name" size="26" />
@@ -292,6 +298,7 @@ const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 const filterPriority = ref('')
 const filterSchool = ref<number | ''>('')
+const filterEscalated = ref('')
 const searchQuery = ref('')
 let _searchTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -333,6 +340,7 @@ async function load() {
     if (filterCat.value) params.category_id = filterCat.value
     if (filterPriority.value) params.priority = filterPriority.value
     if (filterSchool.value) params.school_id = filterSchool.value
+    if (filterEscalated.value !== '') params.is_escalated = filterEscalated.value === 'true'
     if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
     const data = await getTickets(params)
     tickets.value = data.items
@@ -499,7 +507,7 @@ function timeAgo(date: string) {
 .tickets-panel { overflow: hidden; }
 .filters-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
   gap: 10px;
   padding: 16px;
   border-bottom: 1px solid var(--c-border);
@@ -616,6 +624,9 @@ function timeAgo(date: string) {
   color: var(--c-muted);
 }
 .mobile-ticket-list { display: none; }
+@media (max-width: 1200px) {
+  .filters-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 @media (max-width: 980px) {
   .filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
