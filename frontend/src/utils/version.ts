@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.74'
+export const APP_VERSION = '1.7.75'
 export const APP_VERSION_DATE = '2026-05-18'
-export const APP_VERSION_TIME = '18:53'
+export const APP_VERSION_TIME = '19:01'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.75',
+    date: '2026-05-18',
+    time: '19:01',
+    title: 'Painel: tempo médio de resolução calculado',
+    changes: [
+      'O card "Tempo Médio" calcula agora o tempo médio entre a criação e a resolução dos tickets concluídos (resolvidos ou fechados). Apresentado em horas (ex: 4h) ou dias e horas (ex: 2d 6h). Mostra "—" se não existirem tickets concluídos.',
+    ],
+  },
   {
     version: '1.7.74',
     date: '2026-05-18',

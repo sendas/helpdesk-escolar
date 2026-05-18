@@ -115,11 +115,23 @@ onMounted(async () => {
 
 const recent = computed(() => tickets.value.slice(0, 5))
 
+const avgResolutionTime = computed(() => {
+  const done = tickets.value.filter(t => t.status === 'resolved' || t.status === 'closed')
+  if (!done.length) return '—'
+  const avgMs = done.reduce((sum, t) => sum + (new Date(t.updated_at).getTime() - new Date(t.created_at).getTime()), 0) / done.length
+  const hours = Math.round(avgMs / 3_600_000)
+  if (hours < 1) return '< 1h'
+  if (hours < 24) return `${hours}h`
+  const days = Math.floor(hours / 24)
+  const rem = hours % 24
+  return rem ? `${days}d ${rem}h` : `${days}d`
+})
+
 const stats = computed(() => [
   { label: 'Tickets Abertos', count: tickets.value.filter(t => t.status === 'open').length, icon: 'inbox', sub: 'em aberto' },
   { label: 'Em Análise', count: tickets.value.filter(t => ['assigned','in_progress','waiting_user'].includes(t.status)).length, icon: 'schedule', sub: 'em curso' },
   { label: 'Resolvidos', count: tickets.value.filter(t => t.status === 'resolved' || t.status === 'closed').length, icon: 'check_circle', sub: 'resolvidos ou fechados' },
-  { label: 'Tempo Médio', count: '—', icon: 'bar_chart', sub: 'até resposta' },
+  { label: 'Tempo Médio', count: avgResolutionTime.value, icon: 'bar_chart', sub: 'até resolução' },
 ])
 
 function statusLabel(s: string) {
