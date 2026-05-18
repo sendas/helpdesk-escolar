@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.75'
+export const APP_VERSION = '1.7.76'
 export const APP_VERSION_DATE = '2026-05-18'
-export const APP_VERSION_TIME = '19:01'
+export const APP_VERSION_TIME = '22:01'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.76',
+    date: '2026-05-18',
+    time: '22:01',
+    title: 'Página "Sobre" redesenhada',
+    changes: [
+      'Nova página "Sobre" com hero banner, historial de versões em timeline e grelha de tecnologias — usando componentes Quasar nativos.',
+    ],
+  },
   {
     version: '1.7.75',
     date: '2026-05-18',
