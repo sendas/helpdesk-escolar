@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.69'
-export const APP_VERSION_DATE = '2026-05-17'
-export const APP_VERSION_TIME = '18:40'
+export const APP_VERSION = '1.7.70'
+export const APP_VERSION_DATE = '2026-05-18'
+export const APP_VERSION_TIME = '07:43'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.70',
+    date: '2026-05-18',
+    time: '07:43',
+    title: 'Dashboard adaptado para dispositivos móveis',
+    changes: [
+      'No telemóvel, os tickets recentes deixam de aparecer numa tabela cortada e passam a mostrar uma lista de cartões com título, estado, prioridade e data.',
+      'A coluna de categorias aparece abaixo dos tickets (em vez de ao lado) com um botão "Novo pedido" destacado.',
+      'Os cartões de estatísticas mantêm a grelha 2×2 no telemóvel e passam a 4×1 no computador.',
+      'No computador, o layout original com tabela e coluna lateral é mantido.',
+    ],
+  },
   {
     version: '1.7.69',
     date: '2026-05-17',
