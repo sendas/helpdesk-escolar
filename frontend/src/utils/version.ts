@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.78'
+export const APP_VERSION = '1.7.79'
 export const APP_VERSION_DATE = '2026-05-19'
-export const APP_VERSION_TIME = '00:08'
+export const APP_VERSION_TIME = '00:13'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.79',
+    date: '2026-05-19',
+    time: '00:13',
+    title: 'Página "Sobre" restaurada com todo o conteúdo',
+    changes: [
+      'Restaurado o conteúdo completo da página "Sobre": autoria, método de criação com IA (Claude Code + ChatGPT), fluxo de trabalho, citação, tecnologias e direitos de autor.',
+      'Novo design: hero banner azul degradê + secções em cards + timeline de versões Quasar integrada.',
+    ],
+  },
   {
     version: '1.7.78',
     date: '2026-05-19',
