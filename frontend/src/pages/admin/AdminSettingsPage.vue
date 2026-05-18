@@ -71,7 +71,7 @@
         </div>
       </div>
       <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
-        <div style="font-weight:600;font-size:14px;margin-bottom:12px">Fornecedor externo de suporte</div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px">Empresa de apoio informático</div>
         <div class="hd-grid-2">
           <div class="hd-field">
             <label class="hd-label">Nome da empresa</label>
@@ -519,7 +519,7 @@ const logoFile = ref<File | null>(null)
 const knowledgeEnabled = ref(true)
 const categoryWarningsEnabled = ref(true)
 
-const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Fornecedor externo', support_provider_email: '' })
+const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Empresa de apoio informático', support_provider_email: '' })
 const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
 const email = ref({ server: '', port: 587, from: '', username: '', password: '' })
 const suggestionEmailsRaw = ref('')
@@ -544,7 +544,7 @@ onMounted(async () => {
     const [settings, cats, schs, grps, users, routes, kb] = await Promise.all([getPublicSettings(), getCategories(), getSchools(), getGroups(), getUsers(), getRoutingRules(), getKnowledgeArticles(true)])
     general.value.org_name = settings.org_name
     general.value.logo_url = settings.logo_url
-    general.value.support_provider_name = settings.support_provider_name || 'Fornecedor externo'
+    general.value.support_provider_name = settings.support_provider_name || 'Empresa de apoio informático'
     general.value.support_provider_email = settings.support_provider_email || ''
     knowledgeEnabled.value = settings.knowledge_enabled !== false
     categoryWarningsEnabled.value = settings.category_warnings_enabled !== false
@@ -576,7 +576,7 @@ async function saveGeneral() {
     })
     general.value.org_name = settings.org_name
     general.value.logo_url = settings.logo_url
-    general.value.support_provider_name = settings.support_provider_name || 'Fornecedor externo'
+    general.value.support_provider_name = settings.support_provider_name || 'Empresa de apoio informático'
     general.value.support_provider_email = settings.support_provider_email || ''
     logoFile.value = null
     saved.value = true

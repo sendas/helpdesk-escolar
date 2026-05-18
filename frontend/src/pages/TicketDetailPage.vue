@@ -21,24 +21,24 @@
               </button>
               <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
               <PriorityBadge :priority="ticket.priority" />
-              <span v-if="isEscalated && !isDeescalated" class="escalated-badge" title="Ticket escalado para o fornecedor externo">
+              <span v-if="isEscalated && !isDeescalated" class="escalated-badge" title="Ticket reportado à empresa de apoio">
                 <span class="material-icons" style="font-size:13px;vertical-align:middle">open_in_new</span>
-                Fornecedor
+                Empresa de apoio
               </span>
               <button
                 v-if="isEscalated && !isDeescalated && auth.isStaff"
                 class="hd-btn hd-btn-outline"
                 style="font-size:12px;padding:3px 10px"
                 :disabled="deescalating"
-                title="Marcar como resolvido pelo fornecedor"
+                title="Marcar como resolvido pela empresa de apoio"
                 @click="onDeescalate"
               >
                 <span class="material-icons" style="font-size:13px">check_circle</span>
-                {{ deescalating ? '...' : 'Fornecedor resolveu' }}
+                {{ deescalating ? '...' : 'Empresa de apoio resolveu' }}
               </button>
               <span v-if="isDeescalated" class="deescalated-badge">
                 <span class="material-icons" style="font-size:13px;vertical-align:middle">check_circle</span>
-                Resolvido pelo fornecedor
+                Resolvido pela empresa de apoio
               </span>
             </template>
             <template v-else>
@@ -366,7 +366,7 @@
             <div v-if="auth.isStaff" class="provider-escalation">
               <button class="hd-btn hd-btn-outline" style="width:100%;justify-content:center" :disabled="escalating" @click="onEscalateTicket">
                 <span class="material-icons" style="font-size:16px">outgoing_mail</span>
-                {{ escalating ? 'A escalar...' : 'Escalar para fornecedor' }}
+                {{ escalating ? 'A reportar...' : 'Reportar à empresa de apoio' }}
               </button>
               <p v-if="escalationMessage" :class="{ error: escalationError }">{{ escalationMessage }}</p>
             </div>
@@ -778,16 +778,16 @@ async function onRemoveWatcher(userId: number) {
 }
 
 async function onEscalateTicket() {
-  if (!confirm('Escalar este ticket para o fornecedor externo configurado?')) return
+  if (!confirm('Reportar este ticket à empresa de apoio informático configurada?')) return
   escalating.value = true
   escalationMessage.value = ''
   escalationError.value = false
   try {
     ticket.value = await escalateTicket(ticket.value.id)
-    escalationMessage.value = 'Ticket escalado e email enviado ao fornecedor.'
+    escalationMessage.value = 'Ticket reportado e email enviado à empresa de apoio.'
   } catch (error: any) {
     escalationError.value = true
-    escalationMessage.value = error?.response?.data?.detail || 'Não foi possível escalar o ticket. Verifica o email do fornecedor nas configurações.'
+    escalationMessage.value = error?.response?.data?.detail || 'Não foi possível reportar o ticket. Verifica o email da empresa de apoio nas configurações.'
   } finally {
     escalating.value = false
   }

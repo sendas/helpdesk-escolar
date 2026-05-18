@@ -18,7 +18,7 @@ DEFAULT_SETTINGS = {
     "org_name": "Agrupamento de Escolas Eça de Queirós",
     "logo_url": "",
     "favicon_url": "",
-    "support_provider_name": "Fornecedor externo",
+    "support_provider_name": "Empresa de apoio informático",
     "support_provider_email": "",
     "azure_allowed_onprem_ous": [],
     "knowledge_enabled": True,
@@ -48,7 +48,7 @@ async def public_settings():
 @router.put("")
 async def update_settings(
     org_name: str = Form(...),
-    support_provider_name: str = Form("Fornecedor externo"),
+    support_provider_name: str = Form("Empresa de apoio informático"),
     support_provider_email: str = Form(""),
     logo: UploadFile | None = File(None),
     _: User = Depends(require_admin),

@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.70'
+export const APP_VERSION = '1.7.71'
 export const APP_VERSION_DATE = '2026-05-18'
-export const APP_VERSION_TIME = '07:43'
+export const APP_VERSION_TIME = '09:18'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.71',
+    date: '2026-05-18',
+    time: '09:18',
+    title: '"Fornecedor" renomeado para "Empresa de apoio informático"',
+    changes: [
+      '"Fornecedor" passa a chamar-se "Empresa de apoio informático" em toda a interface.',
+      '"Escalar" passa a chamar-se "Reportar" — ex: "Reportar à empresa de apoio".',
+    ],
+  },
   {
     version: '1.7.70',
     date: '2026-05-18',

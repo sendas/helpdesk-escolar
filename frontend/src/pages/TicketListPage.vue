@@ -32,7 +32,7 @@
             <td style="font-weight:500">{{ t.title }}</td>
             <td style="white-space:nowrap;display:flex;align-items:center;gap:6px">
               <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
-              <span v-if="t.is_escalated" class="badge-fornecedor" title="Escalado para fornecedor externo">F</span>
+              <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
             </td>
             <td><PriorityBadge :priority="t.priority" /></td>
             <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>

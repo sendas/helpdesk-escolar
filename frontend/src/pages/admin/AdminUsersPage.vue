@@ -115,7 +115,7 @@
           </label>
           <label>
             Departamento / OU
-            <input class="hd-input" v-model="manualUserForm.department" placeholder="Fornecedor externo, TIC..." />
+            <input class="hd-input" v-model="manualUserForm.department" placeholder="Empresa de apoio, TIC..." />
           </label>
           <label class="full">
             Palavra-passe inicial

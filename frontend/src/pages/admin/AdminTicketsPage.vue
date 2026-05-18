@@ -123,7 +123,7 @@
                 <td style="white-space:nowrap">
                   <div style="display:flex;align-items:center;gap:6px">
                     <StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" />
-                    <span v-if="t.is_escalated" class="badge-fornecedor" title="Escalado para fornecedor externo">F</span>
+                    <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
                   </div>
                 </td>
                 <td>

@@ -218,9 +218,9 @@
       <div v-if="auth.isAdmin" class="hd-field" style="margin-bottom:24px">
         <div class="escalate-toggle" :class="{ active: escalate }" @click="escalate = !escalate">
           <div>
-            <div style="font-weight:600;font-size:13px">Escalar imediatamente para fornecedor</div>
+            <div style="font-weight:600;font-size:13px">Reportar imediatamente à empresa de apoio</div>
             <div style="font-size:12px;color:var(--c-muted);margin-top:2px">
-              O ticket é enviado por email ao fornecedor externo configurado nas definições logo após a criação.
+              O ticket é enviado por email à empresa de apoio informático configurada nas definições logo após a criação.
             </div>
           </div>
           <div class="hd-toggle-wrap" style="flex-shrink:0">
@@ -247,7 +247,7 @@
         </router-link>
         <button type="button" class="hd-btn hd-btn-primary" :disabled="!canSubmit || loading" @click="onSubmit">
           <span class="material-icons" style="font-size:16px">{{ escalate ? 'upload' : 'send' }}</span>
-          {{ loading ? 'A enviar...' : escalate ? 'Criar e escalar para fornecedor' : 'Submeter ticket' }}
+          {{ loading ? 'A enviar...' : escalate ? 'Criar e reportar à empresa de apoio' : 'Submeter ticket' }}
         </button>
       </div>
 
