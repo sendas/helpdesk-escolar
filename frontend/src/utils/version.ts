@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.76'
-export const APP_VERSION_DATE = '2026-05-18'
-export const APP_VERSION_TIME = '22:01'
+export const APP_VERSION = '1.7.77'
+export const APP_VERSION_DATE = '2026-05-19'
+export const APP_VERSION_TIME = '00:02'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.77',
+    date: '2026-05-19',
+    time: '00:02',
+    title: 'Página "Sobre" com historial de versões dinâmico',
+    changes: [
+      'A página "Sobre" passa a gerar o historial de versões automaticamente a partir dos dados internos da app — versão, data, hora e notas de cada atualização.',
+      'As primeiras 10 versões são mostradas por defeito; botão "Mostrar versões anteriores" expande o historial completo.',
+      'Versão atual refletida no hero banner automaticamente.',
+    ],
+  },
   {
     version: '1.7.76',
     date: '2026-05-18',

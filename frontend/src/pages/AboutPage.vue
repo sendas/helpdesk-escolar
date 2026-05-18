@@ -6,7 +6,7 @@
         <q-icon name="support_agent" size="48px" color="white" />
       </div>
       <div class="hero__title">Helpdesk</div>
-      <q-badge class="hero__badge">v1.0.0</q-badge>
+      <q-badge class="hero__badge">v{{ APP_VERSION }}</q-badge>
       <div class="hero__subtitle">
         Sistema de gestão de pedidos de suporte e assistência técnica
       </div>
@@ -23,40 +23,35 @@
           </div>
 
           <q-timeline color="primary" layout="comfortable" class="q-mt-xs">
-
-            <q-timeline-entry icon="rocket_launch" color="teal-7">
+            <q-timeline-entry
+              v-for="(entry, idx) in visibleEntries"
+              :key="entry.version"
+              :icon="idx === 0 ? 'rocket_launch' : 'update'"
+              :color="entryColor(idx)"
+            >
               <template #title>
                 <span class="version-title">
-                  <q-badge color="teal-7" class="version-badge">v1.0.0</q-badge>
-                  Versão Inicial
+                  <q-badge :color="entryColor(idx)" class="version-badge">{{ entry.version }}</q-badge>
+                  {{ entry.title }}
                 </span>
               </template>
               <template #subtitle>
                 <span class="version-date">
-                  <q-icon name="schedule" size="xs" class="q-mr-xs" />18 de maio de 2026, 10:00
+                  <q-icon name="schedule" size="xs" class="q-mr-xs" />{{ formatDate(entry.date) }}, {{ entry.time }}
                 </span>
               </template>
               <div class="feature-list">
-                <div class="feature-item">
-                  <q-icon name="confirmation_number" size="xs" color="teal-7" />
-                  Criação e gestão de tickets de suporte
-                </div>
-                <div class="feature-item">
-                  <q-icon name="group" size="xs" color="teal-7" />
-                  Gestão de utilizadores e técnicos
-                </div>
-                <div class="feature-item">
-                  <q-icon name="category" size="xs" color="teal-7" />
-                  Categorização e priorização de pedidos
-                </div>
-                <div class="feature-item">
-                  <q-icon name="notifications" size="xs" color="teal-7" />
-                  Notificações e acompanhamento em tempo real
+                <div v-for="change in entry.changes" :key="change" class="feature-item">
+                  <q-icon name="check_circle" size="xs" :color="entryColor(idx)" class="feature-icon" />
+                  {{ change }}
                 </div>
               </div>
             </q-timeline-entry>
-
           </q-timeline>
+
+          <div v-if="!showAll && RELEASE_NOTES.length > INITIAL_COUNT" class="row justify-center q-mb-lg">
+            <q-btn flat color="primary" icon="expand_more" label="Mostrar versões anteriores" @click="showAll = true" />
+          </div>
 
           <!-- Tech stack -->
           <div class="section-label">
@@ -83,13 +78,33 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
+import { APP_VERSION, RELEASE_NOTES } from '../utils/version'
+
+const INITIAL_COUNT = 10
+const showAll = ref(false)
+
+const visibleEntries = computed(() => showAll.value ? RELEASE_NOTES : RELEASE_NOTES.slice(0, INITIAL_COUNT))
+
+const COLORS = ['teal-7', 'purple-7', 'blue-7', 'indigo-7', 'deep-purple-7', 'cyan-7', 'green-7', 'blue-grey-7']
+function entryColor(idx: number) {
+  return COLORS[idx % COLORS.length]
+}
+
+const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
+function formatDate(iso: string) {
+  const [, m, d] = iso.split('-')
+  const year = iso.split('-')[0]
+  return `${parseInt(d)} de ${MONTHS[parseInt(m) - 1]} de ${year}`
+}
+
 const techs = [
-  { name: 'FastAPI',     desc: 'API REST',        icon: 'bolt',                    color: 'teal-6' },
-  { name: 'SQLite',      desc: 'Base de dados',   icon: 'storage',                 color: 'brown-6' },
-  { name: 'Vue 3',       desc: 'Frontend',        icon: 'code',                    color: 'teal-5' },
-  { name: 'Quasar',      desc: 'UI Framework',    icon: 'palette',                 color: 'blue-6' },
-  { name: 'Docker',      desc: 'Containerização', icon: 'inventory_2',             color: 'blue-8' },
-  { name: 'TypeScript',  desc: 'Tipagem',         icon: 'integration_instructions',color: 'indigo-6' },
+  { name: 'FastAPI',     desc: 'API REST',        icon: 'bolt',                     color: 'teal-6' },
+  { name: 'SQLite',      desc: 'Base de dados',   icon: 'storage',                  color: 'brown-6' },
+  { name: 'Vue 3',       desc: 'Frontend',        icon: 'code',                     color: 'teal-5' },
+  { name: 'Quasar',      desc: 'UI Framework',    icon: 'palette',                  color: 'blue-6' },
+  { name: 'Docker',      desc: 'Containerização', icon: 'inventory_2',              color: 'blue-8' },
+  { name: 'TypeScript',  desc: 'Tipagem',         icon: 'integration_instructions', color: 'indigo-6' },
 ]
 </script>
 
@@ -156,6 +171,7 @@ const techs = [
   gap: 8px;
   font-size: 1rem;
   font-weight: 600;
+  flex-wrap: wrap;
 }
 .version-badge {
   font-size: 0.7rem;
@@ -163,6 +179,7 @@ const techs = [
   letter-spacing: 0.3px;
   border-radius: 6px;
   padding: 2px 7px;
+  flex-shrink: 0;
 }
 .version-date {
   font-size: 0.78rem;
@@ -185,6 +202,7 @@ const techs = [
   line-height: 1.5;
   color: #555;
 }
+.feature-icon { margin-top: 2px; flex-shrink: 0; }
 .body--dark .feature-item { color: #bbb; }
 
 /* ── Tech cards ──────────────────────────────────────────── */
