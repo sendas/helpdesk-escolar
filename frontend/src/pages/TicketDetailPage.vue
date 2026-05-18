@@ -8,48 +8,48 @@
     <div v-if="!ticket" style="padding:80px;text-align:center;color:var(--c-muted)">A carregar...</div>
 
     <template v-else>
-      <div style="margin-bottom:24px">
-        <div class="hd-row" style="align-items:flex-start;gap:8px;margin-bottom:4px">
-          <div style="flex:1;min-width:0">
-            <h1 v-if="!editingContent" style="font-size:22px;margin:0">{{ ticket.title }}</h1>
-            <input v-else class="hd-input" v-model="editTitle" style="font-size:18px;font-weight:600;width:100%" />
-          </div>
-          <div class="hd-row" style="gap:6px;flex-shrink:0;margin-top:4px">
-            <template v-if="!editingContent">
-              <button v-if="auth.isAdmin" class="hd-icon-btn" title="Editar assunto e descrição" @click="startEditContent">
-                <span class="material-icons" style="font-size:18px">edit</span>
-              </button>
-              <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
-              <PriorityBadge :priority="ticket.priority" />
-              <span v-if="isEscalated && !isDeescalated" class="escalated-badge" title="Ticket reportado à empresa de apoio">
-                <span class="material-icons" style="font-size:13px;vertical-align:middle">open_in_new</span>
-                Empresa de apoio
-              </span>
-              <button
-                v-if="isEscalated && !isDeescalated && auth.isStaff"
-                class="hd-btn hd-btn-outline"
-                style="font-size:12px;padding:3px 10px"
-                :disabled="deescalating"
-                title="Marcar como resolvido pela empresa de apoio"
-                @click="onDeescalate"
-              >
-                <span class="material-icons" style="font-size:13px">check_circle</span>
-                {{ deescalating ? '...' : 'Empresa de apoio resolveu' }}
-              </button>
-              <span v-if="isDeescalated" class="deescalated-badge">
-                <span class="material-icons" style="font-size:13px;vertical-align:middle">check_circle</span>
-                Resolvido pela empresa de apoio
-              </span>
-            </template>
-            <template v-else>
-              <button class="hd-btn hd-btn-outline" @click="cancelEditContent">Cancelar</button>
-              <button class="hd-btn hd-btn-primary" :disabled="savingContent" @click="saveContent">
-                {{ savingContent ? 'A guardar...' : 'Guardar' }}
-              </button>
-            </template>
-          </div>
+      <div class="ticket-header">
+        <!-- Title row -->
+        <div class="ticket-title-row">
+          <h1 v-if="!editingContent" class="ticket-title">{{ ticket.title }}</h1>
+          <input v-else class="hd-input" v-model="editTitle" style="font-size:18px;font-weight:600;width:100%" />
         </div>
-        <div style="font-size:13px;color:var(--c-muted)">
+        <!-- Badges + actions row -->
+        <div class="ticket-badges-row">
+          <template v-if="!editingContent">
+            <button v-if="auth.isAdmin" class="hd-icon-btn" title="Editar assunto e descrição" @click="startEditContent">
+              <span class="material-icons" style="font-size:18px">edit</span>
+            </button>
+            <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
+            <PriorityBadge :priority="ticket.priority" />
+            <span v-if="isEscalated && !isDeescalated" class="escalated-badge" title="Ticket reportado à empresa de apoio">
+              <span class="material-icons" style="font-size:13px;vertical-align:middle">open_in_new</span>
+              Empresa de apoio
+            </span>
+            <button
+              v-if="isEscalated && !isDeescalated && auth.isStaff"
+              class="hd-btn hd-btn-outline"
+              style="font-size:12px;padding:3px 10px"
+              :disabled="deescalating"
+              title="Marcar como resolvido pela empresa de apoio"
+              @click="onDeescalate"
+            >
+              <span class="material-icons" style="font-size:13px">check_circle</span>
+              {{ deescalating ? '...' : 'Empresa de apoio resolveu' }}
+            </button>
+            <span v-if="isDeescalated" class="deescalated-badge">
+              <span class="material-icons" style="font-size:13px;vertical-align:middle">check_circle</span>
+              Resolvido pela empresa de apoio
+            </span>
+          </template>
+          <template v-else>
+            <button class="hd-btn hd-btn-outline" @click="cancelEditContent">Cancelar</button>
+            <button class="hd-btn hd-btn-primary" :disabled="savingContent" @click="saveContent">
+              {{ savingContent ? 'A guardar...' : 'Guardar' }}
+            </button>
+          </template>
+        </div>
+        <div class="ticket-meta">
           Aberto por <strong>{{ ticket.creator.display_name }}</strong> · {{ formatDate(ticket.created_at) }}
         </div>
       </div>
@@ -65,7 +65,7 @@
                 <span class="hd-msg-author">{{ ticket.creator.display_name }}</span>
                 <span class="hd-msg-time">{{ formatDate(ticket.created_at) }}</span>
               </div>
-              <div v-if="!editingContent" class="hd-msg-bubble">{{ ticket.description }}</div>
+              <div v-if="!editingContent" class="hd-msg-bubble" v-html="renderText(ticket.description)"></div>
               <textarea v-else class="hd-textarea" v-model="editDescription" rows="6" style="margin-top:4px"></textarea>
               <div v-if="contentError" style="color:#DC2626;font-size:12px;margin-top:6px">{{ contentError }}</div>
               <div v-if="ticket.attachments?.length" style="margin-top:10px">
@@ -123,7 +123,7 @@
                   <button class="hd-btn hd-btn-primary" @click="saveEditedComment(c)">Guardar</button>
                 </div>
               </div>
-              <div v-else class="hd-msg-bubble">{{ c.body }}</div>
+              <div v-else class="hd-msg-bubble" v-html="renderText(c.body)"></div>
             </div>
           </div>
 
@@ -543,6 +543,13 @@ const quickReplies = [
   { label: 'Resolvido ✓', body: 'A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.', autoClose: true },
 ]
 
+function renderText(text: string): string {
+  if (!text) return ''
+  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // Collapse 3+ consecutive newlines to 2, then convert to <br>
+  return escaped.replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<br>')
+}
+
 function isStatusDone(status: string) {
   const current = statusOrder.indexOf(ticket.value?.status)
   return statusOrder.indexOf(status) <= current
@@ -871,6 +878,37 @@ function formatSize(size: number) {
   border-color: #166534;
 }
 
+/* ── Ticket header ── */
+.ticket-header {
+  margin-bottom: 24px;
+}
+
+.ticket-title-row {
+  margin-bottom: 8px;
+}
+
+.ticket-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0;
+  word-break: break-word;
+}
+
+.ticket-badges-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.ticket-meta {
+  font-size: 13px;
+  color: var(--c-muted);
+}
+
+/* ── Ticket detail grid ── */
 .ticket-detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;

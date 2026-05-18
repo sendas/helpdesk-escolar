@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.71'
+export const APP_VERSION = '1.7.72'
 export const APP_VERSION_DATE = '2026-05-18'
-export const APP_VERSION_TIME = '09:18'
+export const APP_VERSION_TIME = '17:19'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.72',
+    date: '2026-05-18',
+    time: '17:19',
+    title: 'Correção: cabeçalho e descrição do ticket no telemóvel',
+    changes: [
+      'Cabeçalho do ticket restruturado: no telemóvel o título aparece por cima e os badges (estado, prioridade) aparecem por baixo — elimina o layout partido com texto espalhado por toda a página.',
+      'Descrição e comentários: linhas em branco excessivas (3 ou mais seguidas) são colapsadas numa única, evitando espaços gigantes no texto.',
+    ],
+  },
   {
     version: '1.7.71',
     date: '2026-05-18',
