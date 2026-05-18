@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.73'
+export const APP_VERSION = '1.7.74'
 export const APP_VERSION_DATE = '2026-05-18'
-export const APP_VERSION_TIME = '17:27'
+export const APP_VERSION_TIME = '18:53'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.74',
+    date: '2026-05-18',
+    time: '18:53',
+    title: 'Painel: contagem de resolvidos inclui tickets fechados',
+    changes: [
+      'O card "Resolvidos" no painel inicial passa a contar tickets com estado "Resolvido" e "Fechado" — ambos representam pedidos concluídos.',
+    ],
+  },
   {
     version: '1.7.73',
     date: '2026-05-18',

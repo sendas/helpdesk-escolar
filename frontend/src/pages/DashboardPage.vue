@@ -118,7 +118,7 @@ const recent = computed(() => tickets.value.slice(0, 5))
 const stats = computed(() => [
   { label: 'Tickets Abertos', count: tickets.value.filter(t => t.status === 'open').length, icon: 'inbox', sub: 'em aberto' },
   { label: 'Em Análise', count: tickets.value.filter(t => ['assigned','in_progress','waiting_user'].includes(t.status)).length, icon: 'schedule', sub: 'em curso' },
-  { label: 'Resolvidos', count: tickets.value.filter(t => t.status === 'resolved').length, icon: 'check_circle', sub: 'resolvidos' },
+  { label: 'Resolvidos', count: tickets.value.filter(t => t.status === 'resolved' || t.status === 'closed').length, icon: 'check_circle', sub: 'resolvidos ou fechados' },
   { label: 'Tempo Médio', count: '—', icon: 'bar_chart', sub: 'até resposta' },
 ])
 
