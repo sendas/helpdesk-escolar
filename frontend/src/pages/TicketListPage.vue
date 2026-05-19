@@ -22,43 +22,71 @@
       </div>
 
       <div v-if="loading" style="padding:48px;text-align:center;color:var(--c-muted)">A carregar...</div>
-      <table v-else class="hd-table">
-        <thead>
-          <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>TEMPO DE RESPOSTA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="t in tickets" :key="t.id" @click="$router.push(`/tickets/${t.id}`)">
-            <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
-            <td style="font-weight:500">{{ t.title }}</td>
-            <td style="white-space:nowrap;display:flex;align-items:center;gap:6px">
-              <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
-              <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
-            </td>
-            <td><PriorityBadge :priority="t.priority" /></td>
-            <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
-            <td>
-              <button
-                class="email-pill"
-                :class="{ active: t.creator_email_notifications }"
-                @click.stop="toggleEmailNotifications(t)"
-              >
-                <span class="material-icons">{{ t.creator_email_notifications ? 'notifications_active' : 'notifications_off' }}</span>
-                {{ t.creator_email_notifications ? 'Ativos' : 'Desativados' }}
-              </button>
-            </td>
-            <td style="color:var(--c-muted)">{{ timeAgo(t.updated_at) }}</td>
-          </tr>
-          <tr v-if="!tickets.length">
-            <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets.</td>
-          </tr>
-        </tbody>
-      </table>
+      <template v-else>
+        <table class="hd-table">
+          <thead>
+            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>TEMPO DE RESPOSTA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in activeTickets" :key="t.id" @click="$router.push(`/tickets/${t.id}`)">
+              <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
+              <td style="font-weight:500">{{ t.title }}</td>
+              <td style="white-space:nowrap;display:flex;align-items:center;gap:6px">
+                <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
+                <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
+              </td>
+              <td><PriorityBadge :priority="t.priority" /></td>
+              <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
+              <td>
+                <button class="email-pill" :class="{ active: t.creator_email_notifications }" @click.stop="toggleEmailNotifications(t)">
+                  <span class="material-icons">{{ t.creator_email_notifications ? 'notifications_active' : 'notifications_off' }}</span>
+                  {{ t.creator_email_notifications ? 'Ativos' : 'Desativados' }}
+                </button>
+              </td>
+              <td style="color:var(--c-muted)">{{ timeAgo(t.updated_at) }}</td>
+            </tr>
+            <tr v-if="!activeTickets.length">
+              <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets em aberto.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Completed tickets toggle -->
+        <div v-if="completedTickets.length" class="completed-toggle">
+          <button class="hd-btn hd-btn-outline completed-toggle-btn" @click="showCompleted = !showCompleted">
+            <span class="material-icons">{{ showCompleted ? 'expand_less' : 'expand_more' }}</span>
+            {{ showCompleted ? 'Ocultar tickets concluídos' : `Mostrar ${completedTickets.length} ticket${completedTickets.length !== 1 ? 's' : ''} concluído${completedTickets.length !== 1 ? 's' : ''}` }}
+          </button>
+        </div>
+
+        <table v-if="showCompleted && completedTickets.length" class="hd-table completed-table">
+          <thead>
+            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>TEMPO DE RESPOSTA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in completedTickets" :key="t.id" class="completed-row" @click="$router.push(`/tickets/${t.id}`)">
+              <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
+              <td style="font-weight:500">{{ t.title }}</td>
+              <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
+              <td><PriorityBadge :priority="t.priority" /></td>
+              <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
+              <td>
+                <button class="email-pill" :class="{ active: t.creator_email_notifications }" @click.stop="toggleEmailNotifications(t)">
+                  <span class="material-icons">{{ t.creator_email_notifications ? 'notifications_active' : 'notifications_off' }}</span>
+                  {{ t.creator_email_notifications ? 'Ativos' : 'Desativados' }}
+                </button>
+              </td>
+              <td style="color:var(--c-muted)">{{ timeAgo(t.updated_at) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getTickets, getCategories, updateTicket } from '../api/tickets'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import SlaBadge from '../components/SlaBadge.vue'
@@ -70,7 +98,16 @@ const loading = ref(false)
 const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 const searchQuery = ref('')
+const showCompleted = ref(false)
 let _searchTimer: ReturnType<typeof setTimeout> | null = null
+
+const DONE = ['resolved', 'closed']
+const activeTickets = computed(() =>
+  filterStatus.value ? tickets.value : tickets.value.filter(t => !DONE.includes(t.status))
+)
+const completedTickets = computed(() =>
+  filterStatus.value ? [] : tickets.value.filter(t => DONE.includes(t.status))
+)
 
 const statusOpts = [
   { v: 'open', l: 'Aberto' }, { v: 'assigned', l: 'Atribuído' },
@@ -152,4 +189,17 @@ async function toggleEmailNotifications(ticket: any) {
 .email-pill .material-icons {
   font-size: 14px;
 }
+
+.completed-toggle {
+  padding: 12px 16px;
+  border-top: 1px solid var(--c-border);
+}
+.completed-toggle-btn {
+  font-size: 13px;
+  gap: 4px;
+  color: var(--c-muted);
+}
+.completed-table { opacity: 0.72; }
+.completed-row { cursor: pointer; }
+.completed-row:hover { opacity: 1; }
 </style>

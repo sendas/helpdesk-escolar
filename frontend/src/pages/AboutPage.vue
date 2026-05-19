@@ -1,18 +1,5 @@
 <template>
   <div class="hd-page about-page">
-
-    <!-- Hero banner -->
-    <div class="hero">
-      <div class="hero__icon-wrap">
-        <q-icon name="support_agent" size="48px" color="white" />
-      </div>
-      <div class="hero__title">Helpdesk Escolar</div>
-      <q-badge class="hero__badge">v{{ APP_VERSION }}</q-badge>
-      <div class="hero__subtitle">
-        Sistema de gestão de pedidos de suporte e assistência técnica
-      </div>
-    </div>
-
     <div class="about-body">
 
       <!-- Autoria -->
@@ -147,7 +134,6 @@
 </template>
 
 <script setup lang="ts">
-import { APP_VERSION } from '../utils/version'
 
 const techs = [
   { name: 'FastAPI', desc: 'Backend Python — API REST assíncrona', icon: 'bolt', color: '#009688' },
@@ -163,48 +149,6 @@ const techs = [
 
 <style scoped>
 .about-page { padding: 0 0 40px; max-width: 100%; }
-
-/* ── Hero ─────────────────────────────────────────────────── */
-.hero {
-  background: linear-gradient(135deg, #1a237e 0%, #283593 25%, #1565c0 60%, #0277bd 100%);
-  padding: 52px 24px 44px;
-  text-align: center;
-  color: #fff;
-}
-.hero__icon-wrap {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 80px;
-  height: 80px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
-  margin-bottom: 18px;
-  backdrop-filter: blur(4px);
-}
-.hero__title {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  margin-bottom: 10px;
-}
-.hero__badge {
-  background: rgba(255, 255, 255, 0.25) !important;
-  color: #fff !important;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  margin-bottom: 14px;
-}
-.hero__subtitle {
-  font-size: 0.95rem;
-  opacity: 0.82;
-  max-width: 480px;
-  margin: 12px auto 0;
-  line-height: 1.5;
-}
 
 /* ── Body ────────────────────────────────────────────────── */
 .about-body {

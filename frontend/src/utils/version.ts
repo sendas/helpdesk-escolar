@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.80'
+export const APP_VERSION = '1.7.81'
 export const APP_VERSION_DATE = '2026-05-19'
-export const APP_VERSION_TIME = '08:38'
+export const APP_VERSION_TIME = '11:14'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.81',
+    date: '2026-05-19',
+    time: '11:14',
+    title: 'Cabeçalho compacto em todos os menus; tickets concluídos escondidos',
+    changes: [
+      'Todos os menus têm agora um cabeçalho azul compacto com ícone e título — design consistente em toda a app.',
+      'As páginas "Sobre" e "Versão / Atualizações" deixaram de ter um hero gigante — usam o cabeçalho comum do layout.',
+      'Na lista "Os meus tickets", os tickets resolvidos e fechados ficam escondidos por defeito. Um botão no final permite mostrá-los.',
+    ],
+  },
   {
     version: '1.7.80',
     date: '2026-05-19',

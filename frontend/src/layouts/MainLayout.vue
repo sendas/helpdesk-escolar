@@ -210,6 +210,12 @@
         <router-link to="/login" class="demo-banner-btn" @click="auth.logout()">Entrar</router-link>
       </div>
 
+      <!-- Page hero -->
+      <div v-if="showPageHero" class="page-hero">
+        <span class="material-icons page-hero__icon">{{ pageIcon }}</span>
+        <h1 class="page-hero__title">{{ pageTitle }}</h1>
+      </div>
+
       <!-- Page content -->
       <main class="app-content">
         <router-view />
@@ -278,6 +284,31 @@ const pageTitle = computed(() => {
   return titleMap[p] ?? 'Helpdesk'
 })
 
+const iconMap: Record<string, string> = {
+  '/tickets': 'inbox',
+  '/tickets/new': 'add_circle',
+  '/knowledge': 'menu_book',
+  '/version': 'new_releases',
+  '/about': 'info',
+  '/suggestions': 'lightbulb',
+  '/admin/tickets': 'manage_search',
+  '/admin/users': 'group',
+  '/admin/stats': 'bar_chart',
+  '/admin/suggestions': 'lightbulb',
+  '/admin/categories': 'category',
+  '/admin/settings': 'settings',
+  '/admin/backup': 'database',
+}
+
+const pageIcon = computed(() => iconMap[route.path] ?? 'circle')
+
+const showPageHero = computed(() => {
+  const p = route.path
+  if (p === '/dashboard') return false
+  if (p.match(/^\/tickets\/\d+$/)) return false
+  return Object.prototype.hasOwnProperty.call(titleMap, p)
+})
+
 function doSearch() {
   if (search.value.trim()) router.push({ path: '/tickets', query: { q: search.value } })
 }
@@ -306,6 +337,26 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.page-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #1a237e 0%, #283593 40%, #1565c0 100%);
+  color: #fff;
+}
+.page-hero__icon {
+  font-size: 22px;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+.page-hero__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
 .demo-banner {
   align-items: center;
   background: #FEF3C7;

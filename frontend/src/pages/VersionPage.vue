@@ -1,14 +1,10 @@
 <template>
   <div class="hd-page version-page">
-    <!-- Hero -->
-    <div class="hero">
-      <div class="hero__icon-wrap">
-        <q-icon name="new_releases" size="40px" color="white" />
-      </div>
-      <div class="hero__label">Versão atual</div>
-      <div class="hero__version">v{{ APP_VERSION }}</div>
-      <div class="hero__date">
-        <q-icon name="schedule" size="xs" class="q-mr-xs" style="opacity:.75" />
+    <!-- Version info strip -->
+    <div class="version-strip">
+      <div class="version-strip__badge">v{{ APP_VERSION }}</div>
+      <div class="version-strip__date">
+        <span class="material-icons" style="font-size:14px;opacity:.7">schedule</span>
         {{ formatDate(APP_VERSION_DATE) }}, {{ APP_VERSION_TIME }}
       </div>
     </div>
@@ -83,44 +79,31 @@ function formatDate(iso: string) {
 <style scoped>
 .version-page { padding: 0 0 40px; max-width: 100%; }
 
-/* ── Hero ─────────────────────────────────────────────────── */
-.hero {
-  background: linear-gradient(135deg, #1a237e 0%, #283593 25%, #1565c0 60%, #0277bd 100%);
-  padding: 44px 24px 36px;
-  text-align: center;
+/* ── Version strip ───────────────────────────────────────── */
+.version-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  flex-wrap: wrap;
+}
+.version-strip__badge {
+  background: var(--c-primary);
   color: #fff;
-}
-.hero__icon-wrap {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 70px;
-  height: 70px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
-  margin-bottom: 14px;
-  backdrop-filter: blur(4px);
-}
-.hero__label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  opacity: 0.72;
-  margin-bottom: 6px;
-}
-.hero__version {
-  font-size: 2.4rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: -1px;
-  line-height: 1;
-  margin-bottom: 10px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
 }
-.hero__date {
-  display: inline-flex;
+.version-strip__date {
+  display: flex;
   align-items: center;
-  font-size: 0.88rem;
-  opacity: 0.78;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: var(--c-muted);
 }
 
 /* ── Section label ───────────────────────────────────────── */
