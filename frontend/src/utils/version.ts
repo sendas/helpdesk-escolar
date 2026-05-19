@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.79'
+export const APP_VERSION = '1.7.80'
 export const APP_VERSION_DATE = '2026-05-19'
-export const APP_VERSION_TIME = '00:13'
+export const APP_VERSION_TIME = '08:38'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.80',
+    date: '2026-05-19',
+    time: '08:38',
+    title: 'Página "Sobre" sem historial de versões duplicado',
+    changes: [
+      'O historial de versões foi removido da página "Sobre" — já existe na página dedicada "Versão / Atualizações". A página "Sobre" foca-se agora exclusivamente na autoria, método de criação, tecnologias e direitos de autor.',
+    ],
+  },
   {
     version: '1.7.79',
     date: '2026-05-19',

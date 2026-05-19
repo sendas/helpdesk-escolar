@@ -98,45 +98,6 @@
         </div>
       </div>
 
-      <!-- Historial de versões -->
-      <div class="hd-card about-card">
-        <div class="about-section-title">
-          <span class="material-icons" style="font-size:20px;color:#3D52D5">tag</span>
-          Historial de versões
-        </div>
-
-        <q-timeline color="primary" layout="comfortable" class="q-mt-xs">
-          <q-timeline-entry
-            v-for="(entry, idx) in visibleEntries"
-            :key="entry.version"
-            :icon="idx === 0 ? 'rocket_launch' : 'update'"
-            :color="entryColor(idx)"
-          >
-            <template #title>
-              <span class="version-title">
-                <q-badge :color="entryColor(idx)" class="version-badge">{{ entry.version }}</q-badge>
-                {{ entry.title }}
-              </span>
-            </template>
-            <template #subtitle>
-              <span class="version-date">
-                <q-icon name="schedule" size="xs" class="q-mr-xs" />{{ formatDate(entry.date) }}, {{ entry.time }}
-              </span>
-            </template>
-            <div class="feature-list">
-              <div v-for="change in entry.changes" :key="change" class="feature-item">
-                <q-icon name="check_circle" size="xs" :color="entryColor(idx)" class="feature-icon" />
-                {{ change }}
-              </div>
-            </div>
-          </q-timeline-entry>
-        </q-timeline>
-
-        <div v-if="!showAll && RELEASE_NOTES.length > INITIAL_COUNT" class="row justify-center q-mt-sm q-mb-xs">
-          <q-btn flat color="primary" icon="expand_more" label="Mostrar versões anteriores" @click="showAll = true" />
-        </div>
-      </div>
-
       <!-- Tecnologias -->
       <div class="hd-card about-card">
         <div class="about-section-title">
@@ -186,24 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { APP_VERSION, RELEASE_NOTES } from '../utils/version'
-
-const INITIAL_COUNT = 8
-const showAll = ref(false)
-
-const visibleEntries = computed(() => showAll.value ? RELEASE_NOTES : RELEASE_NOTES.slice(0, INITIAL_COUNT))
-
-const COLORS = ['teal-7', 'purple-7', 'blue-7', 'indigo-7', 'deep-purple-7', 'cyan-7', 'green-7', 'blue-grey-7']
-function entryColor(idx: number) {
-  return COLORS[idx % COLORS.length]
-}
-
-const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
-function formatDate(iso: string) {
-  const [year, m, d] = iso.split('-')
-  return `${parseInt(d)} de ${MONTHS[parseInt(m) - 1]} de ${year}`
-}
+import { APP_VERSION } from '../utils/version'
 
 const techs = [
   { name: 'FastAPI', desc: 'Backend Python — API REST assíncrona', icon: 'bolt', color: '#009688' },
@@ -361,42 +305,6 @@ const techs = [
   color: var(--c-muted);
   font-style: italic;
 }
-
-/* ── Timeline ────────────────────────────────────────────── */
-.version-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  flex-wrap: wrap;
-}
-.version-badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  border-radius: 6px;
-  padding: 2px 7px;
-  flex-shrink: 0;
-}
-.version-date {
-  font-size: 0.78rem;
-  color: #9e9e9e;
-  display: flex;
-  align-items: center;
-  margin-top: 2px;
-}
-.feature-list { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
-.feature-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: #555;
-}
-.feature-icon { margin-top: 2px; flex-shrink: 0; }
-.body--dark .feature-item { color: #bbb; }
 
 /* ── Tech grid ───────────────────────────────────────────── */
 .about-tech-grid {
