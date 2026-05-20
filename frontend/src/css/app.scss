@@ -699,12 +699,16 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
   border-radius: 4px;
 }
 
+/* hd-grid-4 → 2-col until sidebar+content can fit 4 columns comfortably */
+@media (max-width: 1099px) {
+  .hd-grid-4 { grid-template-columns: 1fr 1fr; }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .hd-login-right { display: none; }
   .hd-login-left  { width: 100%; padding: max(env(safe-area-inset-top, 0px), 32px) 24px 32px; }
   .hd-page { padding: 18px 14px; max-width: none; }
-  .hd-grid-4 { grid-template-columns: 1fr 1fr; }
   .hd-grid-3, .hd-grid-2 { grid-template-columns: 1fr; }
   h1 { font-size: 22px !important; }
   .hd-card { border-radius: 8px; }

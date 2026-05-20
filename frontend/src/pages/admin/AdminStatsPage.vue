@@ -26,7 +26,7 @@
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+    <div class="stats-grid-2" style="margin-bottom:20px">
       <!-- Bar chart -->
       <div class="hd-card" style="padding:20px">
         <div style="font-weight:600;font-size:14px;margin-bottom:4px">Tickets criados vs resolvidos</div>
@@ -57,7 +57,7 @@
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="stats-grid-2">
       <!-- Category breakdown -->
       <div class="hd-card" style="padding:20px">
         <div style="font-weight:600;font-size:14px;margin-bottom:4px">Tickets por categoria</div>
@@ -321,6 +321,14 @@ function formatDateTime(value?: string | null) {
 </script>
 
 <style scoped>
+.stats-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 1099px) {
+  .stats-grid-2 { grid-template-columns: 1fr; }
+}
 .access-split {
   display: grid;
   gap: 18px;
@@ -343,7 +351,7 @@ function formatDateTime(value?: string | null) {
 .compact-table th {
   padding: 10px 8px;
 }
-@media (max-width: 900px) {
+@media (max-width: 1099px) {
   .access-split {
     grid-template-columns: 1fr;
   }

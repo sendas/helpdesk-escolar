@@ -336,16 +336,10 @@ function statusLabel(s: string) {
   opacity: .88;
 }
 
-/* ── Tablet+: desktop table + 4-col stats (sidebar já visível) ── */
+/* ── Tablet (≥820px): desktop table + larger greeting; stats ficam 2×2 ── */
 @media (min-width: 820px) {
   .dash-greeting {
     font-size: 26px;
-    margin-bottom: 24px;
-  }
-
-  .stat-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
     margin-bottom: 24px;
   }
 
@@ -358,8 +352,17 @@ function statusLabel(s: string) {
   }
 }
 
-/* ── Desktop largo: layout lado a lado com painel categorias ── */
-@media (min-width: 1150px) {
+/* ── Desktop (≥1100px): 4-col stats — sidebar (260px) já presente ── */
+@media (min-width: 1100px) {
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+}
+
+/* ── Desktop largo (≥1400px): layout lado a lado com painel categorias ── */
+@media (min-width: 1400px) {
   .dash-body {
     flex-direction: row;
     align-items: flex-start;

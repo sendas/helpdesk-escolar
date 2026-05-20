@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.83'
+export const APP_VERSION = '1.7.84'
 export const APP_VERSION_DATE = '2026-05-20'
-export const APP_VERSION_TIME = '11:29'
+export const APP_VERSION_TIME = '11:42'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.84',
+    date: '2026-05-20',
+    time: '11:42',
+    title: 'Correção de layout em tablets e iPads — todos os menus',
+    changes: [
+      'Removido o banner azul de título (page-hero) de todos os menus — era duplicado do título já visível no cabeçalho.',
+      'Cabeçalho mobile mostra agora o nome da página atual em vez do nome do agrupamento.',
+      'Grelha de 4 colunas (estatísticas) passa para 2 colunas em ecrãs com menos de 1100px para evitar cartões esmagados com a barra lateral visível.',
+      'Gráficos das Estatísticas passam para coluna única em ecrãs estreitos (≤1099px).',
+    ],
+  },
   {
     version: '1.7.83',
     date: '2026-05-20',
