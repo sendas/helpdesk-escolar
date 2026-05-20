@@ -336,8 +336,8 @@ function statusLabel(s: string) {
   opacity: .88;
 }
 
-/* ── Desktop layout ── */
-@media (min-width: 768px) {
+/* ── Tablet+: desktop table + 4-col stats (sidebar já visível) ── */
+@media (min-width: 820px) {
   .dash-greeting {
     font-size: 26px;
     margin-bottom: 24px;
@@ -349,6 +349,17 @@ function statusLabel(s: string) {
     margin-bottom: 24px;
   }
 
+  .ticket-list-mobile {
+    display: none;
+  }
+
+  .ticket-table-desktop {
+    display: table;
+  }
+}
+
+/* ── Desktop largo: layout lado a lado com painel categorias ── */
+@media (min-width: 1150px) {
   .dash-body {
     flex-direction: row;
     align-items: flex-start;
@@ -363,15 +374,6 @@ function statusLabel(s: string) {
   .cat-panel {
     width: 280px;
     flex-shrink: 0;
-  }
-
-  /* Switch to table on desktop */
-  .ticket-list-mobile {
-    display: none;
-  }
-
-  .ticket-table-desktop {
-    display: table;
   }
 }
 </style>

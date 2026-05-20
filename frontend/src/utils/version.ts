@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.81'
-export const APP_VERSION_DATE = '2026-05-19'
-export const APP_VERSION_TIME = '11:14'
+export const APP_VERSION = '1.7.82'
+export const APP_VERSION_DATE = '2026-05-20'
+export const APP_VERSION_TIME = '11:16'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.82',
+    date: '2026-05-20',
+    time: '11:16',
+    title: 'Correção de layout no iPad',
+    changes: [
+      'Título do cabeçalho já não parte em duas linhas em ecrãs médios — truncado com reticências se necessário.',
+      'Dashboard no iPad: tabela de tickets e estatísticas em 4 colunas a partir de 820px; painel de categorias só aparece ao lado em ecrãs largos (≥1150px), evitando a tabela espremida.',
+    ],
+  },
   {
     version: '1.7.81',
     date: '2026-05-19',
