@@ -1,7 +1,5 @@
 <template>
   <div class="hd-page">
-    <h1 style="font-size:22px;margin-bottom:24px">Configurações</h1>
-
     <!-- Tabs -->
     <div class="hd-tabs" style="margin-bottom:24px">
       <button class="hd-tab" :class="{ active: tab === 'general' }" @click="tab = 'general'">

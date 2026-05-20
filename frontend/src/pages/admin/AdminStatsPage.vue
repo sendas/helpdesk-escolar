@@ -1,7 +1,5 @@
 <template>
   <div class="hd-page">
-    <h1 style="font-size:22px;margin-bottom:24px">Estatísticas</h1>
-
     <!-- KPI cards -->
     <div class="hd-grid-4" style="margin-bottom:24px">
       <div class="hd-stat" v-for="s in kpis" :key="s.label">

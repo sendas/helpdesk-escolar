@@ -1,9 +1,7 @@
 <template>
   <div class="hd-page">
-    <div class="hd-row" style="margin-bottom:24px">
-      <h1 style="font-size:22px">Sugestões</h1>
-      <div class="hd-spacer"></div>
-      <span style="font-size:13px;color:var(--c-muted);align-self:center">{{ suggestions.length }} sugestão{{ suggestions.length !== 1 ? 'ões' : '' }}</span>
+    <div style="margin-bottom:20px;color:var(--c-muted);font-size:13px">
+      {{ suggestions.length }} sugestão{{ suggestions.length !== 1 ? 'ões' : '' }}
     </div>
 
     <div v-if="loading" style="padding:48px;text-align:center;color:var(--c-muted)">A carregar...</div>

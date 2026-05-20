@@ -1,10 +1,6 @@
 <template>
   <div class="hd-page knowledge-page">
     <div class="knowledge-head">
-      <div>
-        <h1>Base de conhecimento</h1>
-        <p>Respostas rápidas para problemas frequentes antes de abrir ou atualizar um pedido.</p>
-      </div>
       <input class="hd-input" v-model="search" placeholder="Pesquisar artigos..." />
     </div>
 
@@ -47,13 +43,9 @@ onMounted(async () => {
 .knowledge-page { max-width: 1100px; }
 .knowledge-head {
   display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: flex-start;
+  justify-content: flex-end;
   margin-bottom: 18px;
 }
-.knowledge-head h1 { font-size: 26px; margin-bottom: 6px; }
-.knowledge-head p { margin: 0; color: var(--c-muted); }
 .knowledge-head .hd-input { max-width: 320px; }
 .article-grid {
   display: grid;
@@ -84,11 +76,9 @@ onMounted(async () => {
   color: var(--c-muted);
 }
 @media (max-width: 720px) {
-  .knowledge-head {
-    display: grid;
-  }
   .knowledge-head .hd-input {
     max-width: none;
+    width: 100%;
   }
 }
 </style>

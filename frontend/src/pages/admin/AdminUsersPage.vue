@@ -2,7 +2,6 @@
   <div class="hd-page admin-users-page">
     <div class="admin-users-head">
       <div>
-        <h1 style="font-size:22px;margin-bottom:6px">Utilizadores e permissões</h1>
         <div class="sync-note">
           <span class="material-icons">sync</span>
           Sincronização Entra ID

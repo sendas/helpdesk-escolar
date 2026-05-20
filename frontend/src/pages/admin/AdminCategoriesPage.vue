@@ -2,14 +2,7 @@
   <div class="hd-page">
 
     <!-- Header -->
-    <div class="hd-row" style="margin-bottom:28px;align-items:center">
-      <div>
-        <h1 style="font-size:22px;margin:0 0 4px">Categorias</h1>
-        <p class="hd-hint" style="margin:0">
-          Organize os pedidos de suporte por tipo e defina os tempos de resposta (SLA).
-        </p>
-      </div>
-      <div class="hd-spacer"></div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
       <button class="hd-btn hd-btn-primary" @click="openCreate">
         <span class="material-icons" style="font-size:16px">add</span>
         Nova categoria

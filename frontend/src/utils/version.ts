@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.82'
+export const APP_VERSION = '1.7.83'
 export const APP_VERSION_DATE = '2026-05-20'
-export const APP_VERSION_TIME = '11:16'
+export const APP_VERSION_TIME = '11:29'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.83',
+    date: '2026-05-20',
+    time: '11:29',
+    title: 'Remoção de títulos duplicados em todos os menus',
+    changes: [
+      'Removidos os títulos (h1) de todas as páginas que já recebem o cabeçalho compacto do layout — elimina a duplicação visual.',
+      'Botões de ação e contagens mantidos nas respetivas páginas.',
+    ],
+  },
   {
     version: '1.7.82',
     date: '2026-05-20',

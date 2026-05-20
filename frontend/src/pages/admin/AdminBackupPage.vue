@@ -1,10 +1,6 @@
 <template>
   <div class="hd-page backup-page">
     <div class="page-heading">
-      <div>
-        <h1>Backup &amp; Restauro</h1>
-        <p>Cópias de segurança manuais e automáticas dos dados do helpdesk.</p>
-      </div>
       <button class="hd-btn hd-btn-primary" :disabled="backing" @click="doServerBackup">
         <span class="material-icons">{{ backing ? 'hourglass_empty' : 'save' }}</span>
         {{ backing ? 'A criar...' : 'Criar cópia agora' }}
@@ -468,13 +464,10 @@ function formatDate(iso: string) {
 .backup-page { max-width: 1180px; }
 .page-heading {
   display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-bottom: 20px;
 }
-.page-heading h1 { font-size: 24px; margin: 0 0 6px; }
-.page-heading p, .card-copy { color: var(--c-muted); margin: 0; font-size: 14px; }
+.card-copy { color: var(--c-muted); margin: 0; font-size: 14px; }
 .backup-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, .7fr);

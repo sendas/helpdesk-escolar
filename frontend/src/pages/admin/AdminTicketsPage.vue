@@ -1,10 +1,7 @@
 <template>
   <div class="hd-page admin-tickets-page">
     <div class="tickets-heading">
-      <div>
-        <h1>Gestão de tickets</h1>
-        <p>{{ total }} ticket{{ total !== 1 ? 's' : '' }} encontrado{{ total !== 1 ? 's' : '' }}</p>
-      </div>
+      <span class="tickets-total">{{ total }} ticket{{ total !== 1 ? 's' : '' }}</span>
       <div class="tickets-actions">
         <button v-if="auth.isAdmin" class="hd-btn hd-btn-outline" @click="syncReplies" :disabled="mailSyncing">
           <span class="material-icons">mark_email_read</span>
@@ -501,8 +498,7 @@ function timeAgo(date: string) {
   gap: 16px;
   margin-bottom: 18px;
 }
-.tickets-heading h1 { margin: 0 0 4px; font-size: 24px; }
-.tickets-heading p { margin: 0; color: var(--c-muted); }
+.tickets-total { font-size: 13px; color: var(--c-muted); align-self: center; }
 .tickets-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .tickets-panel { overflow: hidden; }
 .filters-grid {

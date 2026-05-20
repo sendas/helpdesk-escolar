@@ -1,8 +1,5 @@
 <template>
   <div class="hd-page suggestions-page">
-    <h1 style="font-size:22px;margin-bottom:6px">Sugestões</h1>
-    <p class="hd-hint" style="margin-bottom:28px">Partilhe ideias para melhorar o Helpdesk Escolar</p>
-
     <div class="hd-card" style="padding:28px;max-width:640px;margin-bottom:24px">
       <label class="hd-label" style="display:block;margin-bottom:8px">A sua sugestão</label>
       <textarea

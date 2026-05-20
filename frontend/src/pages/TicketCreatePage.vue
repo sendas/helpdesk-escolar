@@ -1,9 +1,8 @@
 <template>
   <div class="hd-page">
-    <div style="font-size:12px;color:var(--c-muted);margin-bottom:6px">
+    <div style="font-size:12px;color:var(--c-muted);margin-bottom:16px">
       <router-link to="/tickets" style="color:var(--c-muted);text-decoration:none">Tickets</router-link> / Novo
     </div>
-    <h1 style="font-size:26px;margin-bottom:24px">Novo pedido</h1>
 
     <div class="hd-card ticket-create-card">
       <div style="font-weight:600;font-size:15px;margin-bottom:4px">Novo pedido de apoio</div>

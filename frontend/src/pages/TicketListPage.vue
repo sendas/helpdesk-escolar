@@ -1,8 +1,6 @@
 <template>
   <div class="hd-page">
-    <div class="hd-row" style="margin-bottom:20px">
-      <h1 style="font-size:22px">Os meus tickets</h1>
-      <div class="hd-spacer"></div>
+    <div class="hd-row" style="margin-bottom:20px;justify-content:flex-end">
       <router-link to="/tickets/new">
         <button class="hd-btn hd-btn-primary"><span class="material-icons" style="font-size:16px">add</span> Novo ticket</button>
       </router-link>
