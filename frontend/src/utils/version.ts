@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.86'
+export const APP_VERSION = '1.7.87'
 export const APP_VERSION_DATE = '2026-05-22'
-export const APP_VERSION_TIME = '15:56'
+export const APP_VERSION_TIME = '22:34'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.87',
+    date: '2026-05-22',
+    time: '22:34',
+    title: 'Botões empresa de apoio com texto visível',
+    changes: [
+      'Botão de envio à empresa de apoio no cabeçalho do ticket passa a mostrar texto ("Enviar para empresa de apoio" / "Reenviar à empresa de apoio") em vez de apenas ícone.',
+      'Botão por comentário renomeado de "Reenviar" para "Enviar para empresa de apoio".',
+    ],
+  },
   {
     version: '1.7.86',
     date: '2026-05-22',

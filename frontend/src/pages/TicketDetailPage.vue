@@ -23,12 +23,13 @@
             <!-- Force-send to support company (staff only) -->
             <button
               v-if="auth.isStaff && !isDeescalated"
-              class="hd-icon-btn"
-              :title="isEscalated ? 'Reenviar à empresa de apoio' : 'Reportar à empresa de apoio'"
+              class="hd-btn hd-btn-outline"
+              style="font-size:12px;padding:3px 10px"
               :disabled="escalating"
               @click="onEscalateTicket"
             >
-              <span class="material-icons" style="font-size:18px">{{ isEscalated ? 'forward_to_inbox' : 'outgoing_mail' }}</span>
+              <span class="material-icons" style="font-size:13px">{{ isEscalated ? 'forward_to_inbox' : 'outgoing_mail' }}</span>
+              {{ escalating ? '...' : (isEscalated ? 'Reenviar à empresa de apoio' : 'Enviar para empresa de apoio') }}
             </button>
             <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
             <PriorityBadge :priority="ticket.priority" />
@@ -143,7 +144,7 @@
                   :title="'Reenviar esta resposta à empresa de apoio'"
                   @click="forwardCommentToProvider(c)"
                 >
-                  {{ sendingCommentId === c.id ? '...' : 'Reenviar' }}
+                  {{ sendingCommentId === c.id ? '...' : 'Enviar para empresa de apoio' }}
                 </button>
               </div>
               <div v-if="editingCommentId === c.id" class="comment-edit-box">
