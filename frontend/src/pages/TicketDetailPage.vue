@@ -51,6 +51,17 @@
               <span class="material-icons" style="font-size:13px;vertical-align:middle">check_circle</span>
               Resolvido pela empresa de apoio
             </span>
+            <button
+              v-if="isDeescalated && auth.isStaff"
+              class="hd-btn hd-btn-outline"
+              style="font-size:12px;padding:3px 10px"
+              :disabled="escalating"
+              title="Reverter — empresa de apoio ainda não resolveu"
+              @click="onEscalateTicket"
+            >
+              <span class="material-icons" style="font-size:13px">undo</span>
+              {{ escalating ? '...' : 'Reverter' }}
+            </button>
           </template>
           <template v-else>
             <button class="hd-btn hd-btn-outline" @click="cancelEditContent">Cancelar</button>
@@ -125,6 +136,15 @@
                 <span class="hd-msg-time">{{ formatDate(c.created_at) }}</span>
                 <button v-if="canEditComment(c)" class="msg-action" @click="startEditComment(c)">Editar</button>
                 <button v-if="canEditComment(c)" class="msg-action danger" @click="onDeleteComment(c)">Apagar</button>
+                <button
+                  v-if="auth.isStaff && isEscalated && !c.is_internal"
+                  class="msg-action"
+                  :disabled="sendingCommentId === c.id"
+                  :title="'Reenviar esta resposta à empresa de apoio'"
+                  @click="forwardCommentToProvider(c)"
+                >
+                  {{ sendingCommentId === c.id ? '...' : 'Reenviar' }}
+                </button>
               </div>
               <div v-if="editingCommentId === c.id" class="comment-edit-box">
                 <textarea class="hd-textarea" v-model="editingCommentBody" rows="3"></textarea>
@@ -422,7 +442,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
+import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, getUsers, searchUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -444,6 +464,7 @@ const groupId = ref('')
 const ticketStatus = ref('')
 const editingCommentId = ref<number | null>(null)
 const editingCommentBody = ref('')
+const sendingCommentId = ref<number | null>(null)
 const escalating = ref(false)
 const escalationMessage = ref('')
 const escalationError = ref(false)
@@ -471,12 +492,12 @@ const fileAttachments = computed(() =>
   (ticket.value?.attachments ?? []).filter((a: any) => !(a.content_type as string).startsWith('image/'))
 )
 
-const isEscalated = computed(() =>
-  (ticket.value?.events ?? []).some((e: any) => e.event_type === 'escalated')
-)
-const isDeescalated = computed(() =>
-  (ticket.value?.events ?? []).some((e: any) => e.event_type === 'deescalated')
-)
+const isEscalated = computed(() => !!ticket.value?.is_escalated)
+const isDeescalated = computed(() => {
+  const events: any[] = ticket.value?.events ?? []
+  const hadEscalated = events.some((e: any) => e.event_type === 'escalated')
+  return hadEscalated && !ticket.value?.is_escalated
+})
 const deescalating = ref(false)
 
 const canManageEmailNotifications = computed(() => {
@@ -819,6 +840,22 @@ async function onDeescalate() {
     ticket.value = await deescalateTicket(ticket.value.id)
   } finally {
     deescalating.value = false
+  }
+}
+
+async function forwardCommentToProvider(comment: any) {
+  if (!confirm('Reenviar esta resposta à empresa de apoio?')) return
+  sendingCommentId.value = comment.id
+  escalationMessage.value = ''
+  escalationError.value = false
+  try {
+    await escalateComment(ticket.value.id, comment.id)
+    escalationMessage.value = 'Resposta enviada à empresa de apoio.'
+  } catch (error: any) {
+    escalationError.value = true
+    escalationMessage.value = error?.response?.data?.detail || 'Não foi possível reenviar. Verifique as configurações de email.'
+  } finally {
+    sendingCommentId.value = null
   }
 }
 

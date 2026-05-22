@@ -78,6 +78,10 @@ export async function deescalateTicket(id: number) {
   return data
 }
 
+export async function escalateComment(ticketId: number, commentId: number) {
+  await api.post(`/api/v1/tickets/${ticketId}/comments/${commentId}/escalate`)
+}
+
 export async function restoreBackup(file: File) {
   const form = new FormData()
   form.append('file', file)

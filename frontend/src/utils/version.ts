@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.85'
+export const APP_VERSION = '1.7.86'
 export const APP_VERSION_DATE = '2026-05-22'
-export const APP_VERSION_TIME = '15:15'
+export const APP_VERSION_TIME = '15:56'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.86',
+    date: '2026-05-22',
+    time: '15:56',
+    title: 'Botão "Reenviar" por comentário + reversão de resolução empresa de apoio',
+    changes: [
+      'Botão "Reenviar" adicionado em cada comentário (ao lado de Editar/Apagar) — permite enviar aquela resposta específica à empresa de apoio com um clique.',
+      'Novo botão "Reverter" no cabeçalho do ticket quando marcado como "Resolvido pela empresa de apoio" — permite desfazer a marcação se a situação não estiver realmente resolvida.',
+      'Corrigido: o estado "escalado/resolvido pela empresa de apoio" era calculado incorretamente — agora usa o campo real do ticket em vez do histório de eventos.',
+    ],
+  },
   {
     version: '1.7.85',
     date: '2026-05-22',

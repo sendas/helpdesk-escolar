@@ -366,6 +366,48 @@ async def deescalate_ticket(
     return await ticket_service.get_ticket(db, ticket_id)
 
 
+@router.post("/{ticket_id}/comments/{comment_id}/escalate", status_code=status.HTTP_204_NO_CONTENT)
+async def escalate_comment(
+    ticket_id: int,
+    comment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    if not ticket.is_escalated:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket não está reportado à empresa de apoio")
+    result = await db.execute(select(Comment).where(Comment.id == comment_id, Comment.ticket_id == ticket_id, Comment.deleted_at.is_(None)))
+    comment = result.scalar_one_or_none()
+    if not comment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comentário não encontrado")
+    if comment.is_internal:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não é possível reenviar notas internas")
+    app_settings = _read_settings()
+    provider_email = (app_settings.get("support_provider_email") or "").strip()
+    provider_name = (app_settings.get("support_provider_name") or "Empresa de apoio").strip()
+    if not provider_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email da empresa de apoio não configurado")
+    if not settings.mail_server:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envio de email não configurado")
+    author = await db.get(User, comment.author_id)
+    author_name = author.display_name if author else "Desconhecido"
+    await email_service.send_ticket_notification(
+        provider_email,
+        "supplier_comment",
+        {
+            "id": ticket.id,
+            "title": ticket.title,
+            "author": author_name,
+            "comment": comment.body,
+            "provider": provider_name,
+        },
+    )
+
+
 @router.post("/{ticket_id}/watchers", response_model=TicketRead)
 async def add_watcher(
     ticket_id: int,
