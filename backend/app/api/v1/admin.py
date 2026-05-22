@@ -260,10 +260,10 @@ async def admin_update_ticket(
                     {"id": updated.id, "title": updated.title, "assignee": updated.group.name},
                 )
 
-    if content_changed and any(e.event_type == "escalated" for e in updated.events):
+    if updated.is_escalated:
         app_settings = _read_settings()
-        provider_email = app_settings.get("support_provider_email", "")
-        provider_name = app_settings.get("support_provider_name", "Fornecedor externo")
+        provider_email = (app_settings.get("support_provider_email") or "").strip()
+        provider_name = (app_settings.get("support_provider_name") or "Empresa de apoio").strip()
         if provider_email:
             await email_service.send_ticket_notification(
                 provider_email,
@@ -272,7 +272,7 @@ async def admin_update_ticket(
                     "id": updated.id,
                     "title": updated.title,
                     "status": updated.status.value,
-                    "priority": updated.priority,
+                    "priority": updated.priority.value,
                     "description": updated.description,
                     "editor": current_staff.display_name,
                     "provider": provider_name,

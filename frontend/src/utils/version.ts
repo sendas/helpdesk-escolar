@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.84'
-export const APP_VERSION_DATE = '2026-05-20'
-export const APP_VERSION_TIME = '11:42'
+export const APP_VERSION = '1.7.85'
+export const APP_VERSION_DATE = '2026-05-22'
+export const APP_VERSION_TIME = '15:15'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.85',
+    date: '2026-05-22',
+    time: '15:15',
+    title: 'Atualizações automáticas à empresa de apoio + botão reenviar',
+    changes: [
+      'Quando um ticket já reportado à empresa de apoio recebe um novo comentário público, o email é automaticamente reenviado à empresa com o conteúdo do comentário.',
+      'Qualquer alteração ao ticket (estado, prioridade, conteúdo) também notifica automaticamente a empresa de apoio.',
+      'Novo botão de envio/reenvio rápido no cabeçalho do ticket (ícone de email) para staff — distingue entre reportar pela primeira vez e reenviar.',
+    ],
+  },
   {
     version: '1.7.84',
     date: '2026-05-20',

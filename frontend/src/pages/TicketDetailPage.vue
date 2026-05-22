@@ -20,6 +20,16 @@
             <button v-if="auth.isAdmin" class="hd-icon-btn" title="Editar assunto e descrição" @click="startEditContent">
               <span class="material-icons" style="font-size:18px">edit</span>
             </button>
+            <!-- Force-send to support company (staff only) -->
+            <button
+              v-if="auth.isStaff && !isDeescalated"
+              class="hd-icon-btn"
+              :title="isEscalated ? 'Reenviar à empresa de apoio' : 'Reportar à empresa de apoio'"
+              :disabled="escalating"
+              @click="onEscalateTicket"
+            >
+              <span class="material-icons" style="font-size:18px">{{ isEscalated ? 'forward_to_inbox' : 'outgoing_mail' }}</span>
+            </button>
             <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
             <PriorityBadge :priority="ticket.priority" />
             <span v-if="isEscalated && !isDeescalated" class="escalated-badge" title="Ticket reportado à empresa de apoio">
@@ -363,12 +373,8 @@
               <span style="font-size:13px">{{ ticket.category.sla_hours }}h</span>
             </div>
 
-            <div v-if="auth.isStaff" class="provider-escalation">
-              <button class="hd-btn hd-btn-outline" style="width:100%;justify-content:center" :disabled="escalating" @click="onEscalateTicket">
-                <span class="material-icons" style="font-size:16px">outgoing_mail</span>
-                {{ escalating ? 'A reportar...' : 'Reportar à empresa de apoio' }}
-              </button>
-              <p v-if="escalationMessage" :class="{ error: escalationError }">{{ escalationMessage }}</p>
+            <div v-if="auth.isStaff && escalationMessage" class="provider-escalation">
+              <p :class="{ error: escalationError }">{{ escalationMessage }}</p>
             </div>
           </div>
 
@@ -785,13 +791,19 @@ async function onRemoveWatcher(userId: number) {
 }
 
 async function onEscalateTicket() {
-  if (!confirm('Reportar este ticket à empresa de apoio informático configurada?')) return
+  const alreadyEscalated = isEscalated.value
+  const msg = alreadyEscalated
+    ? 'Reenviar este ticket à empresa de apoio (enviará novamente o email de escalamento)?'
+    : 'Reportar este ticket à empresa de apoio informático configurada?'
+  if (!confirm(msg)) return
   escalating.value = true
   escalationMessage.value = ''
   escalationError.value = false
   try {
     ticket.value = await escalateTicket(ticket.value.id)
-    escalationMessage.value = 'Ticket reportado e email enviado à empresa de apoio.'
+    escalationMessage.value = alreadyEscalated
+      ? 'Email reenviado à empresa de apoio.'
+      : 'Ticket reportado e email enviado à empresa de apoio.'
   } catch (error: any) {
     escalationError.value = true
     escalationMessage.value = error?.response?.data?.detail || 'Não foi possível reportar o ticket. Verifica o email da empresa de apoio nas configurações.'

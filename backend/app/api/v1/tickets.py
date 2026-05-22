@@ -280,6 +280,25 @@ async def update_ticket(
             payload["editor"] = current_user.display_name
         for recipient in _ticket_update_recipients(updated, current_user):
             await email_service.send_ticket_notification(recipient, notif_type, payload)
+        # Auto-notify support company on any update when ticket is escalated
+        if updated.is_escalated:
+            app_settings = _read_settings()
+            provider_email = (app_settings.get("support_provider_email") or "").strip()
+            provider_name = (app_settings.get("support_provider_name") or "Empresa de apoio").strip()
+            if provider_email and settings.mail_server:
+                await email_service.send_ticket_notification(
+                    provider_email,
+                    "supplier_updated",
+                    {
+                        "id": updated.id,
+                        "title": updated.title,
+                        "status": updated.status.value,
+                        "priority": updated.priority.value,
+                        "description": updated.description,
+                        "editor": current_user.display_name,
+                        "provider": provider_name,
+                    },
+                )
     return updated
 
 
@@ -453,6 +472,23 @@ async def add_comment(
                     "comment": data.body,
                 },
             )
+        # Auto-forward comments to support company when ticket is escalated
+        if ticket.is_escalated:
+            app_settings = _read_settings()
+            provider_email = (app_settings.get("support_provider_email") or "").strip()
+            provider_name = (app_settings.get("support_provider_name") or "Empresa de apoio").strip()
+            if provider_email and settings.mail_server:
+                await email_service.send_ticket_notification(
+                    provider_email,
+                    "supplier_comment",
+                    {
+                        "id": ticket.id,
+                        "title": ticket.title,
+                        "author": current_user.display_name,
+                        "comment": data.body,
+                        "provider": provider_name,
+                    },
+                )
         push_ids = {
             uid for uid in [
                 ticket.creator_id,
