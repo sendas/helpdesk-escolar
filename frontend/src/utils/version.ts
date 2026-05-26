@@ -1,11 +1,11 @@
 export const APP_VERSION = '1.7.87'
-export const APP_VERSION_DATE = '2026-05-22'
+export const APP_VERSION_DATE = '2026-05-26'
 export const APP_VERSION_TIME = '22:34'
 
 export const RELEASE_NOTES = [
   {
     version: '1.7.87',
-    date: '2026-05-22',
+    date: '2026-05-26',
     time: '22:34',
     title: 'Botões empresa de apoio com texto visível',
     changes: [
@@ -15,7 +15,7 @@ export const RELEASE_NOTES = [
   },
   {
     version: '1.7.86',
-    date: '2026-05-22',
+    date: '2026-05-26',
     time: '15:56',
     title: 'Botão "Reenviar" por comentário + reversão de resolução empresa de apoio',
     changes: [
@@ -26,7 +26,7 @@ export const RELEASE_NOTES = [
   },
   {
     version: '1.7.85',
-    date: '2026-05-22',
+    date: '2026-05-26',
     time: '15:15',
     title: 'Atualizações automáticas à empresa de apoio + botão reenviar',
     changes: [
