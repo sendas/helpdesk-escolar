@@ -31,9 +31,17 @@ docker compose -f docker-compose.unraid.yml up -d
 > Usar `--no-cache frontend` para garantir que o Quasar reconstrói com a versão nova.
 > Sem `--no-cache`, o Docker pode usar a cache e não atualizar o frontend.
 
+## Credenciais GitHub (recuperação após reset de sessão)
+
+Se o push para `helpdesk-gh` falhar com "Authentication failed", configurar o token:
+```bash
+git remote set-url helpdesk-gh https://<TOKEN>@github.com/sendas/helpdesk-escolar.git
+```
+O token é um GitHub Personal Access Token (classic) com scope `repo`.
+
 ## Versionamento
 
-- Usar sempre `TZ=Europe/Lisbon date '+%Y-%m-%d %H:%M'` para obter a hora correta antes de bumpar versão
+- **ATENÇÃO**: `TZ=Europe/Lisbon date` dentro do container pode mostrar data errada (data de criação do container). Verificar sempre a data real no contexto do sistema antes de bumpar versão.
 - Ficheiro de versão: `frontend/src/utils/version.ts`
 - Incrementar `APP_VERSION`, `APP_VERSION_DATE`, `APP_VERSION_TIME` e adicionar entrada em `RELEASE_NOTES`
 
