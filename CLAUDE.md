@@ -24,12 +24,13 @@ Sem este push, o servidor de produção nunca recebe o código novo.
 cd /mnt/cache/appdata/helpdesk
 cp data/tickets.db data/tickets.db.bak-$(date +%Y%m%d-%H%M)  # backup antes de atualizar
 git pull
-docker compose -f docker-compose.unraid.yml build --no-cache frontend
+docker compose -f docker-compose.unraid.yml build --no-cache frontend backend
 docker compose -f docker-compose.unraid.yml up -d
 ```
 
-> Usar `--no-cache frontend` para garantir que o Quasar reconstrói com a versão nova.
-> Sem `--no-cache`, o Docker pode usar a cache e não atualizar o frontend.
+> **IMPORTANTE**: O compose tem dois serviços separados — `frontend` e `backend`.
+> Sempre rebuildar **ambos** com `build --no-cache frontend backend`.
+> Se só se rebuildar o `frontend`, o backend fica com código antigo e os novos endpoints da API não ficam disponíveis.
 
 ## Credenciais GitHub (recuperação após reset de sessão)
 

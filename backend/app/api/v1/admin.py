@@ -317,6 +317,9 @@ async def admin_sync_mail_replies(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
 ):
+    from app.config import settings as cfg
+    if not cfg.mail_reply_enabled:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sincronização de email desativada (MAIL_REPLY_ENABLED=false)")
     return await email_ingest.sync_inbound_replies(db, limit=50)
 
 
@@ -325,7 +328,9 @@ async def admin_force_sync_mail_replies(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
 ):
-    """Processa todos os emails (incluindo já lidos) para fechar tickets mais antigos."""
+    from app.config import settings as cfg
+    if not cfg.mail_reply_enabled:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sincronização de email desativada (MAIL_REPLY_ENABLED=false)")
     return await email_ingest.sync_inbound_replies(db, limit=200, force=True)
 
 

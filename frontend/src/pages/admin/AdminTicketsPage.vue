@@ -459,6 +459,13 @@ async function deleteSelected() {
   await load()
 }
 
+function mailErrorMessage(err: unknown): string {
+  const status = (err as any)?.response?.status
+  if (status === 404) return 'Endpoint não encontrado — o backend pode não ter sido atualizado. Reconstrua o serviço backend.'
+  if (status === 503) return 'Sincronização de email desativada. Ativa MAIL_REPLY_ENABLED no app.env.'
+  return 'Não foi possível processar os emails. Verifica a configuração IMAP/Graph no servidor.'
+}
+
 async function syncReplies() {
   if (mailSyncing.value) return
   mailSyncing.value = true
@@ -467,8 +474,8 @@ async function syncReplies() {
     const result = await syncMailReplies()
     mailSyncMessage.value = `Respostas lidas: ${result.processed} adicionada(s), ${result.skipped} ignorada(s).`
     await load()
-  } catch {
-    mailSyncMessage.value = 'Não foi possível ler respostas de email. Verifica a configuração IMAP.'
+  } catch (err) {
+    mailSyncMessage.value = mailErrorMessage(err)
   } finally {
     mailSyncing.value = false
   }
@@ -483,8 +490,8 @@ async function forceSyncReplies() {
     const result = await forceSyncMailReplies()
     mailSyncMessage.value = `Processamento concluído: ${result.processed} ticket(s) atualizado(s), ${result.skipped} email(s) ignorado(s).`
     await load()
-  } catch {
-    mailSyncMessage.value = 'Não foi possível processar os emails. Verifica a configuração IMAP/Graph.'
+  } catch (err) {
+    mailSyncMessage.value = mailErrorMessage(err)
   } finally {
     forceSyncing.value = false
   }
