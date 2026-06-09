@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.88'
-export const APP_VERSION_DATE = '2026-05-26'
-export const APP_VERSION_TIME = '23:10'
+export const APP_VERSION = '1.7.89'
+export const APP_VERSION_DATE = '2026-06-09'
+export const APP_VERSION_TIME = '10:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.89',
+    date: '2026-06-09',
+    time: '10:00',
+    title: 'Log de emails na app',
+    changes: [
+      'Nova página "Log de emails" no painel de administração — mostra os últimos 200 eventos gerados pelo processamento de emails (respostas recebidas e tickets fechados automaticamente).',
+      'Visível em Administração → Log de emails (apenas para administradores).',
+    ],
+  },
   {
     version: '1.7.88',
     date: '2026-05-26',

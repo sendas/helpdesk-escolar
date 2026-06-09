@@ -297,3 +297,13 @@ export async function unsubscribePush(endpoint: string) {
 export async function testPush() {
   await api.post('/api/v1/notifications/test')
 }
+
+export interface MailLogEntry {
+  id: number; event_type: string; message: string; created_at: string
+  ticket_id: number; ticket_title?: string; actor_email?: string; actor_name?: string
+}
+
+export async function getMailLog(limit = 200) {
+  const { data } = await api.get<MailLogEntry[]>('/api/v1/admin/mail/log', { params: { limit } })
+  return data
+}

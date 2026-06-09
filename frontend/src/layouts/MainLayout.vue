@@ -75,6 +75,9 @@
             <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/backup' }" to="/admin/backup" @click="mobileMenuOpen = false">
               <span class="material-icons">database</span> Backup &amp; Restauro
             </router-link>
+            <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/mail-log' }" to="/admin/mail-log" @click="mobileMenuOpen = false">
+              <span class="material-icons">mail</span> Log de emails
+            </router-link>
           </template>
         </template>
       </nav>

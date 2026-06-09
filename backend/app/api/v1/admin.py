@@ -751,6 +751,43 @@ async def fix_resolved_tickets(db: AsyncSession = Depends(get_db), _: User = Dep
     return {"fixed": len(ticket_ids), "ticket_ids": ticket_ids}
 
 
+@router.get("/mail/log")
+async def get_mail_log(
+    limit: int = Query(200, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    result = await db.execute(
+        select(TicketEvent)
+        .where(
+            or_(
+                TicketEvent.event_type == "email_reply",
+                TicketEvent.message.like("%via email%"),
+            )
+        )
+        .options(
+            selectinload(TicketEvent.ticket),
+            selectinload(TicketEvent.actor),
+        )
+        .order_by(TicketEvent.created_at.desc())
+        .limit(limit)
+    )
+    events = result.scalars().all()
+    return [
+        {
+            "id": e.id,
+            "event_type": e.event_type,
+            "message": e.message,
+            "created_at": e.created_at.isoformat(),
+            "ticket_id": e.ticket_id,
+            "ticket_title": e.ticket.title if e.ticket else None,
+            "actor_email": e.actor.email if e.actor else None,
+            "actor_name": e.actor.display_name if e.actor else None,
+        }
+        for e in events
+    ]
+
+
 @router.post("/reopen-wrongly-closed")
 async def reopen_wrongly_closed(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
     """Reopen tickets that were closed by the fix script but have no 'closed' event in ticket_events."""
