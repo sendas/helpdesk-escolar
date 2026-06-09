@@ -3,9 +3,13 @@
     <div class="tickets-heading">
       <span class="tickets-total">{{ total }} ticket{{ total !== 1 ? 's' : '' }}</span>
       <div class="tickets-actions">
-        <button v-if="auth.isAdmin" class="hd-btn hd-btn-outline" @click="syncReplies" :disabled="mailSyncing">
+        <button v-if="auth.isAdmin" class="hd-btn hd-btn-outline" @click="syncReplies" :disabled="mailSyncing || forceSyncing">
           <span class="material-icons">mark_email_read</span>
-          {{ mailSyncing ? 'A atualizar emails...' : 'Atualizar receção de emails' }}
+          {{ mailSyncing ? 'A atualizar...' : 'Atualizar emails' }}
+        </button>
+        <button v-if="auth.isAdmin" class="hd-btn hd-btn-outline" @click="forceSyncReplies" :disabled="mailSyncing || forceSyncing" title="Processa todos os emails (incluindo já lidos) para fechar tickets com base no assunto">
+          <span class="material-icons">move_to_inbox</span>
+          {{ forceSyncing ? 'A processar...' : 'Fechar tickets por email' }}
         </button>
         <button class="hd-btn hd-btn-primary" @click="load">
           <span class="material-icons">refresh</span>
@@ -211,7 +215,7 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
-import { adminBulkActionTickets, adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies } from '../../api/tickets'
+import { adminBulkActionTickets, adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies, forceSyncMailReplies } from '../../api/tickets'
 import { getGroups, getUsers } from '../../api/users'
 import { useAuthStore } from '../../stores/auth'
 import AvatarCircle from '../../components/AvatarCircle.vue'
@@ -291,6 +295,7 @@ const bulkGroup = ref('')
 const bulkPriority = ref('')
 const mailSyncMessage = ref('')
 const mailSyncing = ref(false)
+const forceSyncing = ref(false)
 const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 const filterPriority = ref('')
@@ -466,6 +471,22 @@ async function syncReplies() {
     mailSyncMessage.value = 'Não foi possível ler respostas de email. Verifica a configuração IMAP.'
   } finally {
     mailSyncing.value = false
+  }
+}
+
+async function forceSyncReplies() {
+  if (forceSyncing.value) return
+  if (!confirm('Processar todos os emails da caixa de correio (incluindo já lidos) para fechar tickets automaticamente?\n\nIsso pode demorar alguns segundos.')) return
+  forceSyncing.value = true
+  mailSyncMessage.value = 'A processar todos os emails...'
+  try {
+    const result = await forceSyncMailReplies()
+    mailSyncMessage.value = `Processamento concluído: ${result.processed} ticket(s) atualizado(s), ${result.skipped} email(s) ignorado(s).`
+    await load()
+  } catch {
+    mailSyncMessage.value = 'Não foi possível processar os emails. Verifica a configuração IMAP/Graph.'
+  } finally {
+    forceSyncing.value = false
   }
 }
 

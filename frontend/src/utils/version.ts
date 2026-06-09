@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.87'
+export const APP_VERSION = '1.7.88'
 export const APP_VERSION_DATE = '2026-05-26'
-export const APP_VERSION_TIME = '22:34'
+export const APP_VERSION_TIME = '23:10'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.88',
+    date: '2026-05-26',
+    time: '23:10',
+    title: 'Fecho automático de tickets por email',
+    changes: [
+      'Quando a caixa de correio recebe um email com "FECHADO" ou "resolvido" no assunto e o corpo contém "O Seu Ticket de Apoio ao Cliente [Ticket #XX]", o ticket é automaticamente fechado/resolvido.',
+      'Funciona com remetentes externos (empresa de apoio) sem necessidade de conta no helpdesk.',
+      'Novo botão "Fechar tickets por email" na gestão de tickets — processa todos os emails da caixa (incluindo já lidos) para fechar tickets mais antigos.',
+      'A sincronização automática periódica também deteta estes emails e fecha os tickets em tempo real.',
+    ],
+  },
   {
     version: '1.7.87',
     date: '2026-05-26',

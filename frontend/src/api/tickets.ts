@@ -131,6 +131,11 @@ export async function syncMailReplies() {
   return data
 }
 
+export async function forceSyncMailReplies() {
+  const { data } = await api.post<{ processed: number; skipped: number }>('/api/v1/admin/mail/sync/force')
+  return data
+}
+
 export async function addComment(ticketId: number, body: string, is_internal = false) {
   const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal })
   return data

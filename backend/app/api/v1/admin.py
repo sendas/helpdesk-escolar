@@ -320,6 +320,15 @@ async def admin_sync_mail_replies(
     return await email_ingest.sync_inbound_replies(db, limit=50)
 
 
+@router.post("/mail/sync/force")
+async def admin_force_sync_mail_replies(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Processa todos os emails (incluindo já lidos) para fechar tickets mais antigos."""
+    return await email_ingest.sync_inbound_replies(db, limit=200, force=True)
+
+
 @router.get("/stats")
 async def admin_stats(
     db: AsyncSession = Depends(get_db),

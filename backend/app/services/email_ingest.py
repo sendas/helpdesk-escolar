@@ -18,32 +18,42 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.models.group import HelpdeskGroup
-from app.models.ticket import Comment, ProcessedEmail, Ticket, TicketEvent
+from app.models.ticket import Comment, ProcessedEmail, Ticket, TicketEvent, TicketStatus
 from app.models.user import User
 from app.services import email_service
 
 TICKET_RE = re.compile(r"\[Ticket\s+#(\d+)\]", re.IGNORECASE)
+# Matches "O Seu Ticket de Apoio ao Cliente [Ticket #XX]" in the body
+BODY_TICKET_RE = re.compile(r"O\s+Seu\s+Ticket\s+de\s+Apoio\s+ao\s+Cliente\s*[\r\n\s]*\[Ticket\s*#(\d+)\]", re.IGNORECASE)
+# Subject keywords that trigger automatic ticket status change
+CLOSE_SUBJECT_RE = re.compile(r"\b(FECHADO|resolvido|resolved|closed)\b", re.IGNORECASE)
+_SUBJECT_STATUS_MAP: dict[str, str] = {
+    "fechado": "closed",
+    "closed": "closed",
+    "resolvido": "resolved",
+    "resolved": "resolved",
+}
 logger = logging.getLogger(__name__)
 
 
-async def sync_inbound_replies(db: AsyncSession, limit: int = 25) -> dict:
+async def sync_inbound_replies(db: AsyncSession, limit: int = 25, force: bool = False) -> dict:
     if not settings.mail_reply_enabled:
         logger.info("Mail reply sync disabled: MAIL_REPLY_ENABLED is false")
         return {"processed": 0, "skipped": 0, "provider": _reply_provider()}
 
     provider = _reply_provider()
     if provider == "graph":
-        messages = await _fetch_graph_unread_messages(limit)
+        messages = await _fetch_graph_unread_messages(limit, force=force)
     elif provider == "imap":
         if not settings.imap_server:
             logger.warning("Mail reply sync disabled: IMAP_SERVER is empty")
             return {"processed": 0, "skipped": 0, "provider": provider}
-        messages = await asyncio.to_thread(_fetch_unseen_messages, limit)
+        messages = await asyncio.to_thread(_fetch_unseen_messages, limit, force)
     else:
         logger.warning("Mail reply sync disabled: unsupported MAIL_REPLY_PROVIDER=%s", settings.mail_reply_provider)
         return {"processed": 0, "skipped": 0, "provider": provider}
 
-    logger.info("Mail reply sync fetched %s candidate message(s) via %s", len(messages), provider)
+    logger.info("Mail reply sync fetched %s candidate message(s) via %s (force=%s)", len(messages), provider, force)
     result = await _import_messages(db, messages)
     result["provider"] = provider
     return result
@@ -53,7 +63,7 @@ def _reply_provider() -> str:
     return (settings.mail_reply_provider or "imap").strip().lower()
 
 
-async def _fetch_graph_unread_messages(limit: int) -> list[dict]:
+async def _fetch_graph_unread_messages(limit: int, force: bool = False) -> list[dict]:
     mailbox = (settings.graph_mail_user or settings.imap_username or settings.mail_username or settings.mail_from).strip()
     if not mailbox:
         logger.warning("Graph mail reply sync disabled: GRAPH_MAIL_USER/MAIL_USERNAME is empty")
@@ -68,12 +78,13 @@ async def _fetch_graph_unread_messages(limit: int) -> list[dict]:
 
     folder = _graph_folder_id(settings.imap_folder)
     select_fields = "id,subject,from,body,uniqueBody,internetMessageId,isRead"
-    params = {
-        "$top": str(max(1, min(limit, 50))),
-        "$filter": "isRead eq false",
+    params: dict = {
+        "$top": str(max(1, min(limit, 200))),
         "$orderby": "receivedDateTime desc",
         "$select": select_fields,
     }
+    if not force:
+        params["$filter"] = "isRead eq false"
     base_url = f"https://graph.microsoft.com/v1.0/users/{mailbox}/mailFolders/{folder}/messages"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -128,10 +139,6 @@ def _graph_folder_id(folder: str) -> str:
 
 def _parse_graph_message(msg: dict) -> dict | None:
     subject = msg.get("subject") or ""
-    match = TICKET_RE.search(subject)
-    if not match:
-        return None
-
     sender_email = (
         ((msg.get("from") or {}).get("emailAddress") or {}).get("address") or ""
     ).strip().lower()
@@ -141,6 +148,12 @@ def _parse_graph_message(msg: dict) -> dict | None:
     if content_type == "html":
         body_content = _html_to_text(body_content)
 
+    # Try ticket ID from subject first, then from body pattern
+    match = TICKET_RE.search(subject) or BODY_TICKET_RE.search(body_content)
+    if not match:
+        return None
+
+    status_action = _detect_status_action(subject)
     body = _clean_reply_body(body_content)
     message_id = (msg.get("internetMessageId") or msg.get("id") or f"{sender_email}:{subject}:{hash(body)}").strip()
     return {
@@ -148,6 +161,7 @@ def _parse_graph_message(msg: dict) -> dict | None:
         "ticket_id": int(match.group(1)),
         "sender_email": sender_email,
         "body": body,
+        "status_action": status_action,
     }
 
 
@@ -204,39 +218,66 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
             )
         )
     ).scalar_one_or_none()
-    user = (await db.execute(select(User).where(User.email.ilike(msg["sender_email"])))).scalar_one_or_none()
     if not ticket:
         logger.info("Mail reply skipped: ticket #%s not found", msg["ticket_id"])
         return False
-    if not user:
-        logger.info("Mail reply skipped: sender %s is not a helpdesk user", msg["sender_email"])
-        return False
-    if not msg["body"]:
-        logger.info("Mail reply skipped: empty body for ticket #%s from %s", msg["ticket_id"], msg["sender_email"])
-        return False
 
-    db.add(Comment(body=msg["body"], is_internal=False, ticket_id=ticket.id, author_id=user.id))
-    db.add(TicketEvent(ticket_id=ticket.id, actor_id=user.id, event_type="email_reply", message="Resposta recebida por email"))
+    status_action = msg.get("status_action")
+    user = (await db.execute(select(User).where(User.email.ilike(msg["sender_email"])))).scalar_one_or_none()
+
+    # For regular replies (no status change), require a registered sender and body
+    if not status_action:
+        if not user:
+            logger.info("Mail reply skipped: sender %s is not a helpdesk user", msg["sender_email"])
+            return False
+        if not msg["body"]:
+            logger.info("Mail reply skipped: empty body for ticket #%s from %s", msg["ticket_id"], msg["sender_email"])
+            return False
+
+    # Add comment from registered user
+    if user and msg.get("body"):
+        db.add(Comment(body=msg["body"], is_internal=False, ticket_id=ticket.id, author_id=user.id))
+        db.add(TicketEvent(ticket_id=ticket.id, actor_id=user.id, event_type="email_reply", message="Resposta recebida por email"))
+
+    # Apply automatic status change
+    if status_action:
+        try:
+            new_status = TicketStatus(status_action)
+            old_status = ticket.status.value
+            ticket.status = new_status
+            status_label = {"closed": "Fechado", "resolved": "Resolvido"}.get(status_action, status_action)
+            db.add(TicketEvent(
+                ticket_id=ticket.id,
+                actor_id=user.id if user else None,
+                event_type="status_changed",
+                message=f"Estado alterado para {status_label} automaticamente via email ({msg['sender_email']})",
+            ))
+            logger.info("Mail: ticket #%s status changed %s → %s by email from %s", ticket.id, old_status, status_action, msg["sender_email"])
+        except ValueError:
+            logger.warning("Mail: unknown status_action %s for ticket #%s", status_action, ticket.id)
+
     db.add(ProcessedEmail(message_id=msg["message_id"], ticket_id=ticket.id, sender_email=msg["sender_email"]))
     ticket.updated_at = datetime.utcnow()
     msg["processed"] = True
-    logger.info("Mail reply imported: ticket #%s from %s", ticket.id, msg["sender_email"])
+    logger.info("Mail reply imported: ticket #%s from %s (status_action=%s)", ticket.id, msg["sender_email"], status_action)
     return True
 
-def _fetch_unseen_messages(limit: int) -> list[dict]:
+def _fetch_unseen_messages(limit: int, force: bool = False) -> list[dict]:
     username = settings.imap_username or settings.mail_username
     password = settings.imap_password or settings.mail_password
     if not username or not password:
         return []
 
     client_cls = imaplib.IMAP4_SSL if settings.imap_ssl else imaplib.IMAP4
+    search_criteria = "ALL" if force else "UNSEEN"
     logger.info(
-        "Connecting to IMAP server %s:%s ssl=%s user=%s folder=%s",
+        "Connecting to IMAP server %s:%s ssl=%s user=%s folder=%s criteria=%s",
         settings.imap_server,
         settings.imap_port,
         settings.imap_ssl,
         username,
         settings.imap_folder,
+        search_criteria,
     )
     client = client_cls(settings.imap_server, settings.imap_port)
     try:
@@ -245,14 +286,16 @@ def _fetch_unseen_messages(limit: int) -> list[dict]:
         if status != "OK":
             logger.warning("IMAP folder select failed for folder %s with status %s", settings.imap_folder, status)
             return []
-        status, data = client.search(None, "UNSEEN")
+        status, data = client.search(None, search_criteria)
         if status != "OK" or not data or not data[0]:
-            logger.info("IMAP search found no unseen messages")
+            logger.info("IMAP search found no messages (criteria=%s)", search_criteria)
             return []
 
         results: list[dict] = []
-        ids = data[0].split()[-limit:]
-        logger.info("IMAP search found %s unseen message(s), checking last %s", len(data[0].split()), len(ids))
+        all_ids = data[0].split()
+        # Take most recent N messages (ids are in ascending order, take last N)
+        ids = all_ids[-limit:]
+        logger.info("IMAP search found %s message(s) (criteria=%s), checking last %s", len(all_ids), search_criteria, len(ids))
         for msg_id in ids:
             status, fetched = client.fetch(msg_id, "(RFC822)")
             if status != "OK" or not fetched:
@@ -263,9 +306,10 @@ def _fetch_unseen_messages(limit: int) -> list[dict]:
             item = _parse_reply(parsed)
             if item:
                 results.append(item)
-                client.store(msg_id, "+FLAGS", "\\Seen")
+                if not force:
+                    client.store(msg_id, "+FLAGS", "\\Seen")
             else:
-                logger.info("IMAP message ignored: subject does not contain ticket marker")
+                logger.info("IMAP message ignored: no ticket marker found")
         return results
     except Exception:
         logger.exception("IMAP reply sync failed")
@@ -279,18 +323,30 @@ def _fetch_unseen_messages(limit: int) -> list[dict]:
 
 def _parse_reply(msg: Message) -> dict | None:
     subject = _decode_header_value(msg.get("Subject", ""))
-    match = TICKET_RE.search(subject)
+    body_raw = _extract_text_body(msg)
+
+    # Try ticket ID from subject first, then from body pattern
+    match = TICKET_RE.search(subject) or BODY_TICKET_RE.search(body_raw)
     if not match:
         return None
 
+    status_action = _detect_status_action(subject)
     sender_email = parseaddr(msg.get("From", ""))[1].strip().lower()
-    body = _clean_reply_body(_extract_text_body(msg))
+    body = _clean_reply_body(body_raw)
     return {
         "message_id": (msg.get("Message-ID") or f"{sender_email}:{subject}:{hash(body)}").strip(),
         "ticket_id": int(match.group(1)),
         "sender_email": sender_email,
         "body": body,
+        "status_action": status_action,
     }
+
+
+def _detect_status_action(subject: str) -> str | None:
+    m = CLOSE_SUBJECT_RE.search(subject)
+    if not m:
+        return None
+    return _SUBJECT_STATUS_MAP.get(m.group(1).lower())
 
 
 def _decode_header_value(value: str) -> str:
