@@ -153,7 +153,9 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
   margin-top: 1px;
 }
 
-.hd-nav { flex: 1; padding: 12px 12px; overflow-y: auto; }
+.hd-nav { flex: 1; padding: 12px 12px; overflow-y: auto; scrollbar-width: thin; }
+.hd-nav::-webkit-scrollbar { width: 6px; }
+.hd-nav::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 3px; }
 .hd-nav-section {
   font-size: 10px;
   font-weight: 600;
@@ -199,6 +201,14 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
 .hd-nav-item.active .material-icons {
   background: linear-gradient(135deg, var(--c-primary), var(--c-accent));
   color: #fff;
+}
+
+/* Ecrãs baixos (ou zoom elevado): compactar o menu para caberem todos os itens */
+@media (max-height: 940px) {
+  .hd-nav { padding: 6px 12px; }
+  .hd-nav-item { padding: 5px 10px; font-size: 13px; }
+  .hd-nav-item .material-icons { height: 24px; width: 24px; font-size: 16px; }
+  .hd-nav-section { padding: 8px 8px 3px; }
 }
 .hd-nav-badge {
   margin-left: auto;

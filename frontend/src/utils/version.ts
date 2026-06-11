@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.90'
+export const APP_VERSION = '1.7.91'
 export const APP_VERSION_DATE = '2026-06-11'
-export const APP_VERSION_TIME = '11:00'
+export const APP_VERSION_TIME = '11:45'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.91',
+    date: '2026-06-11',
+    time: '11:45',
+    title: 'Menu lateral compacto em ecrãs baixos',
+    changes: [
+      'Corrigido: em ecrãs com pouca altura (ou zoom elevado), os últimos itens do menu de administração (Sugestões, Categorias, Configurações, Backup, Log de emails) ficavam escondidos sem indicação visual.',
+      'O menu compacta-se automaticamente quando a janela é baixa, e a barra de scroll do menu passa a ser visível.',
+    ],
+  },
   {
     version: '1.7.90',
     date: '2026-06-11',
