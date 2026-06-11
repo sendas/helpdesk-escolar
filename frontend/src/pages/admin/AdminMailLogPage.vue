@@ -109,7 +109,8 @@ onMounted(load)
 }
 .log-table td { padding: 8px 10px; border-bottom: 1px solid var(--c-border); vertical-align: top; }
 .log-table tr:last-child td { border-bottom: none; }
-.row-status td { background: rgba(34, 197, 94, 0.14); }
+.row-status td { background: rgba(34, 197, 94, 0.16); }
+.row-status td:first-child { border-left: 3px solid #22c55e; }
 .log-date { white-space: nowrap; color: var(--c-muted); font-size: 12px; }
 .log-ticket-link { color: var(--c-accent); text-decoration: none; font-weight: 600; }
 .log-ticket-link:hover { text-decoration: underline; }
