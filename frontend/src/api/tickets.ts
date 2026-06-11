@@ -127,12 +127,12 @@ export async function adminBulkActionTickets(payload: { ids: number[]; action: '
 }
 
 export async function syncMailReplies() {
-  const { data } = await api.post<{ processed: number; skipped: number }>('/api/v1/admin/mail/sync')
+  const { data } = await api.post<{ processed: number; skipped: number; provider?: string }>('/api/v1/admin/mail/sync')
   return data
 }
 
 export async function forceSyncMailReplies() {
-  const { data } = await api.post<{ processed: number; skipped: number }>('/api/v1/admin/mail/sync/force')
+  const { data } = await api.post<{ processed: number; skipped: number; provider?: string }>('/api/v1/admin/mail/sync/force')
   return data
 }
 

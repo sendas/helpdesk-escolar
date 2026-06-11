@@ -472,7 +472,8 @@ async function syncReplies() {
   mailSyncMessage.value = 'A ler respostas de email...'
   try {
     const result = await syncMailReplies()
-    mailSyncMessage.value = `Respostas lidas: ${result.processed} adicionada(s), ${result.skipped} ignorada(s).`
+    const provider = result.provider ? ` (via ${result.provider})` : ''
+    mailSyncMessage.value = `Respostas lidas: ${result.processed} adicionada(s), ${result.skipped} ignorada(s)${provider}.`
     await load()
   } catch (err) {
     mailSyncMessage.value = mailErrorMessage(err)
@@ -488,7 +489,8 @@ async function forceSyncReplies() {
   mailSyncMessage.value = 'A processar todos os emails...'
   try {
     const result = await forceSyncMailReplies()
-    mailSyncMessage.value = `Processamento concluído: ${result.processed} ticket(s) atualizado(s), ${result.skipped} email(s) ignorado(s).`
+    const provider = result.provider ? ` (via ${result.provider})` : ''
+    mailSyncMessage.value = `Processamento concluído: ${result.processed} ticket(s) atualizado(s), ${result.skipped} email(s) ignorado(s)${provider}.`
     await load()
   } catch (err) {
     mailSyncMessage.value = mailErrorMessage(err)
