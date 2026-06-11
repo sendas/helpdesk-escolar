@@ -460,9 +460,13 @@ async function deleteSelected() {
 }
 
 function mailErrorMessage(err: unknown): string {
-  const status = (err as any)?.response?.status
+  const e = err as any
+  if (e?.code === 'ECONNABORTED') return 'O pedido demorou demasiado, mas o processamento continua no servidor. Atualiza a página dentro de um minuto para ver os resultados.'
+  const status = e?.response?.status
   if (status === 404) return 'Endpoint não encontrado — o backend pode não ter sido atualizado. Reconstrua o serviço backend.'
   if (status === 503) return 'Sincronização de email desativada. Ativa MAIL_REPLY_ENABLED no app.env.'
+  const detail = e?.response?.data?.detail
+  if (detail) return `Erro ao processar os emails: ${detail}`
   return 'Não foi possível processar os emails. Verifica a configuração IMAP/Graph no servidor.'
 }
 

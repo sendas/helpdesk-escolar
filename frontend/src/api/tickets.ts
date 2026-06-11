@@ -127,12 +127,14 @@ export async function adminBulkActionTickets(payload: { ids: number[]; action: '
 }
 
 export async function syncMailReplies() {
-  const { data } = await api.post<{ processed: number; skipped: number; provider?: string }>('/api/v1/admin/mail/sync')
+  // Pode demorar mais do que o timeout global de 15s (leitura da mailbox + notificações)
+  const { data } = await api.post<{ processed: number; skipped: number; provider?: string }>('/api/v1/admin/mail/sync', null, { timeout: 120000 })
   return data
 }
 
 export async function forceSyncMailReplies() {
-  const { data } = await api.post<{ processed: number; skipped: number; provider?: string }>('/api/v1/admin/mail/sync/force')
+  // Processa até 200 emails (Graph: 1 pedido por email para marcar como lido) — precisa de timeout longo
+  const { data } = await api.post<{ processed: number; skipped: number; provider?: string }>('/api/v1/admin/mail/sync/force', null, { timeout: 120000 })
   return data
 }
 
