@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.89'
-export const APP_VERSION_DATE = '2026-06-09'
-export const APP_VERSION_TIME = '10:00'
+export const APP_VERSION = '1.7.90'
+export const APP_VERSION_DATE = '2026-06-11'
+export const APP_VERSION_TIME = '11:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.90',
+    date: '2026-06-11',
+    time: '11:00',
+    title: 'Destaque visual no log de emails',
+    changes: [
+      'No log de emails, as linhas de tickets fechados/resolvidos automaticamente aparecem agora com fundo verde claro.',
+      'Corrigido: o destaque não aparecia porque usava uma cor inexistente no tema.',
+      'Sincronização de emails: timeout aumentado para 120s — a mensagem de sucesso já não é cortada a meio do processamento.',
+    ],
+  },
   {
     version: '1.7.89',
     date: '2026-06-09',

@@ -109,7 +109,7 @@ onMounted(load)
 }
 .log-table td { padding: 8px 10px; border-bottom: 1px solid var(--c-border); vertical-align: top; }
 .log-table tr:last-child td { border-bottom: none; }
-.row-status td { background: color-mix(in srgb, var(--c-success) 6%, transparent); }
+.row-status td { background: rgba(34, 197, 94, 0.14); }
 .log-date { white-space: nowrap; color: var(--c-muted); font-size: 12px; }
 .log-ticket-link { color: var(--c-accent); text-decoration: none; font-weight: 600; }
 .log-ticket-link:hover { text-decoration: underline; }
@@ -117,7 +117,7 @@ onMounted(load)
 .log-msg { max-width: 380px; word-break: break-word; }
 .log-actor { white-space: nowrap; color: var(--c-muted); font-size: 12px; }
 .log-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; }
-.badge-reply { background: color-mix(in srgb, var(--c-accent) 15%, transparent); color: var(--c-accent); }
-.badge-status { background: color-mix(in srgb, var(--c-success) 15%, transparent); color: var(--c-success); }
+.badge-reply { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+.badge-status { background: rgba(34, 197, 94, 0.18); color: #16a34a; }
 .badge-other { background: var(--c-border); color: var(--c-muted); }
 </style>
