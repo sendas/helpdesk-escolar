@@ -110,7 +110,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in tickets" :key="t.id">
+              <tr v-for="t in tickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined">
                 <td><input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" /></td>
                 <td class="ticket-id">T-{{ t.id }}</td>
                 <td class="subject-cell">
@@ -161,7 +161,7 @@
         </div>
 
         <div class="mobile-ticket-list">
-          <article v-for="t in tickets" :key="t.id" class="ticket-card">
+          <article v-for="t in tickets" :key="t.id" class="ticket-card" :class="{ 'card-auto-closed': isAutoClosed(t) }">
             <div class="ticket-card-top">
               <input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" />
               <div class="ticket-card-title">
@@ -215,7 +215,7 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
-import { adminBulkActionTickets, adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies, forceSyncMailReplies } from '../../api/tickets'
+import { adminBulkActionTickets, adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies, forceSyncMailReplies, type TicketListItem } from '../../api/tickets'
 import { getGroups, getUsers } from '../../api/users'
 import { useAuthStore } from '../../stores/auth'
 import AvatarCircle from '../../components/AvatarCircle.vue'
@@ -506,6 +506,10 @@ async function forceSyncReplies() {
 function timeAgo(date: string) {
   return formatTimeAgo(date)
 }
+
+function isAutoClosed(t: TicketListItem) {
+  return !!t.closed_via_email && (t.status === 'closed' || t.status === 'resolved')
+}
 </script>
 
 <style scoped>
@@ -678,6 +682,10 @@ function timeAgo(date: string) {
     border-radius: 8px;
     padding: 12px;
     background: var(--c-surface);
+  }
+  .ticket-card.card-auto-closed {
+    background: rgba(34, 197, 94, 0.12);
+    border-left: 3px solid #22c55e;
   }
   .ticket-card-top {
     display: grid;

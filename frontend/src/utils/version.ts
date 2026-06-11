@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.91'
+export const APP_VERSION = '1.7.92'
 export const APP_VERSION_DATE = '2026-06-11'
-export const APP_VERSION_TIME = '11:45'
+export const APP_VERSION_TIME = '12:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.92',
+    date: '2026-06-11',
+    time: '12:30',
+    title: 'Destaque verde nas listas de tickets fechados via email',
+    changes: [
+      'Os tickets fechados/resolvidos automaticamente por email aparecem agora com fundo verde claro também na "Gestão de tickets" e em "Os meus tickets" (tabela e cartões móveis).',
+      'Novo campo no ticket que regista o fecho automático via email, com migração que marca retroativamente os tickets já fechados desta forma.',
+      'Ao passar o rato sobre a linha aparece a indicação "Fechado automaticamente via email".',
+    ],
+  },
   {
     version: '1.7.91',
     date: '2026-06-11',

@@ -40,6 +40,17 @@ async def _add_missing_columns(conn) -> None:
         ) AND is_escalated = 0
     """))
 
+    # 4. Add closed_via_email if missing + backfill from email-triggered status events
+    if "closed_via_email" not in existing:
+        await conn.execute(text("ALTER TABLE tickets ADD COLUMN closed_via_email BOOLEAN NOT NULL DEFAULT 0"))
+    await conn.execute(text("""
+        UPDATE tickets SET closed_via_email = 1
+        WHERE id IN (
+            SELECT ticket_id FROM ticket_events
+            WHERE event_type = 'status_changed' AND message LIKE '%via email%'
+        ) AND closed_via_email = 0
+    """))
+
 
 
 @asynccontextmanager

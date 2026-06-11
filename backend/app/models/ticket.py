@@ -50,6 +50,7 @@ class Ticket(Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     creator_email_notifications: Mapped[bool] = mapped_column(Boolean, default=True)
     is_escalated: Mapped[bool] = mapped_column(Boolean, default=False)
+    closed_via_email: Mapped[bool] = mapped_column(Boolean, default=False)
 
     creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)

@@ -245,6 +245,7 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
             new_status = TicketStatus(status_action)
             old_status = ticket.status.value
             ticket.status = new_status
+            ticket.closed_via_email = True
             status_label = {"closed": "Fechado", "resolved": "Resolvido"}.get(status_action, status_action)
             db.add(TicketEvent(
                 ticket_id=ticket.id,

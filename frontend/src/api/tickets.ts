@@ -7,7 +7,7 @@ export interface HelpdeskGroupBrief { id: number; name: string; description?: st
 
 export interface TicketListItem {
   id: number; title: string; status: string; priority: string
-  created_at: string; updated_at: string; creator_email_notifications: boolean; is_escalated: boolean
+  created_at: string; updated_at: string; creator_email_notifications: boolean; is_escalated: boolean; closed_via_email?: boolean
   creator: UserBrief; assignee?: UserBrief; assignees?: UserBrief[]; group?: HelpdeskGroupBrief; watchers?: UserBrief[]; category: Category; school?: School
 }
 export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; updated_at?: string; author: UserBrief }

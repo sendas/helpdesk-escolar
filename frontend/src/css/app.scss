@@ -549,6 +549,10 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
 }
 .hd-table tr:last-child td { border-bottom: none; }
 .hd-table tr:hover td { background: var(--c-bg); cursor: pointer; }
+/* Tickets fechados/resolvidos automaticamente via email */
+.hd-table tr.row-auto-closed td { background: rgba(34, 197, 94, 0.12); }
+.hd-table tr.row-auto-closed td:first-child { box-shadow: inset 3px 0 0 #22c55e; }
+.hd-table tr.row-auto-closed:hover td { background: rgba(34, 197, 94, 0.20); }
 
 /* ── Tabs ────────────────────────────────────────── */
 .hd-tabs {

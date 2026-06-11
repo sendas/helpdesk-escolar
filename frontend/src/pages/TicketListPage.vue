@@ -26,7 +26,7 @@
             <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>TEMPO DE RESPOSTA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
           </thead>
           <tbody>
-            <tr v-for="t in activeTickets" :key="t.id" @click="$router.push(`/tickets/${t.id}`)">
+            <tr v-for="t in activeTickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
               <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
               <td style="font-weight:500">{{ t.title }}</td>
               <td style="white-space:nowrap;display:flex;align-items:center;gap:6px">
@@ -62,7 +62,7 @@
             <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>TEMPO DE RESPOSTA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
           </thead>
           <tbody>
-            <tr v-for="t in completedTickets" :key="t.id" class="completed-row" @click="$router.push(`/tickets/${t.id}`)">
+            <tr v-for="t in completedTickets" :key="t.id" class="completed-row" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
               <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
               <td style="font-weight:500">{{ t.title }}</td>
               <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
@@ -133,6 +133,10 @@ async function load() {
     const d = await getTickets(p)
     tickets.value = d.items
   } finally { loading.value = false }
+}
+
+function isAutoClosed(t: any) {
+  return !!t.closed_via_email && DONE.includes(t.status)
 }
 
 function statusLabel(s: string) {
