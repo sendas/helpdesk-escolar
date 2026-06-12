@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.92'
-export const APP_VERSION_DATE = '2026-06-11'
-export const APP_VERSION_TIME = '12:30'
+export const APP_VERSION = '1.7.93'
+export const APP_VERSION_DATE = '2026-06-12'
+export const APP_VERSION_TIME = '11:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.93',
+    date: '2026-06-12',
+    time: '11:00',
+    title: 'Fecho automático por inatividade',
+    changes: [
+      'Tickets sem resposta há 7 dias recebem um aviso automático (email + entrada no histórico) indicando que serão fechados em 2 dias se não houver resposta.',
+      'Se continuar sem resposta 2 dias após o aviso, o ticket é fechado automaticamente.',
+      'Se o utilizador responder após o aviso, o temporizador reinicia — o ticket não é fechado.',
+      'A verificação corre automaticamente a cada 6 horas. Também disponível manualmente em Gestão de tickets → "Verificar inatividade".',
+    ],
+  },
   {
     version: '1.7.92',
     date: '2026-06-11',

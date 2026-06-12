@@ -309,3 +309,8 @@ export async function getMailLog(limit = 200) {
   const { data } = await api.get<MailLogEntry[]>('/api/v1/admin/mail/log', { params: { limit } })
   return data
 }
+
+export async function runInactivityCheck() {
+  const { data } = await api.post<{ warned: number; closed: number }>('/api/v1/admin/inactivity/run')
+  return data
+}

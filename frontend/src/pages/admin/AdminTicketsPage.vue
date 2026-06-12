@@ -11,6 +11,10 @@
           <span class="material-icons">move_to_inbox</span>
           {{ forceSyncing ? 'A processar...' : 'Fechar tickets por email' }}
         </button>
+        <button v-if="auth.isAdmin" class="hd-btn hd-btn-outline" @click="runInactivity" :disabled="inactivityRunning" title="Verifica inatividade agora: avisa tickets sem resposta há 7 dias e fecha os que já foram avisados há 2 dias">
+          <span class="material-icons">hourglass_empty</span>
+          {{ inactivityRunning ? 'A verificar...' : 'Verificar inatividade' }}
+        </button>
         <button class="hd-btn hd-btn-primary" @click="load">
           <span class="material-icons">refresh</span>
           Atualizar
@@ -215,7 +219,7 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
-import { adminBulkActionTickets, adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies, forceSyncMailReplies, type TicketListItem } from '../../api/tickets'
+import { adminBulkActionTickets, adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies, forceSyncMailReplies, runInactivityCheck, type TicketListItem } from '../../api/tickets'
 import { getGroups, getUsers } from '../../api/users'
 import { useAuthStore } from '../../stores/auth'
 import AvatarCircle from '../../components/AvatarCircle.vue'
@@ -296,6 +300,7 @@ const bulkPriority = ref('')
 const mailSyncMessage = ref('')
 const mailSyncing = ref(false)
 const forceSyncing = ref(false)
+const inactivityRunning = ref(false)
 const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 const filterPriority = ref('')
@@ -509,6 +514,21 @@ function timeAgo(date: string) {
 
 function isAutoClosed(t: TicketListItem) {
   return !!t.closed_via_email && (t.status === 'closed' || t.status === 'resolved')
+}
+
+async function runInactivity() {
+  if (inactivityRunning.value) return
+  inactivityRunning.value = true
+  mailSyncMessage.value = 'A verificar inatividade...'
+  try {
+    const r = await runInactivityCheck()
+    mailSyncMessage.value = `Inatividade: ${r.warned} aviso(s) enviado(s), ${r.closed} ticket(s) fechado(s).`
+    if (r.closed > 0) await load()
+  } catch {
+    mailSyncMessage.value = 'Erro ao verificar inatividade.'
+  } finally {
+    inactivityRunning.value = false
+  }
 }
 </script>
 

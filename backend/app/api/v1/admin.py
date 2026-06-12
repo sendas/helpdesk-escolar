@@ -737,6 +737,12 @@ async def test_mail(current_admin: User = Depends(require_admin)):
     return {"sent_to": current_admin.email}
 
 
+@router.post("/inactivity/run")
+async def run_inactivity_check(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+    from app.services import inactivity_service
+    return await inactivity_service.run_inactivity_check(db)
+
+
 @router.post("/fix-resolved-tickets")
 async def fix_resolved_tickets(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
     """Close tickets where the 'Resolvido ✓' quick reply was used but status was never changed."""
