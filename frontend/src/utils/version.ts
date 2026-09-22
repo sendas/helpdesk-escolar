@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.7.94'
+export const APP_VERSION = '1.7.95'
 export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '10:00'
+export const APP_VERSION_TIME = '11:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.95',
+    date: '2026-09-22',
+    time: '11:00',
+    title: 'Aviso configurável no ecrã de login',
+    changes: [
+      'Nova janela de aviso no ecrã de login, configurável em Administração → Configurações → Geral ("Aviso no ecrã de login").',
+      'Pode ser ativada/desativada e o texto pode ser editado a qualquer momento; por omissão vem preenchida com o aviso de uso exclusivo para docentes e não docentes, com contacto helpdesk_aeeq@queiroz.pt.',
+    ],
+  },
   {
     version: '1.7.94',
     date: '2026-09-22',

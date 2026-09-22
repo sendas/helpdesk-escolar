@@ -10,6 +10,8 @@ export interface PublicSettings {
   knowledge_enabled: boolean
   category_warnings_enabled: boolean
   suggestion_emails?: string[]
+  login_notice_enabled?: boolean
+  login_notice_text?: string
 }
 
 export interface AzureSyncSettings {
@@ -43,5 +45,10 @@ export async function updateAzureSyncSettings(payload: AzureSyncSettings) {
 
 export async function updateFeatureSettings(payload: { knowledge_enabled: boolean; category_warnings_enabled?: boolean }) {
   const { data } = await api.put<{ knowledge_enabled: boolean; category_warnings_enabled: boolean }>('/api/v1/settings/features', payload)
+  return data
+}
+
+export async function updateLoginNoticeSettings(payload: { enabled: boolean; text: string }) {
+  const { data } = await api.put<{ login_notice_enabled: boolean; login_notice_text: string }>('/api/v1/settings/login-notice', payload)
   return data
 }

@@ -69,6 +69,26 @@
         </div>
       </div>
       <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
+        <div class="hd-row" style="justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div style="font-weight:600;font-size:14px">Aviso no ecrã de login</div>
+            <div style="font-size:12px;color:var(--c-muted);margin-top:2px">Mostra uma janela de aviso a quem abre a página de login, antes de autenticar</div>
+          </div>
+          <div class="hd-toggle-wrap" @click="toggleLoginNotice">
+            <div class="hd-toggle" :class="{ active: loginNoticeEnabled }"></div>
+          </div>
+        </div>
+        <div :style="{ opacity: loginNoticeEnabled ? 1 : 0.5 }">
+          <textarea class="hd-textarea" v-model="loginNoticeText" rows="4" placeholder="Texto do aviso"></textarea>
+          <div class="hd-row" style="justify-content:flex-end;margin-top:10px">
+            <button class="hd-btn hd-btn-outline" style="font-size:12px;padding:6px 14px" @click="saveLoginNotice">
+              <span class="material-icons" style="font-size:14px">save</span> Guardar aviso
+            </button>
+            <span v-if="loginNoticeSaved" style="margin-left:10px;font-size:12px;color:#22C55E;align-self:center">Guardado!</span>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
         <div style="font-weight:600;font-size:14px;margin-bottom:12px">Empresa de apoio informático</div>
         <div class="hd-grid-2">
           <div class="hd-field">
@@ -488,7 +508,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
-import { getPublicSettings, updateFeatureSettings, updateSettings } from '../../api/settings'
+import { getPublicSettings, updateFeatureSettings, updateLoginNoticeSettings, updateSettings } from '../../api/settings'
 import { api } from '../../boot/axios'
 import { getGroups, getUsers } from '../../api/users'
 
@@ -516,6 +536,9 @@ const articles = ref<any[]>([])
 const logoFile = ref<File | null>(null)
 const knowledgeEnabled = ref(true)
 const categoryWarningsEnabled = ref(true)
+const loginNoticeEnabled = ref(false)
+const loginNoticeText = ref('')
+const loginNoticeSaved = ref(false)
 
 const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Empresa de apoio informático', support_provider_email: '' })
 const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
@@ -546,6 +569,8 @@ onMounted(async () => {
     general.value.support_provider_email = settings.support_provider_email || ''
     knowledgeEnabled.value = settings.knowledge_enabled !== false
     categoryWarningsEnabled.value = settings.category_warnings_enabled !== false
+    loginNoticeEnabled.value = settings.login_notice_enabled === true
+    loginNoticeText.value = settings.login_notice_text || ''
     suggestionEmailsRaw.value = (settings.suggestion_emails || []).join(', ')
     categories.value = cats
     schools.value = schs
@@ -591,6 +616,26 @@ async function toggleCategoryWarnings() {
   const next = !categoryWarningsEnabled.value
   const saved = await updateFeatureSettings({ knowledge_enabled: knowledgeEnabled.value, category_warnings_enabled: next })
   categoryWarningsEnabled.value = saved.category_warnings_enabled
+}
+
+async function toggleLoginNotice() {
+  const next = !loginNoticeEnabled.value
+  try {
+    const saved = await updateLoginNoticeSettings({ enabled: next, text: loginNoticeText.value })
+    loginNoticeEnabled.value = saved.login_notice_enabled
+    loginNoticeText.value = saved.login_notice_text
+  } catch { /* ignore */ }
+}
+
+async function saveLoginNotice() {
+  loginNoticeSaved.value = false
+  try {
+    const saved = await updateLoginNoticeSettings({ enabled: loginNoticeEnabled.value, text: loginNoticeText.value })
+    loginNoticeEnabled.value = saved.login_notice_enabled
+    loginNoticeText.value = saved.login_notice_text
+    loginNoticeSaved.value = true
+    setTimeout(() => { loginNoticeSaved.value = false }, 3000)
+  } catch { /* ignore */ }
 }
 
 async function testSmtpNow() {

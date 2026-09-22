@@ -115,6 +115,25 @@
         </li>
       </ul>
     </div>
+
+    <!-- Login notice modal -->
+    <div v-if="showNotice" class="modal-backdrop" @click.self="showNotice = false">
+      <div class="modal-card hd-card">
+        <div class="modal-head">
+          <div style="font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px">
+            <span class="material-icons" style="font-size:20px;color:var(--c-primary)">info</span>
+            Aviso
+          </div>
+          <button class="hd-icon-btn" @click="showNotice = false" title="Fechar">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <p style="font-size:13.5px;line-height:1.6;color:var(--c-text);white-space:pre-line">{{ loginNoticeText }}</p>
+        <div class="modal-actions">
+          <button class="hd-btn hd-btn-primary" @click="showNotice = false">Entendi</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -134,6 +153,8 @@ const showLocalLogin = ref(false)
 const loginDark = ref(false)
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '' })
 const versionLabelText = versionLabel()
+const showNotice = ref(false)
+const loginNoticeText = ref('')
 
 const features = [
   { title: 'Aberto → Atribuído → Em Curso → Resolvido', sub: 'Estados claros e auditáveis', color: '#0D9488', icon: 'task_alt' },
@@ -144,8 +165,13 @@ const features = [
 onMounted(async () => {
   setLoginDark(false)
   try {
-    settings.value = await getPublicSettings()
+    const s = await getPublicSettings()
+    settings.value = s
     applyFavicon(settings.value.favicon_url || settings.value.logo_url)
+    if (s.login_notice_enabled && s.login_notice_text) {
+      loginNoticeText.value = s.login_notice_text
+      showNotice.value = true
+    }
   }
   catch { /* ignore */ }
 })
@@ -178,6 +204,40 @@ async function onAdLogin() {
 </script>
 
 <style scoped>
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.50);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.modal-card {
+  width: min(480px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--c-border);
+}
+
 .login-theme-choice {
   align-items: center;
   border: 1px solid var(--c-border);

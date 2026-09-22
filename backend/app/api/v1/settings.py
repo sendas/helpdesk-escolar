@@ -24,6 +24,13 @@ DEFAULT_SETTINGS = {
     "knowledge_enabled": True,
     "suggestion_emails": [],
     "category_warnings_enabled": True,
+    "login_notice_enabled": False,
+    "login_notice_text": (
+        "Esta plataforma é para uso exclusivo de docentes e não docentes do "
+        "Agrupamento de Escolas Eça de Queirós. Caso não consiga fazer login ou "
+        "não tenha acesso ao seu mail institucional, envie um mail (usando o seu "
+        "mail pessoal) para helpdesk_aeeq@queiroz.pt. Obrigado."
+    ),
 }
 
 
@@ -34,6 +41,11 @@ class AzureSyncSettings(BaseModel):
 class FeatureSettings(BaseModel):
     knowledge_enabled: bool = True
     category_warnings_enabled: bool = True
+
+
+class LoginNoticeSettings(BaseModel):
+    enabled: bool = False
+    text: str = ""
 
 
 class SuggestionEmailSettings(BaseModel):
@@ -97,6 +109,17 @@ async def update_feature_settings(payload: FeatureSettings, _: User = Depends(re
     data["category_warnings_enabled"] = payload.category_warnings_enabled
     _write_settings(data)
     return {"knowledge_enabled": data["knowledge_enabled"], "category_warnings_enabled": data["category_warnings_enabled"]}
+
+
+@router.put("/login-notice")
+async def update_login_notice(payload: LoginNoticeSettings, _: User = Depends(require_admin)):
+    data = _read_settings()
+    data["login_notice_enabled"] = payload.enabled
+    text = payload.text.strip()
+    if text:
+        data["login_notice_text"] = text
+    _write_settings(data)
+    return {"login_notice_enabled": data["login_notice_enabled"], "login_notice_text": data["login_notice_text"]}
 
 
 @router.put("/suggestion-emails")
