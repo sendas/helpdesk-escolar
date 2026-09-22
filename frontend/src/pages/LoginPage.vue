@@ -280,9 +280,9 @@ async function submitContactForm() {
   overflow: hidden;
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(160deg, #F5F7FF 0%, #FDF4FF 55%, #F0FDFA 100%);
+  background: linear-gradient(160deg, #F5F8FF 0%, #EFF6FF 55%, #ECFEFF 100%);
 }
-.dark .lg-wrap { background: linear-gradient(160deg, #0F1117 0%, #171327 60%, #0D1A1C 100%); }
+.dark .lg-wrap { background: linear-gradient(160deg, #0F1117 0%, #0F172A 60%, #0D1A1C 100%); }
 
 .lg-bg-blob { position: absolute; border-radius: 50%; filter: blur(60px); pointer-events: none; opacity: .55; }
 .lg-bg-blob-1 { width: 380px; height: 380px; left: -120px; top: -120px; background: #A5B4FC; }
@@ -304,7 +304,7 @@ async function submitContactForm() {
 .lg-logo { width: 56px; height: 46px; object-fit: contain; border-radius: 10px; }
 .lg-logo-fallback {
   display: grid; place-items: center;
-  background: linear-gradient(135deg, #4057D8, #7C3AED);
+  background: linear-gradient(120deg, #2563EB, #0891B2);
 }
 .lg-logo-fallback .material-icons { color: #fff; font-size: 26px; }
 .lg-org { font-weight: 700; font-size: 14px; line-height: 1.3; color: var(--c-text); }
@@ -322,12 +322,12 @@ async function submitContactForm() {
   padding: 5px 12px;
   border-radius: 999px;
   font-size: 12px; font-weight: 700;
-  color: #7C3AED;
-  background: rgba(124, 58, 237, .1);
+  color: #2563EB;
+  background: rgba(37, 99, 235, .1);
   margin-bottom: 14px;
 }
 .lg-badge .material-icons { font-size: 15px; }
-.dark .lg-badge { color: #C4B5FD; background: rgba(167, 139, 250, .16); }
+.dark .lg-badge { color: #93C5FD; background: rgba(96, 165, 250, .16); }
 
 .lg-title {
   font-size: 34px;
@@ -338,7 +338,7 @@ async function submitContactForm() {
   color: var(--c-text);
 }
 .lg-title-accent {
-  background: linear-gradient(120deg, #4057D8, #7C3AED 55%, #EC4899);
+  background: linear-gradient(120deg, #2563EB, #0891B2);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -371,11 +371,11 @@ async function submitContactForm() {
   font: 700 15px var(--font-sans);
   color: #fff;
   cursor: pointer;
-  background: linear-gradient(120deg, #4057D8, #7C3AED);
-  box-shadow: 0 14px 28px rgba(64, 87, 216, .3);
+  background: linear-gradient(120deg, #2563EB, #0891B2);
+  box-shadow: 0 14px 28px rgba(37, 99, 235, .3);
   transition: transform .15s ease, box-shadow .15s ease;
 }
-.lg-btn-main:hover { transform: translateY(-2px); box-shadow: 0 18px 34px rgba(64, 87, 216, .38); }
+.lg-btn-main:hover { transform: translateY(-2px); box-shadow: 0 18px 34px rgba(37, 99, 235, .38); }
 .lg-btn-main:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
 .lg-ms-logo {
@@ -468,8 +468,8 @@ async function submitContactForm() {
   align-items: center;
   padding: 48px 56px;
   color: #fff;
-  background: linear-gradient(135deg, #4057D8 0%, #7C3AED 55%, #EC4899 100%);
-  box-shadow: 0 24px 60px rgba(64, 87, 216, .25);
+  background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 50%, #0891B2 100%);
+  box-shadow: 0 24px 60px rgba(37, 99, 235, .25);
 }
 .lg-right-blob { position: absolute; border-radius: 50%; pointer-events: none; }
 .lg-right-blob-1 { width: 340px; height: 340px; right: -110px; top: -110px; background: rgba(255, 255, 255, .12); }

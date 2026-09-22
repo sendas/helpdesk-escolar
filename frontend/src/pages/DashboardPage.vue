@@ -196,8 +196,8 @@ function statusLabel(s: string) {
   margin-bottom: 20px;
   border-radius: 20px;
   color: #fff;
-  background: linear-gradient(120deg, #4057D8 0%, #7C3AED 55%, #EC4899 100%);
-  box-shadow: 0 18px 40px rgba(64, 87, 216, .25);
+  background: linear-gradient(120deg, #1E3A8A 0%, #2563EB 50%, #0891B2 100%);
+  box-shadow: 0 18px 40px rgba(37, 99, 235, .25);
 }
 
 .hero-blob {
@@ -261,7 +261,7 @@ function statusLabel(s: string) {
   box-shadow: 0 8px 18px rgba(15, 23, 42, .18);
 }
 .recent-empty .hero-btn-solid {
-  background: linear-gradient(135deg, #4057D8, #7C3AED);
+  background: linear-gradient(120deg, #2563EB, #0891B2);
   color: #fff;
 }
 .hero-btn-glass {
@@ -338,10 +338,10 @@ function statusLabel(s: string) {
   background: rgba(255, 255, 255, .14);
 }
 
-.tone-blue   { background: linear-gradient(135deg, #3B82F6, #6366F1); --tone-shadow: rgba(59, 130, 246, .28); }
+.tone-blue   { background: linear-gradient(135deg, #0EA5E9, #2563EB); --tone-shadow: rgba(14, 165, 233, .28); }
 .tone-amber  { background: linear-gradient(135deg, #F59E0B, #F97316); --tone-shadow: rgba(245, 158, 11, .28); }
 .tone-green  { background: linear-gradient(135deg, #10B981, #14B8A6); --tone-shadow: rgba(16, 185, 129, .28); }
-.tone-violet { background: linear-gradient(135deg, #8B5CF6, #D946EF); --tone-shadow: rgba(139, 92, 246, .28); }
+.tone-violet { background: linear-gradient(135deg, #4F46E5, #6366F1); --tone-shadow: rgba(79, 70, 229, .28); }
 
 .stat-icon {
   width: 38px;
@@ -453,7 +453,7 @@ function statusLabel(s: string) {
   border-radius: 16px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #F59E0B, #EC4899);
+  background: linear-gradient(135deg, #F59E0B, #F97316);
 }
 .recent-empty-icon .material-icons { color: #fff; font-size: 26px; }
 
