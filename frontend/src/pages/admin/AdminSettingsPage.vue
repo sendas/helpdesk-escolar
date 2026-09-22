@@ -64,7 +64,9 @@
             <div style="font-size:12px;color:var(--c-muted)">Mostra uma janela de aviso ao selecionar categorias com aviso configurado</div>
           </div>
           <div class="hd-toggle-wrap" @click="toggleCategoryWarnings">
-            <div class="hd-toggle" :class="{ active: categoryWarningsEnabled }"></div>
+            <div class="hd-toggle-track" :class="{ on: categoryWarningsEnabled }">
+              <div class="hd-toggle-thumb"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -75,7 +77,9 @@
             <div style="font-size:12px;color:var(--c-muted);margin-top:2px">Mostra uma janela de aviso a quem abre a página de login, antes de autenticar</div>
           </div>
           <div class="hd-toggle-wrap" @click="toggleLoginNotice">
-            <div class="hd-toggle" :class="{ active: loginNoticeEnabled }"></div>
+            <div class="hd-toggle-track" :class="{ on: loginNoticeEnabled }">
+              <div class="hd-toggle-thumb"></div>
+            </div>
           </div>
         </div>
         <div :style="{ opacity: loginNoticeEnabled ? 1 : 0.5 }">

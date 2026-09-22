@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Atualizações no ticket</title></head>
+<body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+  <div style="background: #3D52D5; color: white; padding: 20px; border-radius: 4px 4px 0 0;">
+    <h2 style="margin:0">{{ lines|length }} atualizações no ticket</h2>
+  </div>
+  <div style="padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 4px 4px;">
+    <table style="width:100%; border-collapse: collapse; margin-bottom:18px">
+      <tr><td style="padding:8px; font-weight:bold; width:30%">Ticket #</td><td style="padding:8px">{{ id }}</td></tr>
+      <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Título</td><td style="padding:8px">{{ title }}</td></tr>
+      {% if status %}<tr><td style="padding:8px; font-weight:bold">Estado atual</td><td style="padding:8px">{{ status }}</td></tr>{% endif %}
+    </table>
+    <p style="font-weight:bold;margin:0 0 8px">Resumo das alterações (mais recente primeiro):</p>
+    <ul style="padding-left:20px;margin:0 0 18px;line-height:1.6">
+      {% for line in lines %}
+      <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+    {% if ticket_url %}
+    <p style="margin:24px 0 10px">
+      <a href="{{ ticket_url }}" style="background:#3D52D5;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;display:inline-block;font-weight:bold">Abrir ticket</a>
+    </p>
+    <p style="color:#666;font-size:0.85em;margin:0">Se o botão não funcionar, abra: <a href="{{ ticket_url }}">{{ ticket_url }}</a></p>
+    {% endif %}
+    <p style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#334155;font-size:0.92em;line-height:1.45;margin:18px 0 0;padding:12px 14px">
+      Pode responder a este mail para atualizar o pedido de ajuda / ticket.
+    </p>
+    <p style="color:#666; font-size:0.9em; margin-top:20px">Sistema de Tickets — Escola</p>
+  </div>
+</body>
+</html>

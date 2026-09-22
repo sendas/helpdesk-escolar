@@ -631,6 +631,23 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
 .hd-toggle-wrap {
   position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; flex-shrink: 0;
 }
+/* Self-contained variant: <div class="hd-toggle" :class="{ active }"></div>, no input/track/thumb children */
+.hd-toggle {
+  background: var(--c-border);
+  border-radius: 999px;
+}
+.hd-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .18s;
+  box-shadow: var(--shadow-sm);
+}
+.hd-toggle.active { background: var(--c-primary); }
+.hd-toggle.active::after { transform: translateX(18px); }
 
 /* ── Ticket detail sidebar ───────────────────────── */
 .hd-detail-row {

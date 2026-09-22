@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     mail_starttls: bool = True
     mail_ssl_tls: bool = False
     mail_suppress_send: bool = False
+    # Merge several ticket-update emails to the same recipient within this
+    # many seconds into one condensed email, instead of sending one each.
+    # Set to 0 to disable digesting and send every notification immediately.
+    mail_digest_window_seconds: int = 120
 
     # Web Push / browser notifications
     # Must be a valid contact URI. Example: mailto:helpdesk@techpro.pt

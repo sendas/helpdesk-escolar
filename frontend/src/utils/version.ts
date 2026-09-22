@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.96'
+export const APP_VERSION = '1.7.97'
 export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '12:00'
+export const APP_VERSION_TIME = '13:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.97',
+    date: '2026-09-22',
+    time: '13:00',
+    title: 'Interruptores invisíveis corrigidos + emails condensados',
+    changes: [
+      'Corrigido: os interruptores (on/off) de "Avisos de categoria", "Aviso no ecrã de login", Active Directory, notificações automáticas e ativar/desativar utilizador estavam invisíveis (não tinham estilo aplicado) — apareciam clicáveis mas sem indicação visual do estado.',
+      'Novo: várias atualizações seguidas ao mesmo ticket (ex: comentário + resolver + fechar em poucos minutos) juntam-se agora num único email condensado por destinatário, em vez de um email por cada alteração.',
+      'Configurável via MAIL_DIGEST_WINDOW_SECONDS no servidor (120s por omissão; 0 desativa o agrupamento).',
+    ],
+  },
   {
     version: '1.7.96',
     date: '2026-09-22',
