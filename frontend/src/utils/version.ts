@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.98'
+export const APP_VERSION = '1.7.99'
 export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '14:00'
+export const APP_VERSION_TIME = '14:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.99',
+    date: '2026-09-22',
+    time: '14:30',
+    title: 'Botão de contacto com estilo próprio',
+    changes: [
+      'O botão "Não tenho acesso ao mail institucional" no ecrã de login passou de link de texto a botão sólido (cor diferente das restantes ações, mais pequeno que "Entrar com email ou conta da escola").',
+    ],
+  },
   {
     version: '1.7.98',
     date: '2026-09-22',

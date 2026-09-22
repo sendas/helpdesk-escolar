@@ -86,7 +86,8 @@
           </p>
         </template>
 
-        <button class="hd-link-btn" type="button" style="margin-top:10px" @click="openContactForm">
+        <button class="hd-btn hd-btn-sm no-access-btn" type="button" style="width:100%;justify-content:center;gap:8px;margin-top:14px" @click="openContactForm">
+          <span class="material-icons" style="font-size:15px">help_outline</span>
           Não tenho acesso ao mail institucional
         </button>
       </div>
@@ -290,6 +291,12 @@ async function submitContactForm() {
 </script>
 
 <style scoped>
+.no-access-btn {
+  background: var(--c-accent);
+  color: #fff;
+}
+.no-access-btn .material-icons { color: #fff; }
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
