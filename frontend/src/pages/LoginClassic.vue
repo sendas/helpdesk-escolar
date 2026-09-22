@@ -297,10 +297,11 @@ async function submitContactForm() {
 
 <style scoped>
 .no-access-btn {
-  background: var(--c-accent);
-  color: #fff;
+  background: var(--c-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--c-primary) 22%, transparent);
+  color: var(--c-primary);
 }
-.no-access-btn .material-icons { color: #fff; }
+.no-access-btn .material-icons { color: var(--c-primary); }
 
 .modal-backdrop {
   position: fixed;

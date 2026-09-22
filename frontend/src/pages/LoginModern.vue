@@ -309,7 +309,7 @@ async function submitContactForm() {
 .lg-logo { width: 56px; height: 46px; object-fit: contain; border-radius: 10px; }
 .lg-logo-fallback {
   display: grid; place-items: center;
-  background: linear-gradient(120deg, #2563EB, #0891B2);
+  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-strong));
 }
 .lg-logo-fallback .material-icons { color: #fff; font-size: 26px; }
 .lg-org { font-weight: 700; font-size: 14px; line-height: 1.3; color: var(--c-text); }
@@ -327,8 +327,8 @@ async function submitContactForm() {
   padding: 5px 12px;
   border-radius: 999px;
   font-size: 12px; font-weight: 700;
-  color: #2563EB;
-  background: rgba(37, 99, 235, .1);
+  color: var(--c-primary);
+  background: var(--c-primary-soft);
   margin-bottom: 14px;
 }
 .lg-badge .material-icons { font-size: 15px; }
@@ -343,7 +343,7 @@ async function submitContactForm() {
   color: var(--c-text);
 }
 .lg-title-accent {
-  background: linear-gradient(120deg, #2563EB, #0891B2);
+  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-strong));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -376,11 +376,12 @@ async function submitContactForm() {
   font: 700 15px var(--font-sans);
   color: #fff;
   cursor: pointer;
-  background: linear-gradient(120deg, #2563EB, #0891B2);
-  box-shadow: 0 14px 28px rgba(37, 99, 235, .3);
+  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-strong));
+  box-shadow: 0 10px 22px rgba(64, 87, 216, .22);
   transition: transform .15s ease, box-shadow .15s ease;
 }
-.lg-btn-main:hover { transform: translateY(-2px); box-shadow: 0 18px 34px rgba(37, 99, 235, .38); }
+.lg-btn-main:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(64, 87, 216, .3); }
+.dark .lg-btn-main { background: linear-gradient(135deg, #5363E6, #3A48C4); box-shadow: 0 10px 22px rgba(0, 0, 0, .35); }
 .lg-btn-main:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
 .lg-ms-logo {
@@ -431,9 +432,9 @@ async function submitContactForm() {
   margin-top: 16px; padding: 9px 14px;
   border: 0; border-radius: 12px;
   font: 700 13px var(--font-sans);
-  color: #fff;
-  background: linear-gradient(120deg, #14B8A6, #06B6D4);
-  box-shadow: 0 10px 20px rgba(20, 184, 166, .25);
+  color: var(--c-primary);
+  background: var(--c-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--c-primary) 22%, transparent);
   cursor: pointer;
   transition: transform .15s ease;
 }
@@ -490,9 +491,8 @@ async function submitContactForm() {
 .lg-right-org { font-size: 24px; font-weight: 800; line-height: 1.2; margin-bottom: 6px; color: var(--c-text); }
 .lg-right-site {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 13px; font-weight: 600; color: #2563EB; text-decoration: none;
+  font-size: 13px; font-weight: 600; color: var(--c-primary); text-decoration: none;
 }
-.dark .lg-right-site { color: #60A5FA; }
 .lg-right-site .material-icons { font-size: 14px; }
 .lg-right-site:hover { text-decoration: underline; }
 

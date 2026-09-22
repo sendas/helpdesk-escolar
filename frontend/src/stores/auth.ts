@@ -68,8 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function _redirect() {
-    const dest = isStaff.value ? '/admin/tickets' : '/dashboard'
-    window.location.href = dest
+    window.location.href = '/dashboard'
   }
 
   async function fetchMe() {

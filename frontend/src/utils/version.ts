@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.8.1'
+export const APP_VERSION = '1.8.2'
 export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '22:00'
+export const APP_VERSION_TIME = '22:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.2',
+    date: '2026-09-22',
+    time: '22:30',
+    title: 'Todos entram pelo Painel inicial + botões do login harmonizados',
+    changes: [
+      'Depois de iniciar sessão, todos os utilizadores (incluindo técnicos e administradores) vão para o Painel inicial.',
+      'Ecrã de login: o botão "Entrar com email ou conta da escola" passa a usar o azul da própria aplicação, e "Não tenho acesso ao mail institucional" passa a um estilo suave a condizer, em vez de verde.',
+    ],
+  },
   {
     version: '1.8.1',
     date: '2026-09-22',

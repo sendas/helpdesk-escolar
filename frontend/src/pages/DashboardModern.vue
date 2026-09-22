@@ -261,7 +261,7 @@ function statusLabel(s: string) {
   box-shadow: 0 8px 18px rgba(15, 23, 42, .18);
 }
 .recent-empty .hero-btn-solid {
-  background: linear-gradient(120deg, #2563EB, #0891B2);
+  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-strong));
   color: #fff;
 }
 .hero-btn-glass {
