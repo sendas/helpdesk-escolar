@@ -2,15 +2,23 @@ import secrets
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db
 from app.models.user import User, UserRole
 from app.schemas.auth import LdapLoginRequest, TokenResponse
-from app.services import ldap_auth, azure_auth, jwt_service, passwords
+from app.services import ldap_auth, azure_auth, jwt_service, passwords, email_service
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class NoAccessContactRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    recruitment_group: str = Field("", max_length=200)
+    school: str = Field("", max_length=200)
+    message: str = Field(..., min_length=1, max_length=5000)
 
 
 async def get_or_create_user(db: AsyncSession, info: dict) -> User:
@@ -119,3 +127,26 @@ async def azure_callback(
     user = await get_or_create_user(db, user_info)
     token = jwt_service.create_access_token({"sub": str(user.id), "role": user.role})
     return RedirectResponse(f"{settings.frontend_url}/auth/callback#token={token}")
+
+
+@router.post("/no-access-contact")
+async def no_access_contact(data: NoAccessContactRequest):
+    from app.api.v1.settings import _read_settings
+
+    app_settings = _read_settings()
+    to_email = (app_settings.get("no_access_contact_email") or "").strip()
+    if not to_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email de contacto não configurado. Peça a um administrador para o definir nas Configurações.")
+    if not settings.mail_server:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envio de email não configurado no servidor.")
+
+    await email_service.send_no_access_contact(
+        to_email,
+        {
+            "name": data.name.strip(),
+            "recruitment_group": data.recruitment_group.strip(),
+            "school": data.school.strip(),
+            "message": data.message.strip(),
+        },
+    )
+    return {"sent": True}

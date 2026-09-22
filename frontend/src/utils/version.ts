@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.97'
+export const APP_VERSION = '1.7.98'
 export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '13:00'
+export const APP_VERSION_TIME = '14:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.98',
+    date: '2026-09-22',
+    time: '14:00',
+    title: 'Contacto para quem não tem acesso ao mail institucional',
+    changes: [
+      'Novo botão "Não tenho acesso ao mail institucional" no ecrã de login, que abre um formulário a pedir nome, grupo de recrutamento, escola e mensagem.',
+      'Ao submeter, é enviado um email para o endereço configurado em Administração → Configurações → Geral → "Contacto Sem acesso ao mail institucional" (por omissão: helpdesk_aeeq@queiroz.pt).',
+      'Não é necessária sessão iniciada — o formulário funciona mesmo sem acesso a qualquer conta.',
+    ],
+  },
   {
     version: '1.7.97',
     date: '2026-09-22',

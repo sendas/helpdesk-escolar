@@ -12,6 +12,7 @@ export interface PublicSettings {
   suggestion_emails?: string[]
   login_notice_enabled?: boolean
   login_notice_text?: string
+  no_access_contact_email?: string
 }
 
 export interface AzureSyncSettings {
@@ -50,5 +51,10 @@ export async function updateFeatureSettings(payload: { knowledge_enabled: boolea
 
 export async function updateLoginNoticeSettings(payload: { enabled: boolean; text: string }) {
   const { data } = await api.put<{ login_notice_enabled: boolean; login_notice_text: string }>('/api/v1/settings/login-notice', payload)
+  return data
+}
+
+export async function updateNoAccessContactSettings(payload: { email: string }) {
+  const { data } = await api.put<{ no_access_contact_email: string }>('/api/v1/settings/no-access-contact', payload)
   return data
 }

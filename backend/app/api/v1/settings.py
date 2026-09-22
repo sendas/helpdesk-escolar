@@ -31,6 +31,7 @@ DEFAULT_SETTINGS = {
         "não tenha acesso ao seu mail institucional, envie um mail (usando o seu "
         "mail pessoal) para helpdesk_aeeq@queiroz.pt. Obrigado."
     ),
+    "no_access_contact_email": "helpdesk_aeeq@queiroz.pt",
 }
 
 
@@ -46,6 +47,10 @@ class FeatureSettings(BaseModel):
 class LoginNoticeSettings(BaseModel):
     enabled: bool = False
     text: str = ""
+
+
+class NoAccessContactSettings(BaseModel):
+    email: str = ""
 
 
 class SuggestionEmailSettings(BaseModel):
@@ -120,6 +125,17 @@ async def update_login_notice(payload: LoginNoticeSettings, _: User = Depends(re
         data["login_notice_text"] = text
     _write_settings(data)
     return {"login_notice_enabled": data["login_notice_enabled"], "login_notice_text": data["login_notice_text"]}
+
+
+@router.put("/no-access-contact")
+async def update_no_access_contact(payload: NoAccessContactSettings, _: User = Depends(require_admin)):
+    data = _read_settings()
+    email = payload.email.strip()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email inválido")
+    data["no_access_contact_email"] = email
+    _write_settings(data)
+    return {"no_access_contact_email": data["no_access_contact_email"]}
 
 
 @router.put("/suggestion-emails")

@@ -94,6 +94,18 @@
         </div>
       </div>
       <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">Contacto "Sem acesso ao mail institucional"</div>
+        <div style="font-size:12px;color:var(--c-muted);margin-bottom:12px">Email que recebe os pedidos de quem clica em "Não tenho acesso ao mail institucional" no ecrã de login</div>
+        <div class="hd-row" style="gap:10px;align-items:center">
+          <input class="hd-input" v-model="noAccessContactEmail" type="email" placeholder="helpdesk_aeeq@queiroz.pt" style="max-width:340px" />
+          <button class="hd-btn hd-btn-outline" style="font-size:12px;padding:6px 14px" @click="saveNoAccessContact">
+            <span class="material-icons" style="font-size:14px">save</span> Guardar
+          </button>
+          <span v-if="noAccessContactSaved" style="font-size:12px;color:#22C55E">Guardado!</span>
+        </div>
+        <p v-if="noAccessContactError" style="font-size:12px;color:#EF4444;margin-top:6px">{{ noAccessContactError }}</p>
+      </div>
+      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
         <div style="font-weight:600;font-size:14px;margin-bottom:12px">Empresa de apoio informático</div>
         <div class="hd-grid-2">
           <div class="hd-field">
@@ -513,7 +525,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
-import { getPublicSettings, updateFeatureSettings, updateLoginNoticeSettings, updateSettings } from '../../api/settings'
+import { getPublicSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
 import { api } from '../../boot/axios'
 import { getGroups, getUsers } from '../../api/users'
 
@@ -545,6 +557,9 @@ const loginNoticeEnabled = ref(false)
 const loginNoticeText = ref('')
 const loginNoticeSaved = ref(false)
 const loginNoticeError = ref('')
+const noAccessContactEmail = ref('')
+const noAccessContactSaved = ref(false)
+const noAccessContactError = ref('')
 
 const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Empresa de apoio informático', support_provider_email: '' })
 const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
@@ -577,6 +592,7 @@ onMounted(async () => {
     categoryWarningsEnabled.value = settings.category_warnings_enabled !== false
     loginNoticeEnabled.value = settings.login_notice_enabled === true
     loginNoticeText.value = settings.login_notice_text || ''
+    noAccessContactEmail.value = settings.no_access_contact_email || ''
     suggestionEmailsRaw.value = (settings.suggestion_emails || []).join(', ')
     categories.value = cats
     schools.value = schs
@@ -647,6 +663,19 @@ async function saveLoginNotice() {
     setTimeout(() => { loginNoticeSaved.value = false }, 3000)
   } catch (e: any) {
     loginNoticeError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+  }
+}
+
+async function saveNoAccessContact() {
+  noAccessContactSaved.value = false
+  noAccessContactError.value = ''
+  try {
+    const saved = await updateNoAccessContactSettings({ email: noAccessContactEmail.value })
+    noAccessContactEmail.value = saved.no_access_contact_email
+    noAccessContactSaved.value = true
+    setTimeout(() => { noAccessContactSaved.value = false }, 3000)
+  } catch (e: any) {
+    noAccessContactError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
   }
 }
 

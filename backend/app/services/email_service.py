@@ -76,6 +76,31 @@ async def send_suggestion_notification(recipients: list[str], suggestion_data: d
         logger.warning("Suggestion notification failed: %s", exc)
 
 
+async def send_no_access_contact(to_email: str, contact_data: dict) -> None:
+    if not settings.mail_server:
+        return
+    try:
+        template = jinja_env.get_template("no_access_contact.html")
+        html_body = template.render(**contact_data)
+    except Exception as exc:
+        logger.warning("Email template error for no-access contact: %s", exc)
+        return
+
+    try:
+        message = MessageSchema(
+            subject=f"[Helpdesk] Sem acesso ao mail institucional — {contact_data.get('name', 'Desconhecido')}",
+            recipients=[to_email],
+            body=html_body,
+            subtype=MessageType.html,
+            headers={"Reply-To": settings.mail_from},
+        )
+        fm = FastMail(_get_conf())
+        await fm.send_message(message)
+        logger.info("No-access contact email sent to %s from %s", to_email, contact_data.get("name"))
+    except Exception as exc:
+        logger.warning("No-access contact email failed to %s: %s", to_email, exc)
+
+
 def _normalize_ticket_data(ticket_data: dict) -> dict:
     ticket_data = dict(ticket_data)
     if ticket_data.get("id") and not ticket_data.get("ticket_url"):
