@@ -257,13 +257,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { createTicket, getCategories, getSchools, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, searchUsers, type HelpdeskGroup, type UserFull } from '../api/users'
 import { getPublicSettings } from '../api/settings'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
@@ -311,6 +312,9 @@ onMounted(async () => {
   schools.value = schs
   groups.value = grps as HelpdeskGroup[]
   categoryWarningsEnabled.value = settings?.category_warnings_enabled !== false
+  const preselected = Number(route.query.categoria)
+  const preselectedCat = preselected ? cats.find((c: any) => c.id === preselected) : null
+  if (preselectedCat) selectCategory(preselectedCat)
 })
 
 function selectCategory(cat: any) {

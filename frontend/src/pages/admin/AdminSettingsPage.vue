@@ -60,6 +60,17 @@
         <div style="font-weight:600;font-size:14px;margin-bottom:12px">Funcionalidades</div>
         <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
           <div>
+            <div style="font-size:13px;font-weight:500">Design do Painel inicial e do login</div>
+            <div style="font-size:12px;color:var(--c-muted)">Aplica-se a todos os utilizadores</div>
+          </div>
+          <div class="design-choice" role="radiogroup" aria-label="Design do Painel inicial e do login">
+            <button type="button" :class="{ selected: uiDesign === 'modern' }" @click="changeDesign('modern')">Moderno</button>
+            <button type="button" :class="{ selected: uiDesign === 'classic' }" @click="changeDesign('classic')">Clássico</button>
+          </div>
+        </div>
+        <p v-if="designError" style="font-size:12px;color:#EF4444;margin:0 0 6px">{{ designError }}</p>
+        <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
+          <div>
             <div style="font-size:13px;font-weight:500">Avisos de categoria</div>
             <div style="font-size:12px;color:var(--c-muted)">Mostra uma janela de aviso ao selecionar categorias com aviso configurado</div>
           </div>
@@ -525,7 +536,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
-import { getPublicSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
+import { getPublicSettings, updateDesignSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
+import { setUiDesign, type UiDesign } from '../../composables/useUiDesign'
 import { api } from '../../boot/axios'
 import { getGroups, getUsers } from '../../api/users'
 
@@ -557,6 +569,8 @@ const loginNoticeEnabled = ref(false)
 const loginNoticeText = ref('')
 const loginNoticeSaved = ref(false)
 const loginNoticeError = ref('')
+const uiDesign = ref<UiDesign>('modern')
+const designError = ref('')
 const noAccessContactEmail = ref('')
 const noAccessContactSaved = ref(false)
 const noAccessContactError = ref('')
@@ -593,6 +607,7 @@ onMounted(async () => {
     loginNoticeEnabled.value = settings.login_notice_enabled === true
     loginNoticeText.value = settings.login_notice_text || ''
     noAccessContactEmail.value = settings.no_access_contact_email || ''
+    uiDesign.value = settings.ui_design === 'classic' ? 'classic' : 'modern'
     suggestionEmailsRaw.value = (settings.suggestion_emails || []).join(', ')
     categories.value = cats
     schools.value = schs
@@ -663,6 +678,18 @@ async function saveLoginNotice() {
     setTimeout(() => { loginNoticeSaved.value = false }, 3000)
   } catch (e: any) {
     loginNoticeError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+  }
+}
+
+async function changeDesign(design: UiDesign) {
+  if (design === uiDesign.value) return
+  designError.value = ''
+  try {
+    const saved = await updateDesignSettings(design)
+    uiDesign.value = saved.ui_design
+    setUiDesign(saved.ui_design)
+  } catch (e: any) {
+    designError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
   }
 }
 
@@ -812,6 +839,27 @@ async function removeArticle(id: number) {
 </script>
 
 <style scoped>
+.design-choice {
+  display: inline-flex;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: var(--c-bg);
+}
+.design-choice button {
+  min-width: 84px;
+  padding: 6px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--c-muted);
+  cursor: pointer;
+  font: 700 12px var(--font-sans);
+}
+.design-choice button.selected {
+  background: var(--c-primary);
+  color: #fff;
+}
 .routing-form {
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr)) 90px auto;

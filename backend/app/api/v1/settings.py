@@ -32,7 +32,10 @@ DEFAULT_SETTINGS = {
         "mail pessoal) para helpdesk_aeeq@queiroz.pt. Obrigado."
     ),
     "no_access_contact_email": "helpdesk_aeeq@queiroz.pt",
+    "ui_design": "modern",
 }
+
+UI_DESIGNS = {"modern", "classic"}
 
 
 class AzureSyncSettings(BaseModel):
@@ -51,6 +54,10 @@ class LoginNoticeSettings(BaseModel):
 
 class NoAccessContactSettings(BaseModel):
     email: str = ""
+
+
+class DesignSettings(BaseModel):
+    design: str = "modern"
 
 
 class SuggestionEmailSettings(BaseModel):
@@ -136,6 +143,16 @@ async def update_no_access_contact(payload: NoAccessContactSettings, _: User = D
     data["no_access_contact_email"] = email
     _write_settings(data)
     return {"no_access_contact_email": data["no_access_contact_email"]}
+
+
+@router.put("/design")
+async def update_design(payload: DesignSettings, _: User = Depends(require_admin)):
+    if payload.design not in UI_DESIGNS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Design inválido")
+    data = _read_settings()
+    data["ui_design"] = payload.design
+    _write_settings(data)
+    return {"ui_design": data["ui_design"]}
 
 
 @router.put("/suggestion-emails")

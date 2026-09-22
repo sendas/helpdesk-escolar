@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.7.99'
+export const APP_VERSION = '1.8.0'
 export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '14:30'
+export const APP_VERSION_TIME = '21:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.0',
+    date: '2026-09-22',
+    time: '21:00',
+    title: 'Novo design do Painel inicial e do ecrã de login',
+    changes: [
+      'Painel inicial redesenhado: banner de boas-vindas com saudação e data, estatísticas em cartões coloridos, tickets recentes com a cor do estado e atalhos de categoria em mosaicos.',
+      'Ecrã de login redesenhado no mesmo estilo, com painel informativo colorido e botões mais visíveis.',
+      'Os atalhos "Novo pedido rápido" abrem o formulário já com a categoria escolhida.',
+      'Novo: em Configurações → Geral → Funcionalidades é possível voltar ao design anterior ("Clássico") ou manter o novo ("Moderno"). A escolha aplica-se a todos os utilizadores.',
+    ],
+  },
   {
     version: '1.7.99',
     date: '2026-09-22',
