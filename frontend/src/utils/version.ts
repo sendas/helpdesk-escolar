@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.7.93'
-export const APP_VERSION_DATE = '2026-06-12'
-export const APP_VERSION_TIME = '11:00'
+export const APP_VERSION = '1.7.94'
+export const APP_VERSION_DATE = '2026-09-22'
+export const APP_VERSION_TIME = '10:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.94',
+    date: '2026-09-22',
+    time: '10:00',
+    title: 'Remoção do modo demo',
+    changes: [
+      'Removido o "Entrar em modo demo" do ecrã de login (botão, seletor de perfil e endpoint /auth/demo-login).',
+      'Removido o aviso persistente de "modo de demonstração" que aparecia no topo das páginas.',
+      'Guias de instalação atualizados: o primeiro administrador entra agora via LDAP (LDAP_ADMIN_GROUP) ou Azure AD (AZURE_ADMIN_EMAILS), ou por conta local criada diretamente na base de dados para ambientes de desenvolvimento sem AD configurado.',
+    ],
+  },
   {
     version: '1.7.93',
     date: '2026-06-12',

@@ -9,13 +9,8 @@ from app.models.user import User, UserRole
 from app.schemas.auth import LdapLoginRequest, TokenResponse
 from app.services import ldap_auth, azure_auth, jwt_service, passwords
 from app.config import settings
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-class DemoLoginRequest(BaseModel):
-    role: str = "teacher"
 
 
 async def get_or_create_user(db: AsyncSession, info: dict) -> User:
@@ -124,30 +119,3 @@ async def azure_callback(
     user = await get_or_create_user(db, user_info)
     token = jwt_service.create_access_token({"sub": str(user.id), "role": user.role})
     return RedirectResponse(f"{settings.frontend_url}/auth/callback#token={token}")
-
-
-@router.post("/demo-login", response_model=TokenResponse)
-async def demo_login(data: DemoLoginRequest, db: AsyncSession = Depends(get_db)):
-    role_map = {"teacher": UserRole.TEACHER, "technician": UserRole.TECHNICIAN, "admin": UserRole.ADMIN}
-    role = role_map.get(data.role, UserRole.TEACHER)
-    label = {"teacher": "Docente Demo", "technician": "Técnico Demo", "admin": "Administrador Demo"}.get(data.role, "Demo")
-    dept = {"teacher": "Línguas", "technician": "Serviços Informáticos", "admin": "Direção"}.get(data.role, "")
-
-    username = f"demo_{data.role}"
-    result = await db.execute(select(User).where(User.username == username))
-    user = result.scalar_one_or_none()
-    if not user:
-        user = User(
-            username=username,
-            email=f"{username}@demo.escola.pt",
-            display_name=label,
-            department=dept,
-            role=role,
-            auth_provider="demo",
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
-
-    token = jwt_service.create_access_token({"sub": str(user.id), "role": user.role})
-    return {"access_token": token, "token_type": "bearer"}

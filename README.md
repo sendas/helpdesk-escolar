@@ -29,8 +29,6 @@ docker compose up --build -d
 # Abrir http://localhost:85
 ```
 
-O modo de demonstração (sem AD configurado) está sempre disponível no ecrã de login.
-
 ## Deployment
 
 | Ambiente | Ficheiro | Porta |
@@ -67,7 +65,6 @@ O Caddy obtém e renova o certificado Let's Encrypt automaticamente.
 - Tickets com estados: Aberto → Atribuído → Em Curso → Resolvido → Fechado
 - 3 roles: Docente / Técnico / Administrador
 - Autenticação LDAP two-step bind + Azure AD OAuth2
-- Demo mode (sem AD configurado)
 - Notificações por email (Jinja2 HTML templates)
 - Painel de administração com estatísticas e gráficos (Chart.js)
 - Backup / exportação JSON

@@ -40,7 +40,35 @@ docker compose up --build -d
 http://localhost:85
 ```
 
-O login de demonstracao nao precisa de password. No ecra de login, escolhe o perfil `Docente`, `Tecnico` ou `Administrador` e entra em modo demo.
+Sem LDAP nem Azure AD ativos, ainda não existe nenhuma conta para entrar. Cria uma conta local de administrador diretamente na base de dados:
+
+```bash
+docker compose exec backend python -c "
+import asyncio
+from app.database import AsyncSessionLocal
+from app.models.user import User, UserRole
+from app.services import passwords
+
+async def main():
+    async with AsyncSessionLocal() as db:
+        db.add(User(
+            username='admin',
+            email='admin@local.test',
+            display_name='Administrador',
+            role=UserRole.ADMIN,
+            role_source='manual',
+            role_locked=True,
+            auth_provider='manual',
+            password_hash=passwords.hash_password('muda-esta-password'),
+        ))
+        await db.commit()
+        print('Conta admin criada: admin@local.test / muda-esta-password')
+
+asyncio.run(main())
+"
+```
+
+No ecrã de login, clica em **"Entrar com conta local"** e usa essas credenciais. Depois de entrares, podes criar mais contas locais em **Administração → Utilizadores**, ou ativar LDAP/Azure AD.
 
 ## Desenvolvimento sem Docker
 

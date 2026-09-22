@@ -87,8 +87,6 @@ MAIL_SUPPRESS_SEND=false
 
 **Para a autenticação (escolhe uma opção):**
 
-Se ainda não tens Active Directory configurado, deixa o modo demo ativo (já está por defeito) — consegues entrar com utilizadores demo para testar.
-
 Se tens LDAP no teu servidor de escola:
 ```
 LDAP_ENABLED=true
@@ -230,13 +228,15 @@ http://IP-DO-NAS:85
 
 Por exemplo: `http://192.168.1.50:85`
 
-Deves ver o ecrã de login. Clica em **"Entrar em modo demo"** para testar sem precisar de configurar o Active Directory.
+Deves ver o ecrã de login. Entra com a conta LDAP ou Microsoft que colocaste como administradora
+(`LDAP_ADMIN_GROUP` ou `AZURE_ADMIN_EMAILS`, configurados na Parte 3) — essa conta fica automaticamente
+com o perfil Administrador no primeiro login.
 
 ---
 
 ## Parte 6 — Criar categorias iniciais (primeiro login)
 
-Entra com o perfil **Administrador** (modo demo). Depois vai a:
+Entra com a conta de administrador. Depois vai a:
 
 **Configurações → Categorias e SLAs → Nova categoria**
 
