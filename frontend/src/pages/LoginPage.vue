@@ -1,125 +1,110 @@
 <template>
-  <div class="hd-login-wrap">
-    <!-- Left panel -->
-    <div class="hd-login-left">
-      <!-- Logo -->
-      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:auto">
-        <img v-if="settings.logo_url" :src="settings.logo_url" alt="" style="width:64px;height:48px;object-fit:contain;border-radius:8px" />
-        <div v-else class="hd-sidebar-logo-icon" style="width:56px;height:48px;border-radius:10px"></div>
+  <div class="lg-wrap hd-login-wrap">
+    <div class="lg-bg-blob lg-bg-blob-1"></div>
+    <div class="lg-bg-blob lg-bg-blob-2"></div>
+
+    <!-- Left: form -->
+    <main class="lg-left">
+      <div class="lg-brand">
+        <img v-if="settings.logo_url" :src="settings.logo_url" alt="" class="lg-logo" />
+        <div v-else class="lg-logo lg-logo-fallback"><span class="material-icons">support_agent</span></div>
         <div>
-          <div style="font-weight:600;font-size:14px;line-height:1.3">{{ settings.org_name }}</div>
-          <div style="font-size:12px;color:var(--c-muted);margin-top:2px">Sistema de Helpdesk</div>
+          <div class="lg-org">{{ settings.org_name }}</div>
+          <div class="lg-org-sub">Sistema de Helpdesk</div>
         </div>
       </div>
 
-      <!-- Main content -->
-      <div style="margin:auto 0;padding:26px 0 18px">
-        <h1 style="font-size:30px;font-weight:500;line-height:1.1;margin-bottom:10px">Centro de Apoio Digital<br>do Agrupamento</h1>
-        <p style="color:var(--c-muted);font-size:13px;margin-bottom:18px;line-height:1.45">
-          Entre com a sua conta institucional para<br>abrir e gerir pedidos de apoio.
-        </p>
-        <div style="border:1px solid var(--c-border);border-radius:10px;padding:10px 12px;margin-bottom:14px;background:var(--c-surface);font-size:12px;color:var(--c-muted);line-height:1.4">
-          <strong style="display:block;color:var(--c-text);margin-bottom:4px">Instruções de acesso</strong>
-          A autenticação deve ser feita com as mesmas credenciais de acesso ao mail institucional.
-          O ecrã de entrada abre sempre em modo claro; se preferir, pode ativar modo escuro abaixo.
+      <div class="lg-form">
+        <div class="lg-badge"><span class="material-icons">waving_hand</span> Bem-vindo</div>
+        <h1 class="lg-title">Centro de Apoio <span class="lg-title-accent">Digital</span> do Agrupamento</h1>
+        <p class="lg-sub">Entre com a sua conta institucional para abrir e acompanhar pedidos de apoio.</p>
+
+        <div class="lg-info">
+          <span class="material-icons">info</span>
+          <div>
+            <strong>Instruções de acesso</strong>
+            Use as mesmas credenciais do mail institucional.
+          </div>
         </div>
 
-        <div class="login-theme-choice">
-          <span>Modo escuro</span>
-          <div class="login-theme-toggle" role="group" aria-label="Escolher modo escuro no login">
+        <div v-if="error" class="lg-error">{{ error }}</div>
+
+        <button class="lg-btn-main" :disabled="loading" @click="onMicrosoftLogin">
+          <span class="lg-ms-logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          Entrar com email ou conta da escola
+        </button>
+        <p class="lg-hint">Autenticação segura via Microsoft Entra ID</p>
+
+        <button v-if="!showLocalLogin" class="lg-link" type="button" @click="showLocalLogin = true">
+          Entrar com conta local
+        </button>
+        <template v-if="showLocalLogin">
+          <div class="lg-divider"><span>conta local</span></div>
+          <div class="lg-fields">
+            <input class="hd-input" v-model="username" autocomplete="username" placeholder="Email ou utilizador" @keyup.enter="onAdLogin" />
+            <input class="hd-input" v-model="password" type="password" autocomplete="current-password" placeholder="Palavra-passe" @keyup.enter="onAdLogin" />
+          </div>
+          <button class="lg-btn-local" :disabled="loading || !username || !password" @click="onAdLogin">
+            <span class="material-icons">shield</span>
+            {{ loading ? 'A autenticar...' : 'Entrar com conta local' }}
+          </button>
+          <p class="lg-hint">Autenticação com conta criada pelo administrador</p>
+        </template>
+
+        <button class="lg-btn-help" type="button" @click="openContactForm">
+          <span class="material-icons">help_outline</span>
+          Não tenho acesso ao mail institucional
+        </button>
+
+        <div class="lg-theme">
+          <span class="material-icons">dark_mode</span>
+          <span class="lg-theme-label">Modo escuro</span>
+          <div class="lg-theme-toggle" role="group" aria-label="Escolher modo escuro no login">
             <button type="button" :class="{ selected: !loginDark }" @click="setLoginDark(false)">Não</button>
             <button type="button" :class="{ selected: loginDark }" @click="setLoginDark(true)">Sim</button>
           </div>
         </div>
+      </div>
 
-        <div v-if="error" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:13px;color:#DC2626;margin-bottom:16px">
-          {{ error }}
+      <p class="lg-footer">{{ versionLabelText }} · © 2026 Agrupamento de Escolas Eça de Queirós</p>
+    </main>
+
+    <!-- Right: showcase -->
+    <aside class="lg-right">
+      <div class="lg-right-blob lg-right-blob-1"></div>
+      <div class="lg-right-blob lg-right-blob-2"></div>
+
+      <div class="lg-right-inner">
+        <div class="lg-right-org">Agrupamento de Escolas<br>Eça de Queirós</div>
+        <a href="https://www.queiroz.pt" target="_blank" rel="noopener" class="lg-right-site">
+          www.queiroz.pt <span class="material-icons">open_in_new</span>
+        </a>
+
+        <h2 class="lg-quote">“Um sistema simples para que o tempo dos docentes seja gasto com os alunos — não com pedidos perdidos.”</h2>
+        <p class="lg-quote-author">— Direção Pedagógica</p>
+
+        <div class="lg-mock" aria-hidden="true">
+          <div class="lg-mock-row">
+            <span class="lg-mock-dot" style="background:#10B981"></span>
+            <div class="lg-mock-text">
+              <strong>Projetor da sala 14</strong>
+              <small>T-112 · há 10 min</small>
+            </div>
+            <span class="lg-mock-pill">Resolvido</span>
+          </div>
         </div>
 
-        <!-- Microsoft Login button -->
-        <button class="hd-btn hd-btn-dark hd-btn-lg" style="width:100%;justify-content:center;gap:10px" :disabled="loading" @click="onMicrosoftLogin">
-          <span class="material-icons" style="font-size:18px">account_circle</span>
-          Entrar com email ou conta da escola
-        </button>
-        <p style="text-align:center;font-size:12px;color:var(--c-muted);margin-top:10px">
-          Autenticação via Microsoft Entra ID
-        </p>
-
-        <button
-          v-if="!showLocalLogin"
-          class="hd-link-btn"
-          type="button"
-          @click="showLocalLogin = true"
-        >
-          Entrar com conta local
-        </button>
-        <template v-if="showLocalLogin">
-          <!-- Local Login form -->
-          <div style="display:flex;align-items:center;gap:12px;margin:18px 0 14px">
-            <div style="height:1px;background:var(--c-border);flex:1"></div>
-            <span style="font-size:12px;color:var(--c-muted)">conta local</span>
-            <div style="height:1px;background:var(--c-border);flex:1"></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <input
-              class="hd-input"
-              v-model="username"
-              autocomplete="username"
-              placeholder="Email ou utilizador"
-              @keyup.enter="onAdLogin"
-            />
-            <input
-              class="hd-input"
-              v-model="password"
-              type="password"
-              autocomplete="current-password"
-              placeholder="Palavra-passe"
-              @keyup.enter="onAdLogin"
-            />
-          </div>
-          <button class="hd-btn hd-btn-dark hd-btn-lg" style="width:100%;justify-content:center;gap:10px;margin-top:12px" :disabled="loading || !username || !password" @click="onAdLogin">
-            <span class="material-icons" style="font-size:18px">shield</span>
-            {{ loading ? 'A autenticar...' : 'Entrar com conta local' }}
-          </button>
-          <p style="text-align:center;font-size:12px;color:var(--c-muted);margin-top:10px">
-            Autenticação com conta criada pelo administrador
-          </p>
-        </template>
-
-        <button class="hd-btn hd-btn-sm no-access-btn" type="button" style="width:100%;justify-content:center;gap:8px;margin-top:14px" @click="openContactForm">
-          <span class="material-icons" style="font-size:15px">help_outline</span>
-          Não tenho acesso ao mail institucional
-        </button>
+        <ul class="lg-features">
+          <li v-for="f in features" :key="f.title">
+            <div class="lg-feat-icon" :style="{ background: f.color }"><span class="material-icons">{{ f.icon }}</span></div>
+            <div>
+              <div class="lg-feat-title">{{ f.title }}</div>
+              <div class="lg-feat-sub">{{ f.sub }}</div>
+            </div>
+          </li>
+        </ul>
       </div>
-
-      <!-- Footer -->
-      <p style="font-size:11.5px;color:var(--c-muted);margin-top:auto">
-        {{ versionLabelText }} · © 2026 Agrupamento de Escolas Eça de Queirós
-      </p>
-    </div>
-
-    <!-- Right panel -->
-    <div class="hd-login-right">
-      <div style="margin-bottom:24px">
-        <div style="font-size:22px;font-weight:600;color:var(--c-text);line-height:1.2;margin-bottom:4px">Agrupamento de Escolas<br>Eça de Queirós</div>
-        <a href="https://www.queiroz.pt" target="_blank" rel="noopener" style="font-size:13px;color:var(--c-primary);text-decoration:none;opacity:.85">www.queiroz.pt</a>
-      </div>
-      <h2 style="font-size:22px;line-height:1.3;color:var(--c-text);margin-bottom:10px">
-        Um sistema simples para que o tempo dos docentes seja gasto com os alunos — não com pedidos perdidos.
-      </h2>
-      <p style="color:var(--c-muted);font-size:13px;margin-bottom:24px">— Direção Pedagógica</p>
-      <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px">
-        <li v-for="f in features" :key="f.title" style="display:flex;align-items:flex-start;gap:12px">
-          <div :style="{ width:'22px', height:'22px', background: f.color, borderRadius:'6px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:'1px' }">
-            <span class="material-icons" style="font-size:13px;color:#fff">{{ f.icon }}</span>
-          </div>
-          <div>
-            <div style="font-weight:600;font-size:13.5px">{{ f.title }}</div>
-            <div style="font-size:12px;color:var(--c-muted);margin-top:2px">{{ f.sub }}</div>
-          </div>
-        </li>
-      </ul>
-    </div>
+    </aside>
 
     <!-- Login notice modal -->
     <div v-if="showNotice" class="modal-backdrop" @click.self="showNotice = false">
@@ -166,9 +151,7 @@
           <p style="font-size:12.5px;color:var(--c-muted);margin:0 0 14px;line-height:1.5">
             Preencha os seus dados para entrarmos em contacto por outra via.
           </p>
-          <div v-if="contactError" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:13px;color:#DC2626;margin-bottom:14px">
-            {{ contactError }}
-          </div>
+          <div v-if="contactError" class="lg-error">{{ contactError }}</div>
           <div style="display:flex;flex-direction:column;gap:10px">
             <input class="hd-input" v-model="contactForm.name" placeholder="Nome do docente" />
             <input class="hd-input" v-model="contactForm.recruitment_group" placeholder="Grupo de recrutamento (ex: 550)" />
@@ -215,9 +198,9 @@ const contactError = ref('')
 const contactForm = ref({ name: '', recruitment_group: '', school: '', message: '' })
 
 const features = [
-  { title: 'Aberto → Atribuído → Em Curso → Resolvido', sub: 'Estados claros e auditáveis', color: '#0D9488', icon: 'task_alt' },
-  { title: 'Integração com Microsoft Entra ID', sub: 'Login institucional com a conta Microsoft', color: '#0078D4', icon: 'shield' },
-  { title: 'Notificações e tempos de resposta configuráveis', sub: 'Cada categoria com o seu prazo', color: '#D97706', icon: 'notifications_active' },
+  { title: 'Aberto → Atribuído → Em Curso → Resolvido', sub: 'Estados claros e auditáveis', color: '#10B981', icon: 'task_alt' },
+  { title: 'Integração com Microsoft Entra ID', sub: 'Login institucional com a conta Microsoft', color: '#3B82F6', icon: 'shield' },
+  { title: 'Notificações e tempos de resposta configuráveis', sub: 'Cada categoria com o seu prazo', color: '#F59E0B', icon: 'notifications_active' },
 ]
 
 onMounted(async () => {
@@ -291,95 +274,286 @@ async function submitContactForm() {
 </script>
 
 <style scoped>
-.no-access-btn {
-  background: var(--c-accent);
-  color: #fff;
-}
-.no-access-btn .material-icons { color: #fff; }
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(0, 0, 0, 0.50);
-  display: grid;
-  place-items: center;
-  padding: 20px;
-}
-
-.modal-card {
-  width: min(480px, 100%);
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-  border-radius: 14px;
-  padding: 24px;
-}
-
-.modal-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 16px;
-  margin-top: 16px;
-  border-top: 1px solid var(--c-border);
-}
-
-.login-theme-choice {
-  align-items: center;
-  border: 1px solid var(--c-border);
-  border-radius: 10px;
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 14px;
-  padding: 8px 10px;
-}
-
-.login-theme-choice > span {
-  color: var(--c-text);
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-.login-theme-toggle {
-  background: var(--c-bg);
-  border: 1px solid var(--c-border);
-  border-radius: 8px;
-  display: inline-flex;
+/* ── Page ── */
+.lg-wrap {
+  position: relative;
   overflow: hidden;
+  display: flex;
+  min-height: 100vh;
+  background: linear-gradient(160deg, #F5F7FF 0%, #FDF4FF 55%, #F0FDFA 100%);
+}
+.dark .lg-wrap { background: linear-gradient(160deg, #0F1117 0%, #171327 60%, #0D1A1C 100%); }
+
+.lg-bg-blob { position: absolute; border-radius: 50%; filter: blur(60px); pointer-events: none; opacity: .55; }
+.lg-bg-blob-1 { width: 380px; height: 380px; left: -120px; top: -120px; background: #A5B4FC; }
+.lg-bg-blob-2 { width: 320px; height: 320px; left: 25%; bottom: -160px; background: #99F6E4; }
+.dark .lg-bg-blob { opacity: .18; }
+
+/* ── Left (form) ── */
+.lg-left {
+  position: relative;
+  z-index: 1;
+  width: 46%;
+  min-width: 420px;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 56px;
 }
 
-.login-theme-toggle button {
-  background: transparent;
-  border: 0;
+.lg-brand { display: flex; align-items: center; gap: 12px; }
+.lg-logo { width: 56px; height: 46px; object-fit: contain; border-radius: 10px; }
+.lg-logo-fallback {
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #4057D8, #7C3AED);
+}
+.lg-logo-fallback .material-icons { color: #fff; font-size: 26px; }
+.lg-org { font-weight: 700; font-size: 14px; line-height: 1.3; color: var(--c-text); }
+.lg-org-sub { font-size: 12px; color: var(--c-muted); margin-top: 2px; }
+
+.lg-form {
+  margin: auto 0;
+  padding: 28px 0 20px;
+  max-width: 440px;
+  width: 100%;
+}
+
+.lg-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px; font-weight: 700;
+  color: #7C3AED;
+  background: rgba(124, 58, 237, .1);
+  margin-bottom: 14px;
+}
+.lg-badge .material-icons { font-size: 15px; }
+.dark .lg-badge { color: #C4B5FD; background: rgba(167, 139, 250, .16); }
+
+.lg-title {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -.01em;
+  margin: 0 0 10px;
+  color: var(--c-text);
+}
+.lg-title-accent {
+  background: linear-gradient(120deg, #4057D8, #7C3AED 55%, #EC4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lg-sub { color: var(--c-muted); font-size: 14px; line-height: 1.5; margin: 0 0 18px; }
+
+.lg-info {
+  display: flex; gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, .08);
+  border: 1px solid rgba(59, 130, 246, .2);
+  font-size: 12.5px; line-height: 1.45;
   color: var(--c-muted);
+  margin-bottom: 18px;
+}
+.lg-info .material-icons { color: #3B82F6; font-size: 18px; flex-shrink: 0; }
+.lg-info strong { display: block; color: var(--c-text); margin-bottom: 2px; }
+
+.lg-error {
+  background: #FEF2F2; border: 1px solid #FECACA; border-radius: 10px;
+  padding: 10px 14px; font-size: 13px; color: #DC2626; margin-bottom: 14px;
+}
+
+.lg-btn-main {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 14px 20px;
+  border: 0; border-radius: 14px;
+  font: 700 15px var(--font-sans);
+  color: #fff;
   cursor: pointer;
-  font: 700 12px var(--font-sans);
-  min-width: 54px;
-  padding: 7px 10px;
+  background: linear-gradient(120deg, #4057D8, #7C3AED);
+  box-shadow: 0 14px 28px rgba(64, 87, 216, .3);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.lg-btn-main:hover { transform: translateY(-2px); box-shadow: 0 18px 34px rgba(64, 87, 216, .38); }
+.lg-btn-main:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+.lg-ms-logo {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+  width: 18px; height: 18px;
+  padding: 3px; border-radius: 5px; background: #fff;
+  box-sizing: content-box;
+}
+.lg-ms-logo i { display: block; }
+.lg-ms-logo i:nth-child(1) { background: #F25022; }
+.lg-ms-logo i:nth-child(2) { background: #7FBA00; }
+.lg-ms-logo i:nth-child(3) { background: #00A4EF; }
+.lg-ms-logo i:nth-child(4) { background: #FFB900; }
+
+.lg-hint { text-align: center; font-size: 12px; color: var(--c-muted); margin: 10px 0 0; }
+
+.lg-link {
+  display: block; margin: 12px auto 0;
+  padding: 4px 8px; border: 0; background: transparent;
+  color: var(--c-primary); font: 600 12.5px var(--font-sans);
+  cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
 }
 
-.login-theme-toggle button.selected {
-  background: var(--c-text);
-  color: var(--c-surface);
+.lg-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 18px 0 14px;
+  font-size: 12px; color: var(--c-muted);
+}
+.lg-divider::before, .lg-divider::after { content: ''; flex: 1; height: 1px; background: var(--c-border); }
+
+.lg-fields { display: flex; flex-direction: column; gap: 10px; }
+
+.lg-btn-local {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 12px; padding: 12px 18px;
+  border: 0; border-radius: 12px;
+  font: 700 14px var(--font-sans);
+  color: var(--c-surface); background: var(--c-text);
+  cursor: pointer;
+}
+.lg-btn-local .material-icons { font-size: 18px; }
+.lg-btn-local:disabled { opacity: .5; cursor: not-allowed; }
+
+.lg-btn-help {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 16px; padding: 9px 14px;
+  border: 0; border-radius: 12px;
+  font: 700 13px var(--font-sans);
+  color: #fff;
+  background: linear-gradient(120deg, #14B8A6, #06B6D4);
+  box-shadow: 0 10px 20px rgba(20, 184, 166, .25);
+  cursor: pointer;
+  transition: transform .15s ease;
+}
+.lg-btn-help:hover { transform: translateY(-1px); }
+.lg-btn-help .material-icons { font-size: 17px; }
+
+.lg-theme {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 18px; padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--c-border);
+  background: color-mix(in srgb, var(--c-surface) 70%, transparent);
+}
+.lg-theme > .material-icons { font-size: 17px; color: var(--c-muted); }
+.lg-theme-label { flex: 1; font-size: 12.5px; font-weight: 700; color: var(--c-text); }
+.lg-theme-toggle {
+  display: inline-flex; overflow: hidden;
+  border-radius: 8px; border: 1px solid var(--c-border); background: var(--c-bg);
+}
+.lg-theme-toggle button {
+  min-width: 52px; padding: 6px 10px;
+  border: 0; background: transparent; cursor: pointer;
+  font: 700 12px var(--font-sans); color: var(--c-muted);
+}
+.lg-theme-toggle button.selected { background: var(--c-text); color: var(--c-surface); }
+
+.lg-footer { font-size: 11.5px; color: var(--c-muted); margin: 0; }
+
+/* ── Right (showcase) ── */
+.lg-right {
+  position: relative;
+  flex: 1;
+  margin: 16px 16px 16px 0;
+  border-radius: 28px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 48px 56px;
+  color: #fff;
+  background: linear-gradient(135deg, #4057D8 0%, #7C3AED 55%, #EC4899 100%);
+  box-shadow: 0 24px 60px rgba(64, 87, 216, .25);
+}
+.lg-right-blob { position: absolute; border-radius: 50%; pointer-events: none; }
+.lg-right-blob-1 { width: 340px; height: 340px; right: -110px; top: -110px; background: rgba(255, 255, 255, .12); }
+.lg-right-blob-2 { width: 260px; height: 260px; left: -80px; bottom: -120px; background: rgba(20, 184, 166, .4); }
+
+.lg-right-inner { position: relative; max-width: 520px; }
+.lg-right-org { font-size: 24px; font-weight: 800; line-height: 1.2; margin-bottom: 6px; }
+.lg-right-site {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .85); text-decoration: none;
+}
+.lg-right-site .material-icons { font-size: 14px; }
+.lg-right-site:hover { color: #fff; }
+
+.lg-quote { font-size: 22px; font-weight: 600; line-height: 1.35; margin: 30px 0 8px; color: #fff; }
+.lg-quote-author { font-size: 13px; opacity: .8; margin: 0 0 26px; }
+
+.lg-mock {
+  display: inline-block;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .14);
+  border: 1px solid rgba(255, 255, 255, .25);
+  backdrop-filter: blur(6px);
+  margin-bottom: 26px;
+}
+.lg-mock-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #fff;
+  color: #1E293B;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .2);
+}
+.lg-mock-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 4px rgba(16, 185, 129, .2); }
+.lg-mock-text strong { display: block; font-size: 13px; }
+.lg-mock-text small { font-size: 11px; color: #64748B; }
+.lg-mock-pill {
+  margin-left: 18px;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px; border-radius: 999px;
+  color: #059669; background: rgba(16, 185, 129, .14);
 }
 
-@media (max-width: 640px) {
-  .login-theme-choice {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 8px;
-  }
+.lg-features { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.lg-features li {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .18);
+}
+.lg-feat-icon {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, .2);
+}
+.lg-feat-icon .material-icons { font-size: 18px; color: #fff; }
+.lg-feat-title { font-size: 13.5px; font-weight: 700; }
+.lg-feat-sub { font-size: 12px; opacity: .8; margin-top: 1px; }
 
-  .login-theme-toggle {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
+/* ── Modals ── */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0, 0, 0, 0.50);
+  display: grid; place-items: center; padding: 20px;
+}
+.modal-card { width: min(480px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; border-radius: 16px; padding: 24px; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--c-border);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .lg-left { padding: 28px 36px; }
+  .lg-right { padding: 40px 36px; }
+}
+
+@media (max-width: 860px) {
+  .lg-right { display: none; }
+  .lg-left { width: 100%; min-width: 0; padding: max(env(safe-area-inset-top, 0px), 24px) 22px 24px; }
+  .lg-form { max-width: none; }
+  .lg-title { font-size: 28px; }
 }
 </style>
