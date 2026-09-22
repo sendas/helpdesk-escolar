@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, field_validator, Field
 from app.models.user import UserRole
 
 
@@ -20,6 +20,20 @@ class UserRead(BaseModel):
     is_active: bool
     created_at: datetime
     last_login: datetime | None = None
+    hidden_category_ids: list[int] = []
+
+    @field_validator("hidden_category_ids", mode="before")
+    @classmethod
+    def _parse_hidden(cls, v):
+        if v is None or v == "":
+            return []
+        if isinstance(v, str):
+            return [int(x) for x in v.split(",") if x.strip().isdigit()]
+        return v
+
+
+class UserPreferences(BaseModel):
+    hidden_category_ids: list[int] = []
 
 
 class UserUpdate(BaseModel):

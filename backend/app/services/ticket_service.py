@@ -17,6 +17,18 @@ def is_staff_user(user: User) -> bool:
     return user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or user.is_technician
 
 
+def hides_demo_content(user: User | None) -> bool:
+    """Real users don't see tickets/comments created by demo accounts unless the admin allows it."""
+    from app.api.v1.settings import _read_settings
+    if user is not None and user.auth_provider == "demo":
+        return False
+    return not _read_settings().get("demo_content_visible", False)
+
+
+def not_demo_creator():
+    return Ticket.creator.has(or_(User.auth_provider.is_(None), User.auth_provider != "demo"))
+
+
 def is_assignable_technician(user: User | None) -> bool:
     return bool(user and user.is_active and (user.role == UserRole.TECHNICIAN or user.is_technician))
 
@@ -121,6 +133,8 @@ async def list_tickets(
     status: TicketStatus | None = None,
     category_id: int | None = None,
     search: str | None = None,
+    exclude_category_ids: list[int] | None = None,
+    status_in: list[TicketStatus] | None = None,
 ) -> tuple[list[Ticket], int]:
     query = select(Ticket).options(
         selectinload(Ticket.creator),
@@ -131,10 +145,16 @@ async def list_tickets(
         selectinload(Ticket.category),
         selectinload(Ticket.school),
     ).where(Ticket.archived_at.is_(None))
+    if hides_demo_content(user):
+        query = query.where(not_demo_creator())
+    if exclude_category_ids:
+        query = query.where(Ticket.category_id.not_in(exclude_category_ids))
     if not is_staff_user(user):
         query = query.where(or_(Ticket.creator_id == user.id, Ticket.watchers.any(User.id == user.id), Ticket.assignees.any(User.id == user.id)))
     if status:
         query = query.where(Ticket.status == status)
+    if status_in:
+        query = query.where(Ticket.status.in_(status_in))
     if category_id:
         query = query.where(Ticket.category_id == category_id)
     if search:

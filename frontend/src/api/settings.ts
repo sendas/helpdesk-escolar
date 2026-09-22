@@ -16,6 +16,7 @@ export interface PublicSettings {
   ui_design?: 'modern' | 'classic'
   demo_mode_enabled?: boolean
   demo_profiles?: string[]
+  demo_content_visible?: boolean
 }
 
 export interface AzureSyncSettings {
@@ -62,8 +63,8 @@ export async function updateDesignSettings(design: 'modern' | 'classic') {
   return data
 }
 
-export async function updateDemoModeSettings(payload: { enabled: boolean; profiles: string[] }) {
-  const { data } = await api.put<{ demo_mode_enabled: boolean; demo_profiles: string[] }>('/api/v1/settings/demo-mode', payload)
+export async function updateDemoModeSettings(payload: { enabled: boolean; profiles: string[]; content_visible?: boolean }) {
+  const { data } = await api.put<{ demo_mode_enabled: boolean; demo_profiles: string[]; demo_content_visible?: boolean }>('/api/v1/settings/demo-mode', payload)
   return data
 }
 

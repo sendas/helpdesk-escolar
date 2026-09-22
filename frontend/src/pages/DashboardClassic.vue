@@ -4,7 +4,7 @@
 
     <!-- Stat cards -->
     <div class="stat-grid">
-      <div class="stat-card" v-for="s in stats" :key="s.label">
+      <component :is="s.to ? 'router-link' : 'div'" :to="s.to" class="stat-card" :class="{ clickable: !!s.to }" v-for="s in stats" :key="s.label">
         <div class="stat-card-top">
           <div class="stat-label">{{ s.label }}</div>
           <div class="stat-icon-wrap">
@@ -13,7 +13,7 @@
         </div>
         <div class="stat-value">{{ s.count }}</div>
         <div class="stat-sub">{{ s.sub }}</div>
-      </div>
+      </component>
     </div>
 
     <div class="dash-body">
@@ -24,7 +24,10 @@
             <div style="font-weight:600;font-size:14px">Os meus tickets recentes</div>
             <div style="font-size:12px;color:var(--c-muted)">Últimos pedidos submetidos</div>
           </div>
-          <router-link to="/tickets" class="dash-ver-todos">Ver todos</router-link>
+          <div style="display:flex;align-items:center;gap:10px">
+            <CategoryFilterButton :categories="allCategories" @changed="load" />
+            <router-link to="/tickets" class="dash-ver-todos">Ver todos</router-link>
+          </div>
         </div>
 
         <!-- Mobile: card list -->
@@ -101,16 +104,24 @@ import { ref, computed, onMounted } from 'vue'
 import { getTickets, getCategories } from '../api/tickets'
 import { useAuthStore } from '../stores/auth'
 import PriorityBadge from '../components/PriorityBadge.vue'
+import CategoryFilterButton from '../components/CategoryFilterButton.vue'
 import { timeAgo } from '../utils/dates'
 
 const auth = useAuthStore()
 const tickets = ref<any[]>([])
-const categories = ref<any[]>([])
+const allCategories = ref<any[]>([])
+
+const hiddenIds = computed(() => auth.user?.hidden_category_ids ?? [])
+const categories = computed(() => allCategories.value.filter(c => !hiddenIds.value.includes(c.id)).slice(0, 5))
+
+async function load() {
+  const td = await getTickets({ page: 1, size: 50, exclude_category_ids: hiddenIds.value })
+  tickets.value = td.items
+}
 
 onMounted(async () => {
-  const [td, cd] = await Promise.all([getTickets({ page: 1, size: 20 }), getCategories()])
-  tickets.value = td.items
-  categories.value = cd.slice(0, 5)
+  const [, cd] = await Promise.all([load(), getCategories()])
+  allCategories.value = cd
 })
 
 const recent = computed(() => tickets.value.slice(0, 5))
@@ -128,10 +139,10 @@ const avgResolutionTime = computed(() => {
 })
 
 const stats = computed(() => [
-  { label: 'Tickets Abertos', count: tickets.value.filter(t => t.status === 'open').length, icon: 'inbox', sub: 'em aberto' },
-  { label: 'Em Análise', count: tickets.value.filter(t => ['assigned','in_progress','waiting_user'].includes(t.status)).length, icon: 'schedule', sub: 'em curso' },
-  { label: 'Resolvidos', count: tickets.value.filter(t => t.status === 'resolved' || t.status === 'closed').length, icon: 'check_circle', sub: 'resolvidos ou fechados' },
-  { label: 'Tempo Médio', count: avgResolutionTime.value, icon: 'bar_chart', sub: 'até resolução' },
+  { label: 'Tickets Abertos', count: tickets.value.filter(t => t.status === 'open').length, icon: 'inbox', sub: 'em aberto', to: '/tickets?estado=abertos' },
+  { label: 'Em Análise', count: tickets.value.filter(t => ['assigned','in_progress','waiting_user'].includes(t.status)).length, icon: 'schedule', sub: 'em curso', to: '/tickets?estado=em_curso' },
+  { label: 'Resolvidos', count: tickets.value.filter(t => t.status === 'resolved' || t.status === 'closed').length, icon: 'check_circle', sub: 'resolvidos ou fechados', to: '/tickets?estado=resolvidos' },
+  { label: 'Tempo Médio', count: avgResolutionTime.value, icon: 'bar_chart', sub: 'até resolução', to: undefined },
 ])
 
 function statusLabel(s: string) {
@@ -160,6 +171,9 @@ function statusLabel(s: string) {
   border-radius: 14px;
   padding: 16px;
 }
+
+.stat-card { display: block; text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
+.stat-card.clickable:hover { border-color: var(--c-primary); transform: translateY(-2px); }
 
 .stat-card-top {
   display: flex;

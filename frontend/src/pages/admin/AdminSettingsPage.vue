@@ -97,6 +97,17 @@
         <p v-if="demoError" style="font-size:12px;color:#EF4444;margin:0 0 6px">{{ demoError }}</p>
         <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
           <div>
+            <div style="font-size:13px;font-weight:500">Mostrar tickets e mensagens do modo demo</div>
+            <div style="font-size:12px;color:var(--c-muted)">Se desligado, ficam escondidos dos utilizadores reais</div>
+          </div>
+          <div class="hd-toggle-wrap" @click="toggleDemoContent">
+            <div class="hd-toggle-track" :class="{ on: demoContentVisible }">
+              <div class="hd-toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+        <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
+          <div>
             <div style="font-size:13px;font-weight:500">Avisos de categoria</div>
             <div style="font-size:12px;color:var(--c-muted)">Mostra uma janela de aviso ao selecionar categorias com aviso configurado</div>
           </div>
@@ -534,7 +545,12 @@
           Publicado
         </label>
         <textarea class="hd-textarea" v-model="newArticle.body" rows="4" placeholder="Conteúdo do artigo"></textarea>
-        <button class="hd-btn hd-btn-primary" @click="addArticle" :disabled="!newArticle.title || !newArticle.body">Adicionar artigo</button>
+        <div class="hd-row" style="gap:8px">
+          <button v-if="editingArticleId" class="hd-btn hd-btn-outline" @click="cancelEditArticle">Cancelar</button>
+          <button class="hd-btn hd-btn-primary" @click="addArticle" :disabled="!newArticle.title || !newArticle.body">
+            {{ editingArticleId ? 'Guardar alterações' : 'Adicionar artigo' }}
+          </button>
+        </div>
       </div>
 
       <table class="hd-table">
@@ -544,7 +560,10 @@
             <td style="font-weight:700">{{ article.title }}</td>
             <td>{{ article.category?.name || '—' }}</td>
             <td>{{ article.is_published ? 'Publicado' : 'Rascunho' }}</td>
-            <td>
+            <td style="white-space:nowrap">
+              <button class="hd-icon-btn" @click="editArticle(article)" title="Editar">
+                <span class="material-icons" style="font-size:15px">edit</span>
+              </button>
               <button class="hd-icon-btn" @click="removeArticle(article.id)" title="Eliminar">
                 <span class="material-icons" style="font-size:15px;color:#EF4444">delete</span>
               </button>
@@ -561,7 +580,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
+import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, updateKnowledgeArticle, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
 import { getPublicSettings, updateDemoModeSettings, updateDesignSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
 import { setUiDesign, type UiDesign } from '../../composables/useUiDesign'
 import { api } from '../../boot/axios'
@@ -598,6 +617,7 @@ const loginNoticeError = ref('')
 const demoEnabled = ref(false)
 const demoProfiles = ref<string[]>(['teacher'])
 const demoError = ref('')
+const demoContentVisible = ref(false)
 const demoProfileOptions = [
   { role: 'teacher', label: 'Docente' },
   { role: 'technician', label: 'Técnico' },
@@ -643,6 +663,7 @@ onMounted(async () => {
     noAccessContactEmail.value = settings.no_access_contact_email || ''
     uiDesign.value = settings.ui_design === 'classic' ? 'classic' : 'modern'
     demoEnabled.value = settings.demo_mode_enabled === true
+    demoContentVisible.value = settings.demo_content_visible === true
     demoProfiles.value = settings.demo_profiles?.length ? settings.demo_profiles : ['teacher']
     suggestionEmailsRaw.value = (settings.suggestion_emails || []).join(', ')
     categories.value = cats
@@ -717,15 +738,20 @@ async function saveLoginNotice() {
   }
 }
 
-async function saveDemoMode(enabled: boolean, profiles: string[]) {
+async function saveDemoMode(enabled: boolean, profiles: string[], contentVisible?: boolean) {
   demoError.value = ''
   try {
-    const saved = await updateDemoModeSettings({ enabled, profiles })
+    const saved = await updateDemoModeSettings({ enabled, profiles, content_visible: contentVisible })
     demoEnabled.value = saved.demo_mode_enabled
     demoProfiles.value = saved.demo_profiles
+    demoContentVisible.value = saved.demo_content_visible === true
   } catch (e: any) {
     demoError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
   }
+}
+
+function toggleDemoContent() {
+  saveDemoMode(demoEnabled.value, demoProfiles.value, !demoContentVisible.value)
 }
 
 function toggleDemoMode() {
@@ -881,14 +907,37 @@ async function removeRoute(id: number) {
   routingRules.value = routingRules.value.filter(r => r.id !== id)
 }
 
+const editingArticleId = ref<number | null>(null)
+
 async function addArticle() {
-  const article = await createKnowledgeArticle({
+  const payload = {
     title: newArticle.value.title,
     body: newArticle.value.body,
     category_id: newArticle.value.category_id ? Number(newArticle.value.category_id) : null,
     is_published: newArticle.value.is_published,
-  })
-  articles.value.unshift(article)
+  }
+  if (editingArticleId.value) {
+    const updated = await updateKnowledgeArticle(editingArticleId.value, payload)
+    const idx = articles.value.findIndex(a => a.id === updated.id)
+    if (idx !== -1) articles.value[idx] = updated
+  } else {
+    articles.value.unshift(await createKnowledgeArticle(payload))
+  }
+  cancelEditArticle()
+}
+
+function editArticle(article: any) {
+  editingArticleId.value = article.id
+  newArticle.value = {
+    title: article.title,
+    body: article.body,
+    category_id: article.category_id ? String(article.category_id) : '',
+    is_published: article.is_published,
+  }
+}
+
+function cancelEditArticle() {
+  editingArticleId.value = null
   newArticle.value = { title: '', body: '', category_id: '', is_published: true }
 }
 

@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.8.2'
+export const APP_VERSION = '1.8.3'
 export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '22:30'
+export const APP_VERSION_TIME = '23:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.3',
+    date: '2026-09-22',
+    time: '23:30',
+    title: 'Categorias à escolha, cartões clicáveis, conteúdo demo escondido e edição de artigos',
+    changes: [
+      'Painel inicial: os cartões Abertos, Em curso e Resolvidos passam a ser clicáveis e abrem "Os meus tickets" já filtrados.',
+      'Novo botão "Categorias" no Painel inicial e em "Os meus tickets": cada utilizador escolhe que categorias quer ver (ex.: esconder Inovar). A escolha fica guardada na conta.',
+      'Tickets e comentários feitos em modo demo ficam escondidos dos utilizadores reais e não enviam emails nem notificações. Pode ser alterado em Configurações → Geral → "Mostrar tickets e mensagens do modo demo".',
+      'Base de conhecimento: os administradores já podem editar artigos, tanto na página da Base de conhecimento como em Configurações → Base de conhecimento.',
+    ],
+  },
   {
     version: '1.8.2',
     date: '2026-09-22',

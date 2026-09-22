@@ -28,12 +28,18 @@
 
     <!-- Stat cards -->
     <div class="stat-grid">
-      <div v-for="s in stats" :key="s.label" class="stat-card" :class="s.tone">
+      <component
+        :is="s.to ? 'router-link' : 'div'"
+        v-for="s in stats" :key="s.label"
+        :to="s.to"
+        class="stat-card" :class="[s.tone, { clickable: !!s.to }]"
+      >
         <div class="stat-icon"><span class="material-icons">{{ s.icon }}</span></div>
         <div class="stat-value">{{ s.count }}</div>
         <div class="stat-label">{{ s.label }}</div>
         <div class="stat-sub">{{ s.sub }}</div>
-      </div>
+        <span v-if="s.to" class="stat-go material-icons">arrow_forward</span>
+      </component>
     </div>
 
     <div class="dash-body">
@@ -44,9 +50,12 @@
             <div class="section-title">Os meus tickets recentes</div>
             <div class="section-sub">Últimos pedidos submetidos</div>
           </div>
-          <router-link to="/tickets" class="section-link">
-            Ver todos <span class="material-icons">arrow_forward</span>
-          </router-link>
+          <div class="section-actions">
+            <CategoryFilterButton :categories="allCategories" @changed="load" />
+            <router-link to="/tickets" class="section-link">
+              Ver todos <span class="material-icons">arrow_forward</span>
+            </router-link>
+          </div>
         </div>
 
         <div class="recent-list">
@@ -110,16 +119,24 @@ import { ref, computed, onMounted } from 'vue'
 import { getTickets, getCategories } from '../api/tickets'
 import { useAuthStore } from '../stores/auth'
 import PriorityBadge from '../components/PriorityBadge.vue'
+import CategoryFilterButton from '../components/CategoryFilterButton.vue'
 import { timeAgo } from '../utils/dates'
 
 const auth = useAuthStore()
 const tickets = ref<any[]>([])
-const categories = ref<any[]>([])
+const allCategories = ref<any[]>([])
+
+const hiddenIds = computed(() => auth.user?.hidden_category_ids ?? [])
+const categories = computed(() => allCategories.value.filter(c => !hiddenIds.value.includes(c.id)).slice(0, 8))
+
+async function load() {
+  const td = await getTickets({ page: 1, size: 50, exclude_category_ids: hiddenIds.value })
+  tickets.value = td.items
+}
 
 onMounted(async () => {
-  const [td, cd] = await Promise.all([getTickets({ page: 1, size: 20 }), getCategories()])
-  tickets.value = td.items
-  categories.value = cd.slice(0, 8)
+  const [, cd] = await Promise.all([load(), getCategories()])
+  allCategories.value = cd
 })
 
 const firstName = computed(() => auth.user?.display_name?.split(' ')[0] ?? '')
@@ -165,10 +182,10 @@ const avgResolutionTime = computed(() => {
 })
 
 const stats = computed(() => [
-  { label: 'Abertos', count: openCount.value, icon: 'inbox', sub: 'a aguardar resposta', tone: 'tone-blue' },
-  { label: 'Em curso', count: progressCount.value, icon: 'autorenew', sub: 'a ser tratados', tone: 'tone-amber' },
-  { label: 'Resolvidos', count: doneCount.value, icon: 'task_alt', sub: 'resolvidos ou fechados', tone: 'tone-green' },
-  { label: 'Tempo médio', count: avgResolutionTime.value, icon: 'timer', sub: 'até resolução', tone: 'tone-violet' },
+  { label: 'Abertos', count: openCount.value, icon: 'inbox', sub: 'a aguardar resposta', tone: 'tone-blue', to: '/tickets?estado=abertos' },
+  { label: 'Em curso', count: progressCount.value, icon: 'autorenew', sub: 'a ser tratados', tone: 'tone-amber', to: '/tickets?estado=em_curso' },
+  { label: 'Resolvidos', count: doneCount.value, icon: 'task_alt', sub: 'resolvidos ou fechados', tone: 'tone-green', to: '/tickets?estado=resolvidos' },
+  { label: 'Tempo médio', count: avgResolutionTime.value, icon: 'timer', sub: 'até resolução', tone: 'tone-violet', to: undefined },
 ])
 
 const STATUS_COLORS: Record<string, string> = {
@@ -326,7 +343,14 @@ function statusLabel(s: string) {
   box-shadow: 0 10px 24px var(--tone-shadow);
   transition: transform .15s ease;
 }
-.stat-card:hover { transform: translateY(-2px); }
+.stat-card { display: block; text-decoration: none; }
+.stat-card.clickable { cursor: pointer; }
+.stat-card.clickable:hover { transform: translateY(-3px); box-shadow: 0 14px 30px var(--tone-shadow); }
+.stat-go {
+  position: absolute; right: 14px; top: 16px; z-index: 1;
+  font-size: 18px; opacity: .75; transition: transform .15s ease, opacity .15s ease;
+}
+.stat-card.clickable:hover .stat-go { transform: translateX(3px); opacity: 1; }
 .stat-card::after {
   content: '';
   position: absolute;
@@ -384,6 +408,7 @@ function statusLabel(s: string) {
   background: var(--c-primary-soft, rgba(64, 87, 216, .1));
 }
 .section-link .material-icons { font-size: 16px; }
+.section-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* Recent list */
 .recent-card { overflow: hidden; }

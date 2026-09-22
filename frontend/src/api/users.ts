@@ -10,6 +10,7 @@ export interface UserFull extends UserBrief {
   onprem_path?: string
   created_at: string
   last_login?: string
+  hidden_category_ids?: number[]
 }
 
 export interface HelpdeskGroup {
@@ -22,6 +23,11 @@ export interface HelpdeskGroup {
 
 export async function getMe() {
   const { data } = await api.get<UserFull>('/api/v1/users/me')
+  return data
+}
+
+export async function updateMyPreferences(hidden_category_ids: number[]) {
+  const { data } = await api.put<UserFull>('/api/v1/users/me/preferences', { hidden_category_ids })
   return data
 }
 

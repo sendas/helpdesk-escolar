@@ -112,8 +112,18 @@ def _normalize_ticket_data(ticket_data: dict) -> dict:
     return ticket_data
 
 
+def _is_hidden_demo_action() -> bool:
+    from app.api.deps import acting_as_demo
+    if not acting_as_demo.get():
+        return False
+    from app.api.v1.settings import _read_settings
+    return not _read_settings().get("demo_content_visible", False)
+
+
 async def send_ticket_notification(to_email: str, event: str, ticket_data: dict) -> None:
-    if not settings.mail_server:
+    if not settings.mail_server or _is_hidden_demo_action():
+        return
+    if to_email.strip().lower().endswith("@demo.escola.pt"):
         return
     ticket_data = _normalize_ticket_data(ticket_data)
     ticket_id = ticket_data.get("id")

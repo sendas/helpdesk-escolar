@@ -41,10 +41,12 @@ async def list_tickets(
     status: TicketStatus | None = None,
     category_id: int | None = None,
     search: str | None = Query(None, max_length=200),
+    exclude_category_ids: list[int] = Query(default=[]),
+    status_in: list[TicketStatus] = Query(default=[]),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id, search)
+    items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id, search, exclude_category_ids, status_in)
     return {"items": items, "total": total, "page": page, "size": size}
 
 
@@ -252,7 +254,13 @@ async def get_ticket(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     if not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    return ticket
+    if not ticket_service.hides_demo_content(current_user):
+        return ticket
+    if ticket.creator and ticket.creator.auth_provider == "demo":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    data = TicketRead.model_validate(ticket)
+    data.comments = [c for c in data.comments if c.author is None or c.author.auth_provider != "demo"]
+    return data
 
 
 @router.patch("/{ticket_id}", response_model=TicketRead)

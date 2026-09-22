@@ -12,6 +12,7 @@ interface User {
   role: 'teacher' | 'non_teaching' | 'secretary' | 'technician' | 'admin'
   is_technician?: boolean
   auth_provider: string
+  hidden_category_ids?: number[]
 }
 
 export const useAuthStore = defineStore('auth', () => {

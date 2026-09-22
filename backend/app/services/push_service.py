@@ -136,6 +136,10 @@ async def send_push_to_users(db: AsyncSession, user_ids: set[int], title: str, b
 async def send_push_to_users_bg(user_ids: set[int], title: str, body: str, url: str = "/") -> None:
     """Fire-and-forget: creates its own DB session."""
     from app.database import AsyncSessionLocal
+    from app.services.email_service import _is_hidden_demo_action
+
+    if _is_hidden_demo_action():
+        return
 
     try:
         async with AsyncSessionLocal() as db:

@@ -12,6 +12,7 @@ from app.schemas.user import (
     HelpdeskGroupUpdate,
     UserBulkUpdate,
     UserCreate,
+    UserPreferences,
     UserRead,
     UserUpdate,
 )
@@ -22,6 +23,19 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=UserRead)
 async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.put("/me/preferences", response_model=UserRead)
+async def update_my_preferences(
+    data: UserPreferences,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ids = sorted({int(i) for i in data.hidden_category_ids})
+    current_user.hidden_category_ids = ",".join(str(i) for i in ids) or None
+    await db.commit()
+    await db.refresh(current_user)
     return current_user
 
 

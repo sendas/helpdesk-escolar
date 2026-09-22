@@ -88,7 +88,7 @@ async def admin_list_tickets(
     is_escalated: bool | None = None,
     search: str | None = Query(None, max_length=200),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_staff),
+    current_user: User = Depends(require_staff),
 ):
     query = select(Ticket).options(
         selectinload(Ticket.creator),
@@ -99,6 +99,8 @@ async def admin_list_tickets(
         selectinload(Ticket.category),
         selectinload(Ticket.school),
     ).where(Ticket.archived_at.is_(None))
+    if ticket_service.hides_demo_content(current_user):
+        query = query.where(ticket_service.not_demo_creator())
     if status:
         query = query.where(Ticket.status == status)
     if category_id:

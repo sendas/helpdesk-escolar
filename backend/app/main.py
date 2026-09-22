@@ -40,6 +40,11 @@ async def _add_missing_columns(conn) -> None:
         ) AND is_escalated = 0
     """))
 
+    # 5. Per-user list of categories hidden from Painel inicial / Os meus tickets
+    rows_u = await conn.execute(text("PRAGMA table_info(users)"))
+    if "hidden_category_ids" not in {row[1] for row in rows_u}:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN hidden_category_ids VARCHAR(500)"))
+
     # 4. Add closed_via_email if missing + backfill from email-triggered status events
     if "closed_via_email" not in existing:
         await conn.execute(text("ALTER TABLE tickets ADD COLUMN closed_via_email BOOLEAN NOT NULL DEFAULT 0"))

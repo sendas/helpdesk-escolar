@@ -15,8 +15,11 @@
         </select>
         <select class="hd-select" style="width:auto" v-model="filterCat" @change="load">
           <option value="">Todas as categorias</option>
-          <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+          <option v-for="c in visibleCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
+        <div style="margin-left:auto">
+          <CategoryFilterButton :categories="categories" @changed="onHiddenChanged" />
+        </div>
       </div>
 
       <div v-if="loading" style="padding:48px;text-align:center;color:var(--c-muted)">A carregar...</div>
@@ -89,6 +92,12 @@ import { getTickets, getCategories, updateTicket } from '../api/tickets'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import SlaBadge from '../components/SlaBadge.vue'
 import { timeAgo } from '../utils/dates'
+import { useRoute } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+import CategoryFilterButton from '../components/CategoryFilterButton.vue'
+
+const route = useRoute()
+const auth = useAuthStore()
 
 const tickets = ref<any[]>([])
 const categories = ref<any[]>([])
@@ -107,16 +116,36 @@ const completedTickets = computed(() =>
   filterStatus.value ? [] : tickets.value.filter(t => DONE.includes(t.status))
 )
 
+const STATUS_GROUPS: Record<string, string[]> = {
+  em_curso: ['assigned', 'in_progress', 'waiting_user'],
+  concluidos: ['resolved', 'closed'],
+}
+
 const statusOpts = [
-  { v: 'open', l: 'Aberto' }, { v: 'assigned', l: 'Atribuído' },
+  { v: 'open', l: 'Aberto' },
+  { v: 'em_curso', l: 'Em curso (todos)' },
+  { v: 'assigned', l: 'Atribuído' },
   { v: 'in_progress', l: 'Em Curso' }, { v: 'waiting_user', l: 'A aguardar utilizador' },
+  { v: 'concluidos', l: 'Resolvidos ou fechados' },
   { v: 'resolved', l: 'Resolvido' }, { v: 'closed', l: 'Fechado' },
 ]
 
+const hiddenIds = computed(() => auth.user?.hidden_category_ids ?? [])
+const visibleCategories = computed(() => categories.value.filter(c => !hiddenIds.value.includes(c.id)))
+
 onMounted(async () => {
+  const q = String(route.query.estado ?? '')
+  if (q === 'abertos') filterStatus.value = 'open'
+  else if (q === 'em_curso') filterStatus.value = 'em_curso'
+  else if (q === 'resolvidos') filterStatus.value = 'concluidos'
   categories.value = await getCategories()
   await load()
 })
+
+function onHiddenChanged() {
+  if (filterCat.value && hiddenIds.value.includes(Number(filterCat.value))) filterCat.value = ''
+  load()
+}
 
 function debouncedLoad() {
   if (_searchTimer) clearTimeout(_searchTimer)
@@ -127,7 +156,9 @@ async function load() {
   loading.value = true
   try {
     const p: any = { page: 1, size: 50 }
-    if (filterStatus.value) p.status = filterStatus.value
+    if (STATUS_GROUPS[filterStatus.value]) p.status_in = STATUS_GROUPS[filterStatus.value]
+    else if (filterStatus.value) p.status = filterStatus.value
+    if (hiddenIds.value.length) p.exclude_category_ids = hiddenIds.value
     if (filterCat.value) p.category_id = filterCat.value
     if (searchQuery.value.trim()) p.search = searchQuery.value.trim()
     const d = await getTickets(p)

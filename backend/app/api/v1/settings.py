@@ -35,6 +35,7 @@ DEFAULT_SETTINGS = {
     "ui_design": "modern",
     "demo_mode_enabled": False,
     "demo_profiles": ["teacher"],
+    "demo_content_visible": False,
 }
 
 UI_DESIGNS = {"modern", "classic"}
@@ -66,6 +67,7 @@ class DesignSettings(BaseModel):
 class DemoModeSettings(BaseModel):
     enabled: bool = False
     profiles: list[str] = ["teacher"]
+    content_visible: bool | None = None
 
 
 class SuggestionEmailSettings(BaseModel):
@@ -171,8 +173,14 @@ async def update_demo_mode(payload: DemoModeSettings, _: User = Depends(require_
     data = _read_settings()
     data["demo_mode_enabled"] = payload.enabled
     data["demo_profiles"] = profiles or ["teacher"]
+    if payload.content_visible is not None:
+        data["demo_content_visible"] = payload.content_visible
     _write_settings(data)
-    return {"demo_mode_enabled": data["demo_mode_enabled"], "demo_profiles": data["demo_profiles"]}
+    return {
+        "demo_mode_enabled": data["demo_mode_enabled"],
+        "demo_profiles": data["demo_profiles"],
+        "demo_content_visible": data.get("demo_content_visible", False),
+    }
 
 
 @router.put("/suggestion-emails")

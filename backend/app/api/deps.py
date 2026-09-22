@@ -1,3 +1,4 @@
+from contextvars import ContextVar
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
@@ -7,6 +8,9 @@ from app.models.user import User, UserRole
 from app.services.jwt_service import decode_token
 
 bearer = HTTPBearer()
+
+# Set for the current request when the caller is a demo account (read by email_service).
+acting_as_demo: ContextVar[bool] = ContextVar("acting_as_demo", default=False)
 
 
 async def get_current_user(
@@ -29,6 +33,7 @@ async def get_current_user(
         app_settings = _read_settings()
         if not app_settings.get("demo_mode_enabled") or demo_role not in (app_settings.get("demo_profiles") or []):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="O modo demo foi desativado")
+        acting_as_demo.set(True)
     return user
 
 
