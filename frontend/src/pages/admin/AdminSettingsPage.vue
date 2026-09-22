@@ -86,6 +86,7 @@
             </button>
             <span v-if="loginNoticeSaved" style="margin-left:10px;font-size:12px;color:#22C55E;align-self:center">Guardado!</span>
           </div>
+          <p v-if="loginNoticeError" style="font-size:12px;color:#EF4444;margin-top:6px">{{ loginNoticeError }}</p>
         </div>
       </div>
       <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
@@ -539,6 +540,7 @@ const categoryWarningsEnabled = ref(true)
 const loginNoticeEnabled = ref(false)
 const loginNoticeText = ref('')
 const loginNoticeSaved = ref(false)
+const loginNoticeError = ref('')
 
 const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Empresa de apoio informático', support_provider_email: '' })
 const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
@@ -620,22 +622,28 @@ async function toggleCategoryWarnings() {
 
 async function toggleLoginNotice() {
   const next = !loginNoticeEnabled.value
+  loginNoticeError.value = ''
   try {
     const saved = await updateLoginNoticeSettings({ enabled: next, text: loginNoticeText.value })
     loginNoticeEnabled.value = saved.login_notice_enabled
     loginNoticeText.value = saved.login_notice_text
-  } catch { /* ignore */ }
+  } catch (e: any) {
+    loginNoticeError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+  }
 }
 
 async function saveLoginNotice() {
   loginNoticeSaved.value = false
+  loginNoticeError.value = ''
   try {
     const saved = await updateLoginNoticeSettings({ enabled: loginNoticeEnabled.value, text: loginNoticeText.value })
     loginNoticeEnabled.value = saved.login_notice_enabled
     loginNoticeText.value = saved.login_notice_text
     loginNoticeSaved.value = true
     setTimeout(() => { loginNoticeSaved.value = false }, 3000)
-  } catch { /* ignore */ }
+  } catch (e: any) {
+    loginNoticeError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+  }
 }
 
 async function testSmtpNow() {

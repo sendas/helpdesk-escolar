@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.7.95'
+export const APP_VERSION = '1.7.96'
 export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '11:00'
+export const APP_VERSION_TIME = '12:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.7.96',
+    date: '2026-09-22',
+    time: '12:00',
+    title: 'Erro visível ao gravar o aviso de login',
+    changes: [
+      'Se o interruptor ou o texto do "Aviso no ecrã de login" não gravarem (ex: servidor ainda não atualizado), aparece agora uma mensagem de erro em Configurações → Geral em vez de falhar silenciosamente.',
+    ],
+  },
   {
     version: '1.7.95',
     date: '2026-09-22',
