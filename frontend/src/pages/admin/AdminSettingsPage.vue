@@ -71,6 +71,32 @@
         <p v-if="designError" style="font-size:12px;color:#EF4444;margin:0 0 6px">{{ designError }}</p>
         <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
           <div>
+            <div style="font-size:13px;font-weight:500">Modo demo</div>
+            <div style="font-size:12px;color:var(--c-muted)">Mostra "Entrar em modo demo" no ecrã de login, para experimentar sem conta</div>
+          </div>
+          <div class="hd-toggle-wrap" @click="toggleDemoMode">
+            <div class="hd-toggle-track" :class="{ on: demoEnabled }">
+              <div class="hd-toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+        <div v-if="demoEnabled" class="demo-settings">
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px">Perfis disponíveis</div>
+          <div class="hd-row" style="gap:16px;margin-bottom:10px">
+            <label v-for="p in demoProfileOptions" :key="p.role" class="demo-profile-opt">
+              <input type="checkbox" :checked="demoProfiles.includes(p.role)" @change="toggleDemoProfile(p.role)" />
+              {{ p.label }}
+            </label>
+          </div>
+          <p class="demo-warning">
+            <span class="material-icons" style="font-size:16px">warning</span>
+            <span>O modo demo usa a base de dados real. Os pedidos criados em demo são tickets verdadeiros, e os perfis
+            <strong>Técnico</strong> e <strong>Administrador</strong> dão acesso aos tickets e utilizadores reais. Desative quando já não for preciso.</span>
+          </p>
+        </div>
+        <p v-if="demoError" style="font-size:12px;color:#EF4444;margin:0 0 6px">{{ demoError }}</p>
+        <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
+          <div>
             <div style="font-size:13px;font-weight:500">Avisos de categoria</div>
             <div style="font-size:12px;color:var(--c-muted)">Mostra uma janela de aviso ao selecionar categorias com aviso configurado</div>
           </div>
@@ -536,7 +562,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
-import { getPublicSettings, updateDesignSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
+import { getPublicSettings, updateDemoModeSettings, updateDesignSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
 import { setUiDesign, type UiDesign } from '../../composables/useUiDesign'
 import { api } from '../../boot/axios'
 import { getGroups, getUsers } from '../../api/users'
@@ -569,6 +595,14 @@ const loginNoticeEnabled = ref(false)
 const loginNoticeText = ref('')
 const loginNoticeSaved = ref(false)
 const loginNoticeError = ref('')
+const demoEnabled = ref(false)
+const demoProfiles = ref<string[]>(['teacher'])
+const demoError = ref('')
+const demoProfileOptions = [
+  { role: 'teacher', label: 'Docente' },
+  { role: 'technician', label: 'Técnico' },
+  { role: 'admin', label: 'Administrador' },
+]
 const uiDesign = ref<UiDesign>('modern')
 const designError = ref('')
 const noAccessContactEmail = ref('')
@@ -608,6 +642,8 @@ onMounted(async () => {
     loginNoticeText.value = settings.login_notice_text || ''
     noAccessContactEmail.value = settings.no_access_contact_email || ''
     uiDesign.value = settings.ui_design === 'classic' ? 'classic' : 'modern'
+    demoEnabled.value = settings.demo_mode_enabled === true
+    demoProfiles.value = settings.demo_profiles?.length ? settings.demo_profiles : ['teacher']
     suggestionEmailsRaw.value = (settings.suggestion_emails || []).join(', ')
     categories.value = cats
     schools.value = schs
@@ -679,6 +715,32 @@ async function saveLoginNotice() {
   } catch (e: any) {
     loginNoticeError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
   }
+}
+
+async function saveDemoMode(enabled: boolean, profiles: string[]) {
+  demoError.value = ''
+  try {
+    const saved = await updateDemoModeSettings({ enabled, profiles })
+    demoEnabled.value = saved.demo_mode_enabled
+    demoProfiles.value = saved.demo_profiles
+  } catch (e: any) {
+    demoError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+  }
+}
+
+function toggleDemoMode() {
+  saveDemoMode(!demoEnabled.value, demoProfiles.value)
+}
+
+function toggleDemoProfile(role: string) {
+  const next = demoProfiles.value.includes(role)
+    ? demoProfiles.value.filter(r => r !== role)
+    : [...demoProfiles.value, role]
+  if (!next.length) {
+    demoError.value = 'Escolha pelo menos um perfil para o modo demo.'
+    return
+  }
+  saveDemoMode(demoEnabled.value, next)
 }
 
 async function changeDesign(design: UiDesign) {
@@ -839,6 +901,32 @@ async function removeArticle(id: number) {
 </script>
 
 <style scoped>
+.demo-settings {
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+}
+.demo-profile-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.demo-warning {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, .1);
+  border: 1px solid rgba(245, 158, 11, .3);
+  color: #92400E;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.dark .demo-warning { color: #FCD34D; }
 .design-choice {
   display: inline-flex;
   overflow: hidden;

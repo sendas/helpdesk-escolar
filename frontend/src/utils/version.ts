@@ -1,8 +1,21 @@
-export const APP_VERSION = '1.8.0'
+export const APP_VERSION = '1.8.1'
 export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '21:00'
+export const APP_VERSION_TIME = '22:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.1',
+    date: '2026-09-22',
+    time: '22:00',
+    title: 'Modo demo configurável + login mais coerente',
+    changes: [
+      'O modo demo volta a existir, mas desligado por omissão: ativa-se em Configurações → Geral → Funcionalidades → "Modo demo".',
+      'É possível escolher que perfis ficam disponíveis em demo (Docente, Técnico, Administrador). Por omissão só Docente.',
+      'Ao desligar o modo demo, as sessões demo abertas deixam de funcionar de imediato.',
+      'Quem está em modo demo vê um aviso no topo com o botão "Sair do modo demo".',
+      'Ecrã de login (design Moderno): o painel da direita passa a tons claros e suaves, coerente com o resto da página, em vez do azul forte.',
+    ],
+  },
   {
     version: '1.8.0',
     date: '2026-09-22',

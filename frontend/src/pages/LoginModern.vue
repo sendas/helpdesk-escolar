@@ -56,6 +56,8 @@
           Não tenho acesso ao mail institucional
         </button>
 
+        <DemoLoginPicker v-if="demoProfiles.length" :profiles="demoProfiles" />
+
         <div class="lg-theme">
           <span class="material-icons">dark_mode</span>
           <span class="lg-theme-label">Modo escuro</span>
@@ -176,6 +178,7 @@ import { onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { getPublicSettings } from '../api/settings'
 import { sendNoAccessContact } from '../api/auth'
+import DemoLoginPicker from '../components/DemoLoginPicker.vue'
 import { applyFavicon } from '../utils/branding'
 import { versionLabel } from '../utils/version'
 
@@ -190,6 +193,7 @@ const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo
 const versionLabelText = versionLabel()
 const showNotice = ref(false)
 const loginNoticeText = ref('')
+const demoProfiles = ref<string[]>([])
 
 const showContactForm = ref(false)
 const contactSending = ref(false)
@@ -209,6 +213,7 @@ onMounted(async () => {
     const s = await getPublicSettings()
     settings.value = s
     applyFavicon(settings.value.favicon_url || settings.value.logo_url)
+    demoProfiles.value = s.demo_mode_enabled ? (s.demo_profiles || []) : []
     if (s.login_notice_enabled && s.login_notice_text) {
       loginNoticeText.value = s.login_notice_text
       showNotice.value = true
@@ -467,46 +472,53 @@ async function submitContactForm() {
   display: flex;
   align-items: center;
   padding: 48px 56px;
-  color: #fff;
-  background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 50%, #0891B2 100%);
-  box-shadow: 0 24px 60px rgba(37, 99, 235, .25);
+  color: var(--c-text);
+  background: linear-gradient(145deg, #EEF4FF 0%, #E6F0FF 50%, #E3F7F4 100%);
+  border: 1px solid rgba(37, 99, 235, .1);
+  box-shadow: 0 20px 50px rgba(37, 99, 235, .08);
+}
+.dark .lg-right {
+  background: linear-gradient(145deg, #151B2B 0%, #131C30 55%, #10232A 100%);
+  border-color: rgba(96, 165, 250, .14);
+  box-shadow: none;
 }
 .lg-right-blob { position: absolute; border-radius: 50%; pointer-events: none; }
-.lg-right-blob-1 { width: 340px; height: 340px; right: -110px; top: -110px; background: rgba(255, 255, 255, .12); }
-.lg-right-blob-2 { width: 260px; height: 260px; left: -80px; bottom: -120px; background: rgba(20, 184, 166, .4); }
+.lg-right-blob-1 { width: 340px; height: 340px; right: -110px; top: -110px; background: rgba(37, 99, 235, .07); }
+.lg-right-blob-2 { width: 260px; height: 260px; left: -80px; bottom: -120px; background: rgba(20, 184, 166, .12); }
 
 .lg-right-inner { position: relative; max-width: 520px; }
-.lg-right-org { font-size: 24px; font-weight: 800; line-height: 1.2; margin-bottom: 6px; }
+.lg-right-org { font-size: 24px; font-weight: 800; line-height: 1.2; margin-bottom: 6px; color: var(--c-text); }
 .lg-right-site {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .85); text-decoration: none;
+  font-size: 13px; font-weight: 600; color: #2563EB; text-decoration: none;
 }
+.dark .lg-right-site { color: #60A5FA; }
 .lg-right-site .material-icons { font-size: 14px; }
-.lg-right-site:hover { color: #fff; }
+.lg-right-site:hover { text-decoration: underline; }
 
-.lg-quote { font-size: 22px; font-weight: 600; line-height: 1.35; margin: 30px 0 8px; color: #fff; }
-.lg-quote-author { font-size: 13px; opacity: .8; margin: 0 0 26px; }
+.lg-quote { font-size: 22px; font-weight: 600; line-height: 1.35; margin: 30px 0 8px; color: var(--c-text); }
+.lg-quote-author { font-size: 13px; color: var(--c-muted); margin: 0 0 26px; }
 
 .lg-mock {
   display: inline-block;
   padding: 10px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, .14);
-  border: 1px solid rgba(255, 255, 255, .25);
-  backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, .55);
+  border: 1px solid rgba(37, 99, 235, .12);
   margin-bottom: 26px;
 }
+.dark .lg-mock { background: rgba(255, 255, 255, .04); border-color: rgba(96, 165, 250, .14); }
 .lg-mock-row {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 14px;
   border-radius: 12px;
-  background: #fff;
-  color: #1E293B;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, .2);
+  background: var(--c-surface);
+  color: var(--c-text);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .08);
 }
 .lg-mock-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 4px rgba(16, 185, 129, .2); }
 .lg-mock-text strong { display: block; font-size: 13px; }
-.lg-mock-text small { font-size: 11px; color: #64748B; }
+.lg-mock-text small { font-size: 11px; color: var(--c-muted); }
 .lg-mock-pill {
   margin-left: 18px;
   font-size: 11px; font-weight: 700;
@@ -519,17 +531,18 @@ async function submitContactForm() {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, .12);
-  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .7);
+  border: 1px solid rgba(37, 99, 235, .08);
 }
+.dark .lg-features li { background: rgba(255, 255, 255, .04); border-color: rgba(96, 165, 250, .12); }
 .lg-feat-icon {
   width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
   display: grid; place-items: center;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, .2);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, .12);
 }
 .lg-feat-icon .material-icons { font-size: 18px; color: #fff; }
-.lg-feat-title { font-size: 13.5px; font-weight: 700; }
-.lg-feat-sub { font-size: 12px; opacity: .8; margin-top: 1px; }
+.lg-feat-title { font-size: 13.5px; font-weight: 700; color: var(--c-text); }
+.lg-feat-sub { font-size: 12px; color: var(--c-muted); margin-top: 1px; }
 
 /* ── Modals ── */
 .modal-backdrop {

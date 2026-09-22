@@ -14,6 +14,10 @@ from app.config import settings
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+class DemoLoginRequest(BaseModel):
+    role: str = "teacher"
+
+
 class NoAccessContactRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     recruitment_group: str = Field("", max_length=200)
@@ -127,6 +131,42 @@ async def azure_callback(
     user = await get_or_create_user(db, user_info)
     token = jwt_service.create_access_token({"sub": str(user.id), "role": user.role})
     return RedirectResponse(f"{settings.frontend_url}/auth/callback#token={token}")
+
+
+@router.post("/demo-login", response_model=TokenResponse)
+async def demo_login(data: DemoLoginRequest, db: AsyncSession = Depends(get_db)):
+    from app.api.v1.settings import _read_settings
+
+    app_settings = _read_settings()
+    if not app_settings.get("demo_mode_enabled"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="O modo demo está desativado.")
+    if data.role not in (app_settings.get("demo_profiles") or []):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Este perfil não está disponível no modo demo.")
+
+    role_map = {"teacher": UserRole.TEACHER, "technician": UserRole.TECHNICIAN, "admin": UserRole.ADMIN}
+    role = role_map[data.role]
+    label = {"teacher": "Docente Demo", "technician": "Técnico Demo", "admin": "Administrador Demo"}[data.role]
+    dept = {"teacher": "Línguas", "technician": "Serviços Informáticos", "admin": "Direção"}[data.role]
+
+    username = f"demo_{data.role}"
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if not user:
+        user = User(
+            username=username,
+            email=f"{username}@demo.escola.pt",
+            display_name=label,
+            department=dept,
+            role=role,
+            is_technician=data.role == "technician",
+            auth_provider="demo",
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    token = jwt_service.create_access_token({"sub": str(user.id), "role": user.role})
+    return {"access_token": token, "token_type": "bearer"}
 
 
 @router.post("/no-access-contact")

@@ -90,6 +90,8 @@
           <span class="material-icons" style="font-size:15px">help_outline</span>
           Não tenho acesso ao mail institucional
         </button>
+
+        <DemoLoginPicker v-if="demoProfiles.length" :profiles="demoProfiles" />
       </div>
 
       <!-- Footer -->
@@ -193,6 +195,7 @@ import { onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { getPublicSettings } from '../api/settings'
 import { sendNoAccessContact } from '../api/auth'
+import DemoLoginPicker from '../components/DemoLoginPicker.vue'
 import { applyFavicon } from '../utils/branding'
 import { versionLabel } from '../utils/version'
 
@@ -207,6 +210,7 @@ const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo
 const versionLabelText = versionLabel()
 const showNotice = ref(false)
 const loginNoticeText = ref('')
+const demoProfiles = ref<string[]>([])
 
 const showContactForm = ref(false)
 const contactSending = ref(false)
@@ -226,6 +230,7 @@ onMounted(async () => {
     const s = await getPublicSettings()
     settings.value = s
     applyFavicon(settings.value.favicon_url || settings.value.logo_url)
+    demoProfiles.value = s.demo_mode_enabled ? (s.demo_profiles || []) : []
     if (s.login_notice_enabled && s.login_notice_text) {
       loginNoticeText.value = s.login_notice_text
       showNotice.value = true

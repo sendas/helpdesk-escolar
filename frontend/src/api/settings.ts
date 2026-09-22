@@ -14,6 +14,8 @@ export interface PublicSettings {
   login_notice_text?: string
   no_access_contact_email?: string
   ui_design?: 'modern' | 'classic'
+  demo_mode_enabled?: boolean
+  demo_profiles?: string[]
 }
 
 export interface AzureSyncSettings {
@@ -57,6 +59,11 @@ export async function updateLoginNoticeSettings(payload: { enabled: boolean; tex
 
 export async function updateDesignSettings(design: 'modern' | 'classic') {
   const { data } = await api.put<{ ui_design: 'modern' | 'classic' }>('/api/v1/settings/design', { design })
+  return data
+}
+
+export async function updateDemoModeSettings(payload: { enabled: boolean; profiles: string[] }) {
+  const { data } = await api.put<{ demo_mode_enabled: boolean; demo_profiles: string[] }>('/api/v1/settings/demo-mode', payload)
   return data
 }
 

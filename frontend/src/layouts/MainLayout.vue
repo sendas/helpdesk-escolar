@@ -202,6 +202,15 @@
         </div>
       </header>
 
+      <div v-if="auth.isDemo" class="demo-banner">
+        <span class="material-icons" style="font-size:16px;flex-shrink:0">visibility</span>
+        <span>
+          Está em <strong>modo de demonstração</strong>. Para utilizar o sistema,
+          entre com a sua <strong>conta da escola</strong> (as mesmas credenciais do correio institucional).
+        </span>
+        <button type="button" class="demo-banner-btn" @click="auth.logout()">Sair do modo demo</button>
+      </div>
+
       <!-- Page content -->
       <main class="app-content">
         <router-view />
@@ -298,6 +307,41 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.demo-banner {
+  align-items: center;
+  background: #FEF3C7;
+  border-bottom: 1px solid #FCD34D;
+  color: #92400E;
+  display: flex;
+  font-size: 13px;
+  gap: 10px;
+  line-height: 1.4;
+  padding: 10px 20px;
+}
+
+.dark .demo-banner {
+  background: #451A03;
+  border-color: #78350F;
+  color: #FDE68A;
+}
+
+.demo-banner-btn {
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  font: 600 12px var(--font-sans);
+  margin-left: auto;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+.demo-banner-btn:hover {
+  opacity: .75;
+}
+
 .app-shell {
   display: flex;
   height: 100vh;

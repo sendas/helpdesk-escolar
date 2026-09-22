@@ -23,6 +23,12 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+    if user.auth_provider == "demo":
+        from app.api.v1.settings import _read_settings
+        demo_role = user.username.removeprefix("demo_")
+        app_settings = _read_settings()
+        if not app_settings.get("demo_mode_enabled") or demo_role not in (app_settings.get("demo_profiles") or []):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="O modo demo foi desativado")
     return user
 
 

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { loginLdap as apiLoginLdap, getAzureLoginUrl } from '../api/auth'
+import { loginLdap as apiLoginLdap, getAzureLoginUrl, loginDemo as apiLoginDemo } from '../api/auth'
 import { getMe } from '../api/users'
 
 interface User {
@@ -22,6 +22,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
   const isStaff = computed(() => user.value?.role === 'technician' || user.value?.role === 'admin' || !!user.value?.is_technician)
+  const isDemo = computed(() => user.value?.auth_provider === 'demo')
 
   function applyDark() {
     document.documentElement.classList.toggle('dark', isDark.value)
@@ -39,6 +40,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function loginLdap(username: string, password: string) {
     const data = await apiLoginLdap(username, password)
+    _setToken(data.access_token)
+    await fetchMe()
+    _redirect()
+  }
+
+  async function loginDemo(role: string) {
+    const data = await apiLoginDemo(role)
     _setToken(data.access_token)
     await fetchMe()
     _redirect()
@@ -88,5 +96,5 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = '/login'
   }
 
-  return { token, user, isDark, isAuthenticated, isAdmin, isStaff, loginLdap, loginAzure, handleAzureCallback, fetchMe, init, setDark, toggleDark, logout }
+  return { token, user, isDark, isAuthenticated, isAdmin, isStaff, isDemo, loginLdap, loginDemo, loginAzure, handleAzureCallback, fetchMe, init, setDark, toggleDark, logout }
 })

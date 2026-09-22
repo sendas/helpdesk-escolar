@@ -33,9 +33,12 @@ DEFAULT_SETTINGS = {
     ),
     "no_access_contact_email": "helpdesk_aeeq@queiroz.pt",
     "ui_design": "modern",
+    "demo_mode_enabled": False,
+    "demo_profiles": ["teacher"],
 }
 
 UI_DESIGNS = {"modern", "classic"}
+DEMO_PROFILES = ("teacher", "technician", "admin")
 
 
 class AzureSyncSettings(BaseModel):
@@ -58,6 +61,11 @@ class NoAccessContactSettings(BaseModel):
 
 class DesignSettings(BaseModel):
     design: str = "modern"
+
+
+class DemoModeSettings(BaseModel):
+    enabled: bool = False
+    profiles: list[str] = ["teacher"]
 
 
 class SuggestionEmailSettings(BaseModel):
@@ -153,6 +161,18 @@ async def update_design(payload: DesignSettings, _: User = Depends(require_admin
     data["ui_design"] = payload.design
     _write_settings(data)
     return {"ui_design": data["ui_design"]}
+
+
+@router.put("/demo-mode")
+async def update_demo_mode(payload: DemoModeSettings, _: User = Depends(require_admin)):
+    profiles = [p for p in DEMO_PROFILES if p in payload.profiles]
+    if payload.enabled and not profiles:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha pelo menos um perfil para o modo demo")
+    data = _read_settings()
+    data["demo_mode_enabled"] = payload.enabled
+    data["demo_profiles"] = profiles or ["teacher"]
+    _write_settings(data)
+    return {"demo_mode_enabled": data["demo_mode_enabled"], "demo_profiles": data["demo_profiles"]}
 
 
 @router.put("/suggestion-emails")
