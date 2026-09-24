@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 import random
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +28,39 @@ def hides_demo_content(user: User | None) -> bool:
 
 def not_demo_creator():
     return Ticket.creator.has(or_(User.auth_provider.is_(None), User.auth_provider != "demo"))
+
+
+_LISBON = ZoneInfo("Europe/Lisbon")
+_DONE_STATUSES = (TicketStatus.RESOLVED, TicketStatus.CLOSED)
+
+
+def ticket_due_at(ticket: Ticket) -> datetime | None:
+    """Same rule as the frontend SlaBadge: created + SLA hours; a deadline on a weekend moves to Monday 09:00."""
+    hours = ticket.category.sla_hours if ticket.category else None
+    if not hours or not ticket.created_at:
+        return None
+    due = ticket.created_at.replace(tzinfo=timezone.utc).astimezone(_LISBON) + timedelta(hours=hours)
+    while due.weekday() >= 5:
+        due = (due + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+    return due
+
+
+def is_overdue(ticket: Ticket, now: datetime | None = None) -> bool:
+    if ticket.status in _DONE_STATUSES:
+        return False
+    due = ticket_due_at(ticket)
+    return bool(due and due < (now or datetime.now(_LISBON)))
+
+
+def is_expiring(ticket: Ticket, now: datetime | None = None) -> bool:
+    """Not yet overdue, but less than 25% of the SLA left (the SlaBadge "critical" state)."""
+    if ticket.status in _DONE_STATUSES:
+        return False
+    due = ticket_due_at(ticket)
+    if not due:
+        return False
+    remaining_h = (due - (now or datetime.now(_LISBON))).total_seconds() / 3600
+    return 0 <= remaining_h < ticket.category.sla_hours * 0.25
 
 
 def is_assignable_technician(user: User | None) -> bool:
@@ -135,6 +169,8 @@ async def list_tickets(
     search: str | None = None,
     exclude_category_ids: list[int] | None = None,
     status_in: list[TicketStatus] | None = None,
+    overdue: bool = False,
+    expiring: bool = False,
 ) -> tuple[list[Ticket], int]:
     query = select(Ticket).options(
         selectinload(Ticket.creator),
@@ -160,6 +196,13 @@ async def list_tickets(
     if search:
         term = f"%{search}%"
         query = query.where(or_(Ticket.title.ilike(term), Ticket.description.ilike(term)))
+
+    if overdue or expiring:
+        query = query.where(Ticket.status.not_in(_DONE_STATUSES))
+        candidates = (await db.execute(query.order_by(Ticket.created_at.desc()))).scalars().all()
+        check = is_overdue if overdue else is_expiring
+        matching = [t for t in candidates if check(t)]
+        return matching[(page - 1) * size: page * size], len(matching)
 
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar_one()

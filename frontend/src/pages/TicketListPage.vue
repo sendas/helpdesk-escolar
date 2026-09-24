@@ -12,6 +12,10 @@
         <select class="hd-select" style="width:auto" v-model="filterStatus" @change="load">
           <option value="">Todos os estados</option>
           <option v-for="o in statusOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
+          <template v-if="auth.isStaff">
+            <option value="a_expirar">A expirar (prazo quase a terminar)</option>
+            <option value="fora_prazo">Fora do prazo</option>
+          </template>
         </select>
         <select class="hd-select" style="width:auto" v-model="filterCat" @change="load">
           <option value="">Todas as categorias</option>
@@ -138,6 +142,8 @@ onMounted(async () => {
   if (q === 'abertos') filterStatus.value = 'open'
   else if (q === 'em_curso') filterStatus.value = 'em_curso'
   else if (q === 'resolvidos') filterStatus.value = 'concluidos'
+  else if (q === 'a_expirar' && auth.isStaff) filterStatus.value = 'a_expirar'
+  else if (q === 'fora_prazo' && auth.isStaff) filterStatus.value = 'fora_prazo'
   categories.value = await getCategories()
   await load()
 })
@@ -156,7 +162,9 @@ async function load() {
   loading.value = true
   try {
     const p: any = { page: 1, size: 50 }
-    if (STATUS_GROUPS[filterStatus.value]) p.status_in = STATUS_GROUPS[filterStatus.value]
+    if (filterStatus.value === 'fora_prazo') p.overdue = true
+    else if (filterStatus.value === 'a_expirar') p.expiring = true
+    else if (STATUS_GROUPS[filterStatus.value]) p.status_in = STATUS_GROUPS[filterStatus.value]
     else if (filterStatus.value) p.status = filterStatus.value
     if (hiddenIds.value.length) p.exclude_category_ids = hiddenIds.value
     if (filterCat.value) p.category_id = filterCat.value

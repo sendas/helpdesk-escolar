@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.8.5'
+export const APP_VERSION = '1.8.6'
 export const APP_VERSION_DATE = '2026-09-24'
-export const APP_VERSION_TIME = '10:30'
+export const APP_VERSION_TIME = '11:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.6',
+    date: '2026-09-24',
+    time: '11:30',
+    title: 'Painel: "A expirar" e "Fora do prazo" para técnicos',
+    changes: [
+      'Retirado o cartão "Tempo médio até resolução" do Painel inicial.',
+      'Técnicos e administradores veem dois cartões novos: "A expirar" (menos de 25% do tempo de resposta restante) e "Fora do prazo" (tempo de resposta ultrapassado). Ao clicar, abrem a lista desses tickets.',
+      'Os prazos seguem a mesma regra dos selos de tempo de resposta: prazos que calham ao fim de semana passam para segunda-feira às 9h.',
+      'Em "Os meus tickets", técnicos e administradores têm os filtros "A expirar" e "Fora do prazo".',
+    ],
+  },
   {
     version: '1.8.5',
     date: '2026-09-24',

@@ -3,8 +3,8 @@
     <h1 class="dash-greeting">Olá, {{ auth.user?.display_name?.split(' ')[0] }}</h1>
 
     <!-- Stat cards -->
-    <div class="stat-grid">
-      <component :is="s.to ? 'router-link' : 'div'" :to="s.to" class="stat-card" :class="{ clickable: !!s.to }" v-for="s in stats" :key="s.label">
+    <div class="stat-grid" :class="auth.isStaff ? 'cols-5' : 'cols-3'">
+      <component :is="s.to ? 'router-link' : 'div'" :to="s.to" class="stat-card" :class="{ clickable: !!s.to, warn: s.warn && Number(s.count) > 0 }" v-for="s in stats" :key="s.label">
         <div class="stat-card-top">
           <div class="stat-label">{{ s.label }}</div>
           <div class="stat-icon-wrap">
@@ -115,7 +115,10 @@ const hiddenIds = computed(() => auth.user?.hidden_category_ids ?? [])
 const categories = computed(() => allCategories.value.filter(c => !hiddenIds.value.includes(c.id)).slice(0, 5))
 
 async function load() {
-  const td = await getTickets({ page: 1, size: 50, exclude_category_ids: hiddenIds.value })
+  const [td] = await Promise.all([
+    getTickets({ page: 1, size: 50, exclude_category_ids: hiddenIds.value }),
+    loadSlaCounts(),
+  ])
   tickets.value = td.items
 }
 
@@ -126,24 +129,31 @@ onMounted(async () => {
 
 const recent = computed(() => tickets.value.slice(0, 5))
 
-const avgResolutionTime = computed(() => {
-  const done = tickets.value.filter(t => t.status === 'resolved' || t.status === 'closed')
-  if (!done.length) return '—'
-  const avgMs = done.reduce((sum, t) => sum + (new Date(t.updated_at).getTime() - new Date(t.created_at).getTime()), 0) / done.length
-  const hours = Math.round(avgMs / 3_600_000)
-  if (hours < 1) return '< 1h'
-  if (hours < 24) return `${hours}h`
-  const days = Math.floor(hours / 24)
-  const rem = hours % 24
-  return rem ? `${days}d ${rem}h` : `${days}d`
-})
+const expiringCount = ref<number | null>(null)
+const overdueCount = ref<number | null>(null)
 
-const stats = computed(() => [
-  { label: 'Tickets Abertos', count: tickets.value.filter(t => t.status === 'open').length, icon: 'inbox', sub: 'em aberto', to: '/tickets?estado=abertos' },
-  { label: 'Em Análise', count: tickets.value.filter(t => ['assigned','in_progress','waiting_user'].includes(t.status)).length, icon: 'schedule', sub: 'em curso', to: '/tickets?estado=em_curso' },
-  { label: 'Resolvidos', count: tickets.value.filter(t => t.status === 'resolved' || t.status === 'closed').length, icon: 'check_circle', sub: 'resolvidos ou fechados', to: '/tickets?estado=resolvidos' },
-  { label: 'Tempo Médio', count: avgResolutionTime.value, icon: 'bar_chart', sub: 'até resolução', to: undefined },
-])
+async function loadSlaCounts() {
+  if (!auth.isStaff) return
+  const base = { page: 1, size: 1, exclude_category_ids: hiddenIds.value }
+  const [exp, over] = await Promise.all([getTickets({ ...base, expiring: true }), getTickets({ ...base, overdue: true })])
+  expiringCount.value = exp.total
+  overdueCount.value = over.total
+}
+
+const stats = computed(() => {
+  const list = [
+    { label: 'Tickets Abertos', count: tickets.value.filter(t => t.status === 'open').length, icon: 'inbox', sub: 'em aberto', to: '/tickets?estado=abertos', warn: false },
+    { label: 'Em Análise', count: tickets.value.filter(t => ['assigned','in_progress','waiting_user'].includes(t.status)).length, icon: 'schedule', sub: 'em curso', to: '/tickets?estado=em_curso', warn: false },
+    { label: 'Resolvidos', count: tickets.value.filter(t => t.status === 'resolved' || t.status === 'closed').length, icon: 'check_circle', sub: 'resolvidos ou fechados', to: '/tickets?estado=resolvidos', warn: false },
+  ]
+  if (auth.isStaff) {
+    list.push(
+      { label: 'A Expirar', count: expiringCount.value ?? '—' as any, icon: 'hourglass_bottom', sub: 'prazo quase a terminar', to: '/tickets?estado=a_expirar', warn: false },
+      { label: 'Fora do Prazo', count: overdueCount.value ?? '—' as any, icon: 'alarm', sub: 'tempo de resposta ultrapassado', to: '/tickets?estado=fora_prazo', warn: true },
+    )
+  }
+  return list
+})
 
 function statusLabel(s: string) {
   return { open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', waiting_user: 'A aguardar', resolved: 'Resolvido', closed: 'Fechado' }[s] ?? s
@@ -173,6 +183,8 @@ function statusLabel(s: string) {
 }
 
 .stat-card { display: block; text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
+.stat-card.warn { border-color: #FCA5A5; }
+.stat-card.warn .stat-value { color: #DC2626; }
 .stat-card.clickable:hover { border-color: var(--c-primary); transform: translateY(-2px); }
 
 .stat-card-top {
@@ -368,8 +380,10 @@ function statusLabel(s: string) {
 
 /* ── Desktop (≥1100px): 4-col stats — sidebar (260px) já presente ── */
 @media (min-width: 1100px) {
-  .stat-grid {
-    grid-template-columns: repeat(4, 1fr);
+  .stat-grid.cols-5 .stat-value { font-size: 26px; }
+  .stat-grid.cols-3 { grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-grid.cols-5 {
+    grid-template-columns: repeat(5, 1fr);
     gap: 16px;
     margin-bottom: 24px;
   }

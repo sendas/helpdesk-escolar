@@ -27,7 +27,7 @@
     </section>
 
     <!-- Stat cards -->
-    <div class="stat-grid">
+    <div class="stat-grid" :class="auth.isStaff ? 'cols-5' : 'cols-3'">
       <component
         :is="s.to ? 'router-link' : 'div'"
         v-for="s in stats" :key="s.label"
@@ -130,7 +130,10 @@ const hiddenIds = computed(() => auth.user?.hidden_category_ids ?? [])
 const categories = computed(() => allCategories.value.filter(c => !hiddenIds.value.includes(c.id)).slice(0, 8))
 
 async function load() {
-  const td = await getTickets({ page: 1, size: 50, exclude_category_ids: hiddenIds.value })
+  const [td] = await Promise.all([
+    getTickets({ page: 1, size: 50, exclude_category_ids: hiddenIds.value }),
+    loadSlaCounts(),
+  ])
   tickets.value = td.items
 }
 
@@ -169,24 +172,31 @@ const heroSubtitle = computed(() => {
 
 const recent = computed(() => tickets.value.slice(0, 5))
 
-const avgResolutionTime = computed(() => {
-  const done = tickets.value.filter(t => DONE.includes(t.status))
-  if (!done.length) return '—'
-  const avgMs = done.reduce((sum, t) => sum + (new Date(t.updated_at).getTime() - new Date(t.created_at).getTime()), 0) / done.length
-  const hours = Math.round(avgMs / 3_600_000)
-  if (hours < 1) return '< 1h'
-  if (hours < 24) return `${hours}h`
-  const days = Math.floor(hours / 24)
-  const rem = hours % 24
-  return rem ? `${days}d ${rem}h` : `${days}d`
-})
+const expiringCount = ref<number | null>(null)
+const overdueCount = ref<number | null>(null)
 
-const stats = computed(() => [
-  { label: 'Abertos', count: openCount.value, icon: 'inbox', sub: 'a aguardar resposta', tone: 'tone-blue', to: '/tickets?estado=abertos' },
-  { label: 'Em curso', count: progressCount.value, icon: 'autorenew', sub: 'a ser tratados', tone: 'tone-amber', to: '/tickets?estado=em_curso' },
-  { label: 'Resolvidos', count: doneCount.value, icon: 'task_alt', sub: 'resolvidos ou fechados', tone: 'tone-green', to: '/tickets?estado=resolvidos' },
-  { label: 'Tempo médio', count: avgResolutionTime.value, icon: 'timer', sub: 'até resolução', tone: 'tone-violet', to: undefined },
-])
+async function loadSlaCounts() {
+  if (!auth.isStaff) return
+  const base = { page: 1, size: 1, exclude_category_ids: hiddenIds.value }
+  const [exp, over] = await Promise.all([getTickets({ ...base, expiring: true }), getTickets({ ...base, overdue: true })])
+  expiringCount.value = exp.total
+  overdueCount.value = over.total
+}
+
+const stats = computed(() => {
+  const list = [
+    { label: 'Abertos', count: openCount.value, icon: 'inbox', sub: 'a aguardar resposta', tone: 'tone-blue', to: '/tickets?estado=abertos' },
+    { label: 'Em curso', count: progressCount.value, icon: 'autorenew', sub: 'a ser tratados', tone: 'tone-violet', to: '/tickets?estado=em_curso' },
+    { label: 'Resolvidos', count: doneCount.value, icon: 'task_alt', sub: 'resolvidos ou fechados', tone: 'tone-green', to: '/tickets?estado=resolvidos' },
+  ]
+  if (auth.isStaff) {
+    list.push(
+      { label: 'A expirar', count: expiringCount.value ?? '—', icon: 'hourglass_bottom', sub: 'prazo quase a terminar', tone: 'tone-amber', to: '/tickets?estado=a_expirar' },
+      { label: 'Fora do prazo', count: overdueCount.value ?? '—', icon: 'alarm', sub: 'tempo de resposta ultrapassado', tone: 'tone-red', to: '/tickets?estado=fora_prazo' },
+    )
+  }
+  return list
+})
 
 const STATUS_COLORS: Record<string, string> = {
   open: '#3B82F6', assigned: '#F59E0B', in_progress: '#8B5CF6', waiting_user: '#06B6D4', resolved: '#10B981', closed: '#94A3B8',
@@ -365,6 +375,7 @@ function statusLabel(s: string) {
 .tone-blue   { background: linear-gradient(135deg, #0EA5E9, #2563EB); --tone-shadow: rgba(14, 165, 233, .28); }
 .tone-amber  { background: linear-gradient(135deg, #F59E0B, #F97316); --tone-shadow: rgba(245, 158, 11, .28); }
 .tone-green  { background: linear-gradient(135deg, #10B981, #14B8A6); --tone-shadow: rgba(16, 185, 129, .28); }
+.tone-red    { background: linear-gradient(135deg, #EF4444, #DC2626); --tone-shadow: rgba(239, 68, 68, .28); }
 .tone-violet { background: linear-gradient(135deg, #4F46E5, #6366F1); --tone-shadow: rgba(79, 70, 229, .28); }
 
 .stat-icon {
@@ -531,7 +542,12 @@ function statusLabel(s: string) {
 }
 
 @media (min-width: 1100px) {
-  .stat-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+}
+
+@media (min-width: 1300px) {
+  .stat-grid.cols-5 { grid-template-columns: repeat(5, 1fr); }
+  .stat-grid.cols-5 .stat-value { font-size: 26px; }
 }
 
 @media (min-width: 1300px) {

@@ -43,10 +43,12 @@ async def list_tickets(
     search: str | None = Query(None, max_length=200),
     exclude_category_ids: list[int] = Query(default=[]),
     status_in: list[TicketStatus] = Query(default=[]),
+    overdue: bool = False,
+    expiring: bool = False,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id, search, exclude_category_ids, status_in)
+    items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id, search, exclude_category_ids, status_in, overdue, expiring)
     return {"items": items, "total": total, "page": page, "size": size}
 
 
