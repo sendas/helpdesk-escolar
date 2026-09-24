@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.8.7'
+export const APP_VERSION = '1.8.8'
 export const APP_VERSION_DATE = '2026-09-24'
-export const APP_VERSION_TIME = '12:30'
+export const APP_VERSION_TIME = '16:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.8',
+    date: '2026-09-24',
+    time: '16:00',
+    title: 'Lembretes nas notas internas',
+    changes: [
+      'Ao escrever uma nota interna num ticket, técnicos e administradores podem escolher um dia e hora para serem lembrados (atalhos "Amanhã", "Daqui a 3 dias" e "Próxima segunda"; fins de semana são saltados).',
+      'Na data escolhida, o autor da nota recebe um email e uma notificação no telemóvel com o texto da nota e a ligação para o ticket. O lembrete é só para quem o criou.',
+      'A nota mostra "Lembrete dd/mm às hh:mm" até ser enviado, e depois "Lembrete enviado". Apagar a nota cancela o lembrete.',
+    ],
+  },
   {
     version: '1.8.7',
     date: '2026-09-24',

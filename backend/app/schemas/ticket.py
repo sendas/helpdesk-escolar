@@ -52,6 +52,7 @@ class TicketBulkAction(BaseModel):
 class CommentCreate(BaseModel):
     body: str
     is_internal: bool = False
+    remind_at: datetime | None = None
 
 
 class CommentRead(BaseModel):
@@ -63,6 +64,8 @@ class CommentRead(BaseModel):
     created_at: datetime
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
+    remind_at: datetime | None = None
+    reminder_sent_at: datetime | None = None
     author: UserRead
 
 

@@ -101,6 +101,30 @@ async def send_no_access_contact(to_email: str, contact_data: dict) -> None:
         logger.warning("No-access contact email failed to %s: %s", to_email, exc)
 
 
+async def send_reminder(to_email: str, data: dict) -> None:
+    """Reminder set on an internal note. Sent right away (not merged into the update digest)."""
+    if not settings.mail_server:
+        return
+    data = _normalize_ticket_data(data)
+    created = data.get("note_created_at")
+    if created:
+        from datetime import timezone
+        from zoneinfo import ZoneInfo
+        data["note_created_at"] = created.replace(tzinfo=timezone.utc).astimezone(ZoneInfo("Europe/Lisbon")).strftime("%d/%m/%Y %H:%M")
+    try:
+        html_body = jinja_env.get_template("ticket_reminder.html").render(**data)
+        message = MessageSchema(
+            subject=f"[Lembrete] Ticket #{data.get('id')} — {data.get('title')}",
+            recipients=[to_email],
+            body=html_body,
+            subtype=MessageType.html,
+        )
+        await FastMail(_get_conf()).send_message(message)
+        logger.info("Reminder email sent to %s for ticket %s", to_email, data.get("id"))
+    except Exception as exc:
+        logger.warning("Reminder email failed to %s for ticket %s: %s", to_email, data.get("id"), exc)
+
+
 def _normalize_ticket_data(ticket_data: dict) -> dict:
     ticket_data = dict(ticket_data)
     if ticket_data.get("id") and not ticket_data.get("ticket_url"):

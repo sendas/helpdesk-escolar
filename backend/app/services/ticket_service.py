@@ -284,11 +284,17 @@ async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) ->
 
 
 async def add_comment(db: AsyncSession, ticket: Ticket, data: CommentCreate, author: User) -> Comment:
+    remind_at = None
+    if data.remind_at and data.is_internal:
+        remind_at = data.remind_at
+        if remind_at.tzinfo is not None:
+            remind_at = remind_at.astimezone(timezone.utc).replace(tzinfo=None)
     comment = Comment(
         body=data.body,
         is_internal=data.is_internal,
         ticket_id=ticket.id,
         author_id=author.id,
+        remind_at=remind_at,
     )
     db.add(comment)
     ticket.updated_at = datetime.utcnow()

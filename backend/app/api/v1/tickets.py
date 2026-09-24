@@ -1,7 +1,7 @@
 import asyncio
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Query
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -492,6 +492,12 @@ async def add_comment(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
         data.is_internal = False
+    if data.remind_at is not None:
+        if not data.is_internal:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Os lembretes só podem ser criados em notas internas.")
+        when = data.remind_at if data.remind_at.tzinfo else data.remind_at.replace(tzinfo=timezone.utc)
+        if when <= datetime.now(timezone.utc):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha uma data e hora no futuro para o lembrete.")
     comment = await ticket_service.add_comment(db, ticket, data, current_user)
 
     # Auto-subscribe the commenter as watcher so they receive future updates

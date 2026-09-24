@@ -134,6 +134,10 @@
               <div class="hd-msg-header">
                 <span class="hd-msg-author">{{ c.author.display_name }}</span>
                 <span v-if="c.is_internal" class="hd-internal-tag">NOTA INTERNA</span>
+                <span v-if="c.remind_at" class="reminder-tag" :class="{ sent: !!c.reminder_sent_at }" :title="c.reminder_sent_at ? 'Lembrete já enviado' : 'Vai receber um lembrete por email e notificação'">
+                  <span class="material-icons">{{ c.reminder_sent_at ? 'notifications_off' : 'alarm' }}</span>
+                  {{ c.reminder_sent_at ? 'Lembrete enviado' : 'Lembrete ' + formatReminder(c.remind_at) }}
+                </span>
                 <span class="hd-msg-time">{{ formatDate(c.created_at) }}</span>
                 <button v-if="canEditComment(c)" class="msg-action" @click="startEditComment(c)">Editar</button>
                 <button v-if="canEditComment(c)" class="msg-action danger" @click="onDeleteComment(c)">Apagar</button>
@@ -194,6 +198,19 @@
               <button type="button" class="hd-icon-btn" style="padding:2px" title="Remover" @click="commentFile = null; if (commentFileInput) commentFileInput.value = ''">
                 <span class="material-icons" style="font-size:14px">close</span>
               </button>
+            </div>
+            <div v-if="auth.isStaff && isInternal" class="reminder-box">
+              <div class="reminder-title">
+                <span class="material-icons">alarm</span>
+                Lembrar-me deste ticket <span class="reminder-opt">(opcional — só para si)</span>
+              </div>
+              <div class="reminder-row">
+                <input class="hd-input reminder-date" type="date" v-model="remindDate" :min="todayIso" />
+                <input class="hd-input reminder-time" type="time" v-model="remindTime" :disabled="!remindDate" />
+                <button v-for="q in reminderQuick" :key="q.label" type="button" class="reminder-chip" @click="setReminderIn(q.days)">{{ q.label }}</button>
+                <button v-if="remindDate" type="button" class="reminder-chip clear" @click="remindDate = ''">Sem lembrete</button>
+              </div>
+              <div v-if="remindDate" class="reminder-hint">Recebe um email e uma notificação a {{ reminderPreview }}.</div>
             </div>
             <div class="hd-row" style="justify-content:space-between;margin-top:12px">
               <div class="hd-row" style="gap:8px">
@@ -455,6 +472,19 @@ const route = useRoute()
 const ticket = ref<any>(null)
 const newComment = ref('')
 const isInternal = ref(false)
+const remindDate = ref('')
+const remindTime = ref('09:00')
+const todayIso = computed(() => toIsoDate(new Date()))
+const reminderQuick = [
+  { label: 'Amanhã', days: 1 },
+  { label: 'Daqui a 3 dias', days: 3 },
+  { label: 'Próxima segunda', days: 7 },
+]
+const reminderPreview = computed(() => {
+  if (!remindDate.value) return ''
+  const d = new Date(`${remindDate.value}T${remindTime.value || '09:00'}`)
+  return d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' }) + ' às ' + (remindTime.value || '09:00')
+})
 const commenting = ref(false)
 const commentError = ref('')
 const staffUsers = ref<any[]>([])
@@ -690,9 +720,14 @@ async function onAddComment() {
   const shouldClose = autoCloseOnSend.value && auth.isStaff
   autoCloseOnSend.value = false
   try {
-    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value)
+    const remindAt = isInternal.value && remindDate.value
+      ? new Date(`${remindDate.value}T${remindTime.value || '09:00'}`).toISOString()
+      : null
+    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value, remindAt)
     newComment.value = ''
     isInternal.value = false
+    remindDate.value = ''
+    remindTime.value = '09:00'
     if (commentFile.value) {
       await uploadTicketAttachment(ticket.value.id, commentFile.value)
       commentFile.value = null
@@ -702,11 +737,30 @@ async function onAddComment() {
       await adminUpdateTicket(ticket.value.id, { status: 'closed' })
     }
     await load()
-  } catch {
-    commentError.value = 'Erro ao enviar resposta'
+  } catch (e: any) {
+    commentError.value = e?.response?.data?.detail || 'Erro ao enviar resposta'
   } finally {
     commenting.value = false
   }
+}
+
+function toIsoDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function setReminderIn(days: number) {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  if (days === 7) { while (d.getDay() !== 1) d.setDate(d.getDate() + 1) }
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1)
+  remindDate.value = toIsoDate(d)
+  if (!remindTime.value) remindTime.value = '09:00'
+}
+
+function formatReminder(iso?: string | null) {
+  if (!iso) return ''
+  const d = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z')
+  return d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) + ' às ' + d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
 }
 
 async function onStatusChange() {
@@ -1382,4 +1436,31 @@ function formatSize(size: number) {
 .hd-lightbox-close:hover {
   background: rgba(255, 255, 255, .25);
 }
+.reminder-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10.5px; font-weight: 700;
+  padding: 2px 7px; border-radius: 999px;
+  color: #B45309; background: #FEF3C7;
+}
+.reminder-tag .material-icons { font-size: 12px; }
+.reminder-tag.sent { color: var(--c-muted); background: var(--c-surface-soft, rgba(0,0,0,.05)); }
+.dark .reminder-tag:not(.sent) { color: #FCD34D; background: rgba(245, 158, 11, .16); }
+.reminder-box {
+  margin-top: 10px; padding: 10px 12px;
+  border: 1px dashed #F59E0B; border-radius: 10px;
+  background: rgba(245, 158, 11, .06);
+}
+.reminder-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--c-text); margin-bottom: 8px; }
+.reminder-title .material-icons { font-size: 17px; color: #D97706; }
+.reminder-opt { font-weight: 400; font-size: 12px; color: var(--c-muted); }
+.reminder-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.reminder-date { width: auto; max-width: 170px; padding: 6px 10px; }
+.reminder-time { width: auto; max-width: 110px; padding: 6px 10px; }
+.reminder-chip {
+  border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text);
+  border-radius: 999px; padding: 5px 10px; font: 600 12px var(--font-sans); cursor: pointer;
+}
+.reminder-chip:hover { border-color: #F59E0B; color: #B45309; }
+.reminder-chip.clear { color: var(--c-muted); }
+.reminder-hint { font-size: 12px; color: var(--c-muted); margin-top: 8px; }
 </style>

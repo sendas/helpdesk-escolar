@@ -10,7 +10,7 @@ export interface TicketListItem {
   created_at: string; updated_at: string; creator_email_notifications: boolean; is_escalated: boolean; closed_via_email?: boolean
   creator: UserBrief; assignee?: UserBrief; assignees?: UserBrief[]; group?: HelpdeskGroupBrief; watchers?: UserBrief[]; category: Category; school?: School
 }
-export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; updated_at?: string; author: UserBrief }
+export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; updated_at?: string; remind_at?: string | null; reminder_sent_at?: string | null; author: UserBrief }
 export interface Attachment { id: number; original_name: string; content_type: string; size: number; created_at: string }
 export interface TicketEvent { id: number; event_type: string; message: string; created_at: string; actor?: UserBrief | null }
 export interface TicketDetail extends TicketListItem { description: string; comments: Comment[]; attachments: Attachment[]; events: TicketEvent[] }
@@ -139,8 +139,8 @@ export async function forceSyncMailReplies() {
   return data
 }
 
-export async function addComment(ticketId: number, body: string, is_internal = false) {
-  const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal })
+export async function addComment(ticketId: number, body: string, is_internal = false, remind_at: string | null = null) {
+  const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal, remind_at })
   return data
 }
 

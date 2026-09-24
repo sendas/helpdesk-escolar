@@ -45,6 +45,14 @@ async def _add_missing_columns(conn) -> None:
     if "hidden_category_ids" not in {row[1] for row in rows_u}:
         await conn.execute(text("ALTER TABLE users ADD COLUMN hidden_category_ids VARCHAR(500)"))
 
+    # 6. Reminder date on internal notes
+    rows_c = await conn.execute(text("PRAGMA table_info(comments)"))
+    existing_c = {row[1] for row in rows_c}
+    if "remind_at" not in existing_c:
+        await conn.execute(text("ALTER TABLE comments ADD COLUMN remind_at DATETIME"))
+    if "reminder_sent_at" not in existing_c:
+        await conn.execute(text("ALTER TABLE comments ADD COLUMN reminder_sent_at DATETIME"))
+
     # 4. Add closed_via_email if missing + backfill from email-triggered status events
     if "closed_via_email" not in existing:
         await conn.execute(text("ALTER TABLE tickets ADD COLUMN closed_via_email BOOLEAN NOT NULL DEFAULT 0"))
@@ -78,6 +86,7 @@ async def lifespan(app: FastAPI):
         mail_task = asyncio.create_task(_sync_mail_replies_periodically())
     backup_task = asyncio.create_task(_backup_periodically())
     inactivity_task = asyncio.create_task(_inactivity_check_periodically())
+    reminder_task = asyncio.create_task(_reminders_periodically())
     yield
     if sync_task:
         sync_task.cancel()
@@ -85,6 +94,7 @@ async def lifespan(app: FastAPI):
         mail_task.cancel()
     backup_task.cancel()
     inactivity_task.cancel()
+    reminder_task.cancel()
 
 
 async def _sync_azure_periodically() -> None:
@@ -138,6 +148,20 @@ async def _inactivity_check_periodically() -> None:
             except Exception:
                 pass
         await asyncio.sleep(6 * 3600)
+
+
+async def _reminders_periodically() -> None:
+    from app.database import AsyncSessionLocal
+    from app.services import reminder_service
+
+    await asyncio.sleep(60)
+    while True:
+        async with AsyncSessionLocal() as db:
+            try:
+                await reminder_service.send_due_reminders(db)
+            except Exception:
+                pass
+        await asyncio.sleep(300)
 
 
 async def _backup_periodically() -> None:
