@@ -33,12 +33,13 @@
         v-for="s in stats" :key="s.label"
         :to="s.to"
         class="stat-card" :class="[s.tone, { clickable: !!s.to }]"
+        :title="s.sub"
       >
         <div class="stat-icon"><span class="material-icons">{{ s.icon }}</span></div>
-        <div class="stat-value">{{ s.count }}</div>
-        <div class="stat-label">{{ s.label }}</div>
-        <div class="stat-sub">{{ s.sub }}</div>
-        <span v-if="s.to" class="stat-go material-icons">arrow_forward</span>
+        <div class="stat-text">
+          <div class="stat-value">{{ s.count }}</div>
+          <div class="stat-label">{{ s.label }}</div>
+        </div>
       </component>
     </div>
 
@@ -336,62 +337,64 @@ function statusLabel(s: string) {
 .hero-chip-2 { bottom: 4px; right: -8px; }
 .hero-chip-2 .material-icons { color: #F59E0B; }
 
-/* ── Stats ── */
+/* ── Stats: one compact row ── */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(138px, 1fr);
+  gap: 10px;
   margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
 }
 
 .stat-card {
   position: relative;
   overflow: hidden;
-  border-radius: 16px;
-  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
   color: #fff;
-  box-shadow: 0 10px 24px var(--tone-shadow);
-  transition: transform .15s ease;
+  text-decoration: none;
+  box-shadow: 0 6px 14px var(--tone-shadow);
+  transition: transform .15s ease, box-shadow .15s ease;
 }
-.stat-card { display: block; text-decoration: none; }
 .stat-card.clickable { cursor: pointer; }
-.stat-card.clickable:hover { transform: translateY(-3px); box-shadow: 0 14px 30px var(--tone-shadow); }
-.stat-go {
-  position: absolute; right: 14px; top: 16px; z-index: 1;
-  font-size: 18px; opacity: .75; transition: transform .15s ease, opacity .15s ease;
-}
-.stat-card.clickable:hover .stat-go { transform: translateX(3px); opacity: 1; }
+.stat-card.clickable:hover { transform: translateY(-2px); box-shadow: 0 10px 20px var(--tone-shadow); }
 .stat-card::after {
   content: '';
   position: absolute;
-  width: 120px;
-  height: 120px;
-  right: -40px;
-  bottom: -50px;
+  width: 70px;
+  height: 70px;
+  right: -26px;
+  bottom: -34px;
   border-radius: 50%;
   background: rgba(255, 255, 255, .14);
 }
 
-.tone-blue   { background: linear-gradient(135deg, #0EA5E9, #2563EB); --tone-shadow: rgba(14, 165, 233, .28); }
-.tone-amber  { background: linear-gradient(135deg, #F59E0B, #F97316); --tone-shadow: rgba(245, 158, 11, .28); }
-.tone-green  { background: linear-gradient(135deg, #10B981, #14B8A6); --tone-shadow: rgba(16, 185, 129, .28); }
-.tone-red    { background: linear-gradient(135deg, #EF4444, #DC2626); --tone-shadow: rgba(239, 68, 68, .28); }
-.tone-violet { background: linear-gradient(135deg, #4F46E5, #6366F1); --tone-shadow: rgba(79, 70, 229, .28); }
+.tone-blue   { background: linear-gradient(135deg, #0EA5E9, #2563EB); --tone-shadow: rgba(14, 165, 233, .25); }
+.tone-amber  { background: linear-gradient(135deg, #F59E0B, #F97316); --tone-shadow: rgba(245, 158, 11, .25); }
+.tone-green  { background: linear-gradient(135deg, #10B981, #14B8A6); --tone-shadow: rgba(16, 185, 129, .25); }
+.tone-red    { background: linear-gradient(135deg, #EF4444, #DC2626); --tone-shadow: rgba(239, 68, 68, .25); }
+.tone-violet { background: linear-gradient(135deg, #4F46E5, #6366F1); --tone-shadow: rgba(79, 70, 229, .25); }
 
 .stat-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9px;
   background: rgba(255, 255, 255, .22);
   display: grid;
   place-items: center;
-  margin-bottom: 14px;
 }
-.stat-icon .material-icons { font-size: 20px; color: #fff; }
+.stat-icon .material-icons { font-size: 18px; color: #fff; }
 
-.stat-value { font-size: 30px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
-.stat-label { font-size: 13px; font-weight: 700; }
-.stat-sub { font-size: 11.5px; opacity: .85; margin-top: 2px; }
+.stat-text { min-width: 0; }
+.stat-value { font-size: 20px; font-weight: 800; line-height: 1.05; }
+.stat-label { font-size: 12px; font-weight: 700; opacity: .95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Body ── */
 .dash-body { display: flex; flex-direction: column; gap: 16px; }
@@ -542,17 +545,19 @@ function statusLabel(s: string) {
 }
 
 @media (min-width: 1100px) {
-  .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-}
-
-@media (min-width: 1300px) {
-  .stat-grid.cols-5 { grid-template-columns: repeat(5, 1fr); }
-  .stat-grid.cols-5 .stat-value { font-size: 26px; }
+  .stat-grid { gap: 12px; margin-bottom: 22px; }
 }
 
 @media (min-width: 1300px) {
   .dash-body { flex-direction: row; align-items: flex-start; gap: 20px; }
   .recent-card { flex: 1; min-width: 0; }
   .quick-card { width: 360px; flex-shrink: 0; }
+}
+
+@media (max-width: 560px) {
+  .stat-grid { grid-auto-columns: minmax(92px, 1fr); gap: 8px; }
+  .stat-card { padding: 9px 10px; }
+  .stat-label { white-space: normal; font-size: 11px; line-height: 1.2; }
+  .stat-card .stat-icon { display: none; }
 }
 </style>

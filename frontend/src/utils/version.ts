@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.8.6'
+export const APP_VERSION = '1.8.7'
 export const APP_VERSION_DATE = '2026-09-24'
-export const APP_VERSION_TIME = '11:30'
+export const APP_VERSION_TIME = '12:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.7',
+    date: '2026-09-24',
+    time: '12:30',
+    title: 'Cartões do Painel numa só linha',
+    changes: [
+      'Os cartões de números do Painel inicial (Abertos, Em curso, Resolvidos e, para técnicos, A expirar e Fora do prazo) ficam todos numa só linha, em blocos mais pequenos.',
+      'No telemóvel a linha desliza para o lado; a descrição de cada cartão aparece ao passar o rato por cima.',
+    ],
+  },
   {
     version: '1.8.6',
     date: '2026-09-24',

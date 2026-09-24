@@ -4,15 +4,14 @@
 
     <!-- Stat cards -->
     <div class="stat-grid" :class="auth.isStaff ? 'cols-5' : 'cols-3'">
-      <component :is="s.to ? 'router-link' : 'div'" :to="s.to" class="stat-card" :class="{ clickable: !!s.to, warn: s.warn && Number(s.count) > 0 }" v-for="s in stats" :key="s.label">
-        <div class="stat-card-top">
-          <div class="stat-label">{{ s.label }}</div>
-          <div class="stat-icon-wrap">
-            <span class="material-icons">{{ s.icon }}</span>
-          </div>
+      <component :is="s.to ? 'router-link' : 'div'" :to="s.to" :title="s.sub" class="stat-card" :class="{ clickable: !!s.to, warn: s.warn && Number(s.count) > 0 }" v-for="s in stats" :key="s.label">
+        <div class="stat-icon-wrap">
+          <span class="material-icons">{{ s.icon }}</span>
         </div>
-        <div class="stat-value">{{ s.count }}</div>
-        <div class="stat-sub">{{ s.sub }}</div>
+        <div style="min-width:0">
+          <div class="stat-value">{{ s.count }}</div>
+          <div class="stat-label">{{ s.label }}</div>
+        </div>
       </component>
     </div>
 
@@ -167,70 +166,57 @@ function statusLabel(s: string) {
   margin-bottom: 20px;
 }
 
-/* ── Stat grid: 2×2 on mobile, 4×1 on desktop ── */
+/* ── Stat grid: one compact row (scrolls sideways on narrow screens) ── */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(138px, 1fr);
+  gap: 10px;
   margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 4px;
 }
 
 .stat-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
   background: var(--c-surface);
   border: 1px solid var(--c-border);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .15s, transform .15s;
 }
-
-.stat-card { display: block; text-decoration: none; color: inherit; transition: border-color .15s, transform .15s; }
 .stat-card.warn { border-color: #FCA5A5; }
 .stat-card.warn .stat-value { color: #DC2626; }
 .stat-card.clickable:hover { border-color: var(--c-primary); transform: translateY(-2px); }
 
-.stat-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 10px;
-}
-
 .stat-label {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: .05em;
+  letter-spacing: .04em;
   text-transform: uppercase;
   color: var(--c-muted);
-  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-icon-wrap {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   background: var(--c-primary-soft, rgba(61,82,213,.12));
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
+.stat-icon-wrap .material-icons { font-size: 18px; color: var(--c-primary); }
 
-.stat-icon-wrap .material-icons {
-  font-size: 18px;
-  color: var(--c-primary);
-}
-
-.stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--c-text);
-  margin-bottom: 4px;
-}
-
-.stat-sub {
-  font-size: 12px;
-  color: var(--c-muted);
-}
+.stat-value { font-size: 20px; font-weight: 700; line-height: 1.05; color: var(--c-text); }
 
 /* ── Body: stacked on mobile, side-by-side on desktop ── */
 .dash-body {
@@ -378,17 +364,6 @@ function statusLabel(s: string) {
   }
 }
 
-/* ── Desktop (≥1100px): 4-col stats — sidebar (260px) já presente ── */
-@media (min-width: 1100px) {
-  .stat-grid.cols-5 .stat-value { font-size: 26px; }
-  .stat-grid.cols-3 { grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-  .stat-grid.cols-5 {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-}
-
 /* ── Desktop largo (≥1400px): layout lado a lado com painel categorias ── */
 @media (min-width: 1400px) {
   .dash-body {
@@ -406,5 +381,12 @@ function statusLabel(s: string) {
     width: 280px;
     flex-shrink: 0;
   }
+}
+
+@media (max-width: 560px) {
+  .stat-grid { grid-auto-columns: minmax(92px, 1fr); gap: 8px; }
+  .stat-card { padding: 9px 10px; }
+  .stat-label { white-space: normal; font-size: 11px; line-height: 1.2; }
+  .stat-card .stat-icon-wrap { display: none; }
 }
 </style>
