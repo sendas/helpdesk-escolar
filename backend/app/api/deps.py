@@ -11,6 +11,8 @@ bearer = HTTPBearer()
 
 # Set for the current request when the caller is a demo account (read by email_service).
 acting_as_demo: ContextVar[bool] = ContextVar("acting_as_demo", default=False)
+# Id of the authenticated user for the current request (reminders are only serialised for their author).
+current_viewer_id: ContextVar[int | None] = ContextVar("current_viewer_id", default=None)
 
 
 async def get_current_user(
@@ -27,6 +29,7 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+    current_viewer_id.set(user.id)
     if user.auth_provider == "demo":
         from app.api.v1.settings import _read_settings
         demo_role = user.username.removeprefix("demo_")

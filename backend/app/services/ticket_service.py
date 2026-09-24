@@ -285,7 +285,7 @@ async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) ->
 
 async def add_comment(db: AsyncSession, ticket: Ticket, data: CommentCreate, author: User) -> Comment:
     remind_at = None
-    if data.remind_at and data.is_internal:
+    if data.remind_at:
         remind_at = data.remind_at
         if remind_at.tzinfo is not None:
             remind_at = remind_at.astimezone(timezone.utc).replace(tzinfo=None)

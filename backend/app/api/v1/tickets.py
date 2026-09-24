@@ -24,6 +24,12 @@ ALLOWED_MIME_PREFIXES = ("image/",)
 ALLOWED_CONTENT_TYPES_EXACT = {"application/pdf", "application/octet-stream"}
 
 
+def _can_set_reminder(ticket, user: User) -> bool:
+    if user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or user.is_technician:
+        return True
+    return ticket.assignee_id == user.id or any(a.id == user.id for a in getattr(ticket, "assignees", []))
+
+
 def _can_access_ticket(ticket, user: User, *, allow_watcher: bool = True) -> bool:
     if user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or user.is_technician:
         return True
@@ -256,12 +262,12 @@ async def get_ticket(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     if not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    if not ticket_service.hides_demo_content(current_user):
-        return ticket
-    if ticket.creator and ticket.creator.auth_provider == "demo":
+    hide_demo = ticket_service.hides_demo_content(current_user)
+    if hide_demo and ticket.creator and ticket.creator.auth_provider == "demo":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     data = TicketRead.model_validate(ticket)
-    data.comments = [c for c in data.comments if c.author is None or c.author.auth_provider != "demo"]
+    if hide_demo:
+        data.comments = [c for c in data.comments if c.author is None or c.author.auth_provider != "demo"]
     return data
 
 
@@ -493,8 +499,8 @@ async def add_comment(
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
         data.is_internal = False
     if data.remind_at is not None:
-        if not data.is_internal:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Os lembretes só podem ser criados em notas internas.")
+        if not _can_set_reminder(ticket, current_user):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só administradores, técnicos e responsáveis pelo ticket podem criar lembretes.")
         when = data.remind_at if data.remind_at.tzinfo else data.remind_at.replace(tzinfo=timezone.utc)
         if when <= datetime.now(timezone.utc):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha uma data e hora no futuro para o lembrete.")

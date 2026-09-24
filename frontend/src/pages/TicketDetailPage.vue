@@ -199,18 +199,27 @@
                 <span class="material-icons" style="font-size:14px">close</span>
               </button>
             </div>
-            <div v-if="auth.isStaff && isInternal" class="reminder-box">
+            <div v-if="canRemind" class="reminder-box" :class="{ off: !reminderOn }">
               <div class="reminder-title">
+                <div class="hd-toggle-wrap" @click="toggleReminder">
+                  <div class="hd-toggle-track" :class="{ on: reminderOn }">
+                    <div class="hd-toggle-thumb"></div>
+                  </div>
+                </div>
                 <span class="material-icons">alarm</span>
-                Lembrar-me deste ticket <span class="reminder-opt">(opcional — só para si)</span>
+                Lembrar-me deste ticket <span class="reminder-opt">(só para si)</span>
               </div>
-              <div class="reminder-row">
-                <input class="hd-input reminder-date" type="date" v-model="remindDate" :min="todayIso" />
-                <input class="hd-input reminder-time" type="time" v-model="remindTime" :disabled="!remindDate" />
-                <button v-for="q in reminderQuick" :key="q.label" type="button" class="reminder-chip" @click="setReminderIn(q.days)">{{ q.label }}</button>
-                <button v-if="remindDate" type="button" class="reminder-chip clear" @click="remindDate = ''">Sem lembrete</button>
-              </div>
-              <div v-if="remindDate" class="reminder-hint">Recebe um email e uma notificação a {{ reminderPreview }}.</div>
+              <template v-if="reminderOn">
+                <div class="reminder-row">
+                  <input class="hd-input reminder-date" type="date" v-model="remindDate" :min="todayIso" />
+                  <input class="hd-input reminder-time" type="time" v-model="remindTime" />
+                  <button v-for="q in reminderQuick" :key="q.label" type="button" class="reminder-chip" @click="setReminderIn(q.days)">{{ q.label }}</button>
+                </div>
+                <div class="reminder-hint">
+                  <template v-if="remindDate">Recebe um email e uma notificação a {{ reminderPreview }}.</template>
+                  <template v-else>Escolha o dia em que quer ser lembrado.</template>
+                </div>
+              </template>
             </div>
             <div class="hd-row" style="justify-content:space-between;margin-top:12px">
               <div class="hd-row" style="gap:8px">
@@ -472,9 +481,21 @@ const route = useRoute()
 const ticket = ref<any>(null)
 const newComment = ref('')
 const isInternal = ref(false)
+const reminderOn = ref(false)
 const remindDate = ref('')
 const remindTime = ref('09:00')
 const todayIso = computed(() => toIsoDate(new Date()))
+const canRemind = computed(() => {
+  const me = auth.user?.id
+  const t: any = ticket.value
+  if (!me || !t) return false
+  return auth.isStaff || t.assignee?.id === me || (t.assignees ?? []).some((a: any) => a.id === me)
+})
+
+function toggleReminder() {
+  reminderOn.value = !reminderOn.value
+  if (reminderOn.value && !remindDate.value) setReminderIn(1)
+}
 const reminderQuick = [
   { label: 'Amanhã', days: 1 },
   { label: 'Daqui a 3 dias', days: 3 },
@@ -715,12 +736,16 @@ async function saveContent() {
 
 async function onAddComment() {
   if (!newComment.value.trim() && !commentFile.value) return
+  if (reminderOn.value && !remindDate.value) {
+    commentError.value = 'Escolha o dia do lembrete, ou desligue "Lembrar-me deste ticket".'
+    return
+  }
   commenting.value = true
   commentError.value = ''
   const shouldClose = autoCloseOnSend.value && auth.isStaff
   autoCloseOnSend.value = false
   try {
-    const remindAt = isInternal.value && remindDate.value
+    const remindAt = reminderOn.value && remindDate.value
       ? new Date(`${remindDate.value}T${remindTime.value || '09:00'}`).toISOString()
       : null
     await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value, remindAt)
@@ -728,6 +753,7 @@ async function onAddComment() {
     isInternal.value = false
     remindDate.value = ''
     remindTime.value = '09:00'
+    reminderOn.value = false
     if (commentFile.value) {
       await uploadTicketAttachment(ticket.value.id, commentFile.value)
       commentFile.value = null
@@ -1450,7 +1476,10 @@ function formatSize(size: number) {
   border: 1px dashed #F59E0B; border-radius: 10px;
   background: rgba(245, 158, 11, .06);
 }
-.reminder-title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--c-text); margin-bottom: 8px; }
+.reminder-box.off { border-color: var(--c-border); background: transparent; padding: 8px 12px; }
+.reminder-box.off .reminder-title { margin-bottom: 0; color: var(--c-muted); font-weight: 600; }
+.reminder-box.off .reminder-title .material-icons { color: var(--c-muted); }
+.reminder-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--c-text); margin-bottom: 8px; }
 .reminder-title .material-icons { font-size: 17px; color: #D97706; }
 .reminder-opt { font-weight: 400; font-size: 12px; color: var(--c-muted); }
 .reminder-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

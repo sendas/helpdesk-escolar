@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.8.8'
+export const APP_VERSION = '1.8.9'
 export const APP_VERSION_DATE = '2026-09-24'
-export const APP_VERSION_TIME = '16:00'
+export const APP_VERSION_TIME = '17:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.9',
+    date: '2026-09-24',
+    time: '17:00',
+    title: '"Lembrar-me deste ticket" sempre disponível ao responder',
+    changes: [
+      'A opção "Lembrar-me deste ticket" passa a estar sempre visível na caixa de resposta, com um interruptor para ativar ou desativar — já não depende de "Nota interna".',
+      'Disponível para administradores, técnicos e docentes a quem o ticket está atribuído.',
+      'O lembrete é sempre privado: mesmo numa resposta pública, só quem o criou vê a indicação do lembrete e recebe o aviso.',
+    ],
+  },
   {
     version: '1.8.8',
     date: '2026-09-24',

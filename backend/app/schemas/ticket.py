@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from app.models.ticket import TicketStatus, TicketPriority
 from app.schemas.user import HelpdeskGroupRead, UserRead
 from app.schemas.category import CategoryRead
@@ -67,6 +67,14 @@ class CommentRead(BaseModel):
     remind_at: datetime | None = None
     reminder_sent_at: datetime | None = None
     author: UserRead
+
+    @model_validator(mode="after")
+    def _private_reminder(self):
+        from app.api.deps import current_viewer_id
+        if self.author is None or self.author.id != current_viewer_id.get():
+            self.remind_at = None
+            self.reminder_sent_at = None
+        return self
 
 
 class CommentUpdate(BaseModel):

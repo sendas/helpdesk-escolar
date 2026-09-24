@@ -36,6 +36,7 @@ async def send_due_reminders(db: AsyncSession) -> int:
                 "title": ticket.title,
                 "status": ticket.status.value,
                 "note": comment.body,
+                "note_is_internal": comment.is_internal,
                 "note_created_at": comment.created_at,
             })
         if author:
