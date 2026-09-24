@@ -1,3 +1,4 @@
+import re
 import secrets
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -20,6 +21,8 @@ class DemoLoginRequest(BaseModel):
 
 class NoAccessContactRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
+    email: str = Field(..., min_length=3, max_length=200)
+    phone: str = Field("", max_length=40)
     recruitment_group: str = Field("", max_length=200)
     school: str = Field("", max_length=200)
     message: str = Field(..., min_length=1, max_length=5000)
@@ -180,10 +183,16 @@ async def no_access_contact(data: NoAccessContactRequest):
     if not settings.mail_server:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envio de email não configurado no servidor.")
 
+    contact_email = data.email.strip()
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", contact_email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Indique um email válido para podermos responder.")
+
     await email_service.send_no_access_contact(
         to_email,
         {
             "name": data.name.strip(),
+            "email": contact_email,
+            "phone": data.phone.strip(),
             "recruitment_group": data.recruitment_group.strip(),
             "school": data.school.strip(),
             "message": data.message.strip(),

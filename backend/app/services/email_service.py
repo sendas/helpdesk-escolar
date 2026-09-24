@@ -92,7 +92,7 @@ async def send_no_access_contact(to_email: str, contact_data: dict) -> None:
             recipients=[to_email],
             body=html_body,
             subtype=MessageType.html,
-            headers={"Reply-To": settings.mail_from},
+            headers={"Reply-To": contact_data.get("email") or settings.mail_from},
         )
         fm = FastMail(_get_conf())
         await fm.send_message(message)

@@ -9,6 +9,8 @@
     <p>Alguém preencheu o formulário "Não tenho acesso ao mail institucional" no ecrã de login do Helpdesk.</p>
     <table style="width:100%; border-collapse: collapse; margin-bottom:16px">
       <tr><td style="padding:8px; font-weight:bold; width:32%">Nome</td><td style="padding:8px">{{ name }}</td></tr>
+      <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Email</td><td style="padding:8px"><a href="mailto:{{ email }}">{{ email }}</a></td></tr>
+      <tr><td style="padding:8px; font-weight:bold">Telefone</td><td style="padding:8px">{% if phone %}<a href="tel:{{ phone }}">{{ phone }}</a>{% else %}—{% endif %}</td></tr>
       <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Grupo de recrutamento</td><td style="padding:8px">{{ recruitment_group or '—' }}</td></tr>
       <tr><td style="padding:8px; font-weight:bold">Escola</td><td style="padding:8px">{{ school or '—' }}</td></tr>
     </table>
@@ -16,8 +18,8 @@
       <div style="font-weight:bold;margin-bottom:8px;color:#1f2937">Mensagem</div>
       <div style="white-space:pre-wrap;line-height:1.45;color:#334155">{{ message }}</div>
     </div>
-    <p style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:6px;color:#92400E;font-size:0.9em;line-height:1.45;margin:18px 0 0;padding:12px 14px">
-      Esta pessoa não indicou um endereço de email de contacto (o formulário é para quem não tem acesso ao mail institucional). Use os dados acima para a identificar e contactar por outra via.
+    <p style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#334155;font-size:0.9em;line-height:1.45;margin:18px 0 0;padding:12px 14px">
+      Pode responder diretamente a este email — a resposta segue para {{ email }}.
     </p>
   </div>
 </body>

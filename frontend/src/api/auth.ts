@@ -15,7 +15,7 @@ export function getAzureLoginUrl() {
   return `${apiUrl}/api/v1/auth/azure-login`
 }
 
-export async function sendNoAccessContact(payload: { name: string; recruitment_group: string; school: string; message: string }) {
+export async function sendNoAccessContact(payload: { name: string; email: string; phone: string; recruitment_group: string; school: string; message: string }) {
   const { data } = await api.post('/api/v1/auth/no-access-contact', payload)
   return data as { sent: boolean }
 }

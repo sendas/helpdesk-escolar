@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.8.3'
-export const APP_VERSION_DATE = '2026-09-22'
-export const APP_VERSION_TIME = '23:30'
+export const APP_VERSION = '1.8.4'
+export const APP_VERSION_DATE = '2026-09-24'
+export const APP_VERSION_TIME = '10:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.4',
+    date: '2026-09-24',
+    time: '10:00',
+    title: 'Formulário "Não tenho acesso ao mail institucional" com email e telefone',
+    changes: [
+      'O formulário passa a pedir um email para resposta (obrigatório, pode ser pessoal) e um contacto telefónico (opcional).',
+      'O email recebido mostra o email e o telefone, e responder a esse email envia a resposta diretamente para a pessoa.',
+    ],
+  },
   {
     version: '1.8.3',
     date: '2026-09-22',
