@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.8.4'
+export const APP_VERSION = '1.8.5'
 export const APP_VERSION_DATE = '2026-09-24'
-export const APP_VERSION_TIME = '10:00'
+export const APP_VERSION_TIME = '10:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.8.5',
+    date: '2026-09-24',
+    time: '10:30',
+    title: 'Página "Sobre" atualizada',
+    changes: [
+      'A página "Sobre" descreve agora o desenvolvimento feito com o Claude Code (Anthropic), o fluxo de trabalho atual (do pedido ao teste, preview e publicação) e o que foi construído.',
+      'Novos números do projeto: versões publicadas, commits e linhas de código. A referência ao ChatGPT fica reduzida ao uso pontual que teve.',
+    ],
+  },
   {
     version: '1.8.4',
     date: '2026-09-24',

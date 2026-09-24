@@ -12,76 +12,77 @@
           </div>
         </div>
         <p class="about-text">
-          Esta aplicação foi concebida, desenhada e desenvolvida em maio de 2026 por Pedro Sendas de Moura Pereira,
-          professor de Informática do Agrupamento. A ideia surgiu da necessidade prática de centralizar todos os
-          pedidos de apoio técnico — dos docentes, funcionários e direção — num único sistema, eliminando a dispersão
-          por emails, mensagens e contactos informais que tornavam difícil acompanhar e priorizar as ocorrências.
+          O Helpdesk Escolar foi concebido e é mantido por Pedro Sendas de Moura Pereira, professor de Informática
+          do Agrupamento, desde maio de 2026. Nasceu da necessidade de reunir num só sistema todos os pedidos de apoio
+          técnico — de docentes, não docentes, secretaria e direção — que antes se perdiam entre emails, mensagens e
+          conversas de corredor, e de dar à equipa TIC uma forma clara de os acompanhar, priorizar e resolver.
         </p>
+        <div class="about-stats">
+          <div v-for="st in stats" :key="st.label" class="about-stat">
+            <div class="about-stat-value">{{ st.value }}</div>
+            <div class="about-stat-label">{{ st.label }}</div>
+          </div>
+        </div>
       </div>
 
       <!-- Método de criação -->
       <div class="hd-card about-card">
         <div class="about-section-title">
           <span class="material-icons" style="font-size:20px;color:#3D52D5">auto_awesome</span>
-          Método de criação — IA como co-piloto
+          Como foi construído — desenvolvimento com o Claude
         </div>
 
         <p class="about-text" style="margin-bottom:16px">
-          O Helpdesk Escolar foi desenvolvido através de uma metodologia de <strong>programação assistida por inteligência artificial</strong>,
-          em que o docente assumiu o papel de arquiteto e produto — definindo requisitos, validando decisões e testando
-          cada funcionalidade — enquanto dois modelos de linguagem funcionaram como co-pilotos de desenvolvimento.
+          A aplicação foi desenvolvida com <strong>programação assistida por inteligência artificial</strong>.
+          O docente assume o papel de responsável pelo produto — decide o que é preciso, descreve cada pedido,
+          avalia os resultados e aprova o que vai para produção — e o <strong>Claude</strong>, da Anthropic,
+          faz o trabalho de engenharia.
         </p>
 
-        <div class="about-tools">
-          <div class="about-tool-card">
-            <div class="about-tool-header" style="background:linear-gradient(135deg,#1a1a2e,#16213e)">
-              <span style="font-size:22px">✦</span>
-              <div>
-                <div style="font-weight:700;font-size:14px">Claude Code</div>
-                <div style="font-size:11px;opacity:.7">Anthropic · claude-sonnet-4</div>
-              </div>
+        <div class="about-claude">
+          <div class="about-claude-head">
+            <span class="about-claude-mark">✦</span>
+            <div>
+              <div style="font-weight:800;font-size:16px">Claude Code</div>
+              <div style="font-size:12px;opacity:.8">Anthropic · modelos Claude Sonnet, Opus e Fable</div>
             </div>
-            <p class="about-tool-desc">
-              Responsável pela maior parte da arquitetura e da implementação. Através do terminal (CLI),
-              gerou e editou diretamente os ficheiros do projeto — modelos SQLAlchemy, endpoints FastAPI,
-              componentes Vue, lógica de autenticação LDAP/Azure AD, notificações Web Push
-              e toda a configuração Docker. A capacidade de raciocinar sobre múltiplos
-              ficheiros ao mesmo tempo e manter contexto ao longo de sessões longas foi determinante.
-            </p>
           </div>
-
-          <div class="about-tool-card">
-            <div class="about-tool-header" style="background:linear-gradient(135deg,#10a37f,#0d8a6c)">
-              <span style="font-size:22px">⬡</span>
-              <div>
-                <div style="font-weight:700;font-size:14px">ChatGPT / Codex</div>
-                <div style="font-size:11px;opacity:.7">OpenAI · GPT-4o</div>
-              </div>
-            </div>
-            <p class="about-tool-desc">
-              Utilizado para exploração rápida de alternativas, revisão de algoritmos específicos e
-              segunda opinião sobre escolhas de design. Em particular, foi consultado na fase inicial
-              de definição da stack tecnológica, na análise de opções para autenticação híbrida e
-              na revisão da integração VAPID/Web Push. A complementaridade entre os dois modelos
-              permitiu cruzar perspectivas e chegar a soluções mais robustas.
+          <div class="about-claude-body">
+            <p class="about-text" style="margin-bottom:12px">
+              Praticamente todo o código da aplicação foi escrito pelo Claude Code, a trabalhar diretamente no
+              repositório: lê o código existente, implementa as alterações no servidor e na interface, testa-as,
+              atualiza a versão e as notas de atualização, e publica no GitHub. Mais de dois terços dos commits
+              do projeto foram feitos pelo próprio Claude.
             </p>
+            <div class="about-claude-sub">O que o Claude construiu, entre outras coisas</div>
+            <ul class="about-claude-list">
+              <li v-for="item in claudeWork" :key="item">{{ item }}</li>
+            </ul>
           </div>
         </div>
+
+        <p class="about-minor">
+          <span class="material-icons" style="font-size:15px">info</span>
+          O ChatGPT / Codex (OpenAI) foi usado pontualmente numa fase inicial, para algumas consultas de apoio.
+        </p>
 
         <div class="about-workflow">
           <div class="about-workflow-title">Fluxo de trabalho</div>
           <ol class="about-steps">
-            <li><strong>Levantamento de requisitos</strong> — definição das funcionalidades necessárias com base no dia-a-dia do agrupamento: gestão de tickets, notificações, autenticação com contas Microsoft, mobile-first.</li>
-            <li><strong>Desenho da arquitetura</strong> — escolha da stack (FastAPI + SQLite/PostgreSQL + Quasar PWA) e estrutura de diretórios gerada assistida por IA.</li>
-            <li><strong>Desenvolvimento iterativo</strong> — cada funcionalidade foi pedida em linguagem natural, o código gerado foi revisto, testado em ambiente Docker local e refinado em ciclos curtos de 10–30 minutos.</li>
-            <li><strong>Validação em contexto real</strong> — a aplicação foi testada com utilizadores do agrupamento durante o seu desenvolvimento, incorporando feedback imediato (layout móvel, safe area iOS, fluxos de autenticação).</li>
-            <li><strong>Manutenção e evolução</strong> — novas funcionalidades continuam a ser adicionadas com o mesmo método: descrição do problema → código gerado e revisto → deploy e teste.</li>
+            <li><strong>Pedido em linguagem natural</strong> — o docente descreve o que quer, em português, muitas vezes a partir do telemóvel e com uma captura de ecrã do problema (por exemplo: "os cartões do Painel não são clicáveis").</li>
+            <li><strong>Análise do código</strong> — o Claude lê as partes relevantes da aplicação para perceber a causa ou o melhor sítio para a alteração, em vez de adivinhar.</li>
+            <li><strong>Implementação</strong> — altera o servidor (FastAPI) e a interface (Vue/Quasar) em conjunto, incluindo migrações da base de dados quando necessário.</li>
+            <li><strong>Teste real</strong> — arranca a aplicação com uma base de dados de teste, confirma o comportamento pela API e num browser automatizado, e tira capturas de ecrã.</li>
+            <li><strong>Preview e ajustes</strong> — para mudanças visuais, envia as capturas antes de publicar; o docente pede afinações (cores, textos, disposição) até ficar como pretende.</li>
+            <li><strong>Publicação</strong> — nova versão com notas em "Versão / Atualizações", commit e envio para o GitHub.</li>
+            <li><strong>Instalação no servidor</strong> — no servidor da escola basta <code>git pull</code> e reconstruir os contentores Docker; a base de dados é preservada.</li>
           </ol>
         </div>
 
         <div class="about-quote">
-          "A IA não substituiu o conhecimento técnico — amplificou-o. Saber o que pedir, avaliar
-          o que é gerado e adaptar ao contexto específico da escola continuou a ser o trabalho do docente."
+          "A IA não substituiu o conhecimento do docente — multiplicou-o. Saber o que pedir, perceber se o resultado
+          serve a escola e decidir o que vai para produção continuou a ser trabalho humano; o Claude tornou possível
+          fazê-lo ao ritmo de várias melhorias por dia."
         </div>
       </div>
 
@@ -126,7 +127,7 @@
 
       <!-- Rodapé -->
       <div class="about-footer">
-        Helpdesk Escolar · maio de 2026 · desenvolvido com ❤ para o agrupamento
+        Helpdesk Escolar · v{{ APP_VERSION }} · em desenvolvimento desde maio de 2026 · feito com ❤ para o agrupamento
       </div>
 
     </div>
@@ -134,6 +135,24 @@
 </template>
 
 <script setup lang="ts">
+import { APP_VERSION, RELEASE_NOTES } from '../utils/version'
+
+const stats = [
+  { value: `${RELEASE_NOTES.length}`, label: 'versões publicadas' },
+  { value: '175+', label: 'commits no repositório' },
+  { value: '~19 500', label: 'linhas de código' },
+  { value: 'maio 2026', label: 'início do projeto' },
+]
+
+const claudeWork = [
+  'Gestão completa de tickets: estados, prioridades, atribuição a técnicos e grupos, encaminhamento automático e tempos de resposta por categoria',
+  'Login com a conta Microsoft (Entra ID), LDAP e contas locais, com importação de utilizadores e perfis automáticos',
+  'Notificações por email e push no telemóvel, com agrupamento de várias atualizações num só email',
+  'Leitura da caixa de correio: respostas por email entram no ticket e tickets fechados pela empresa de apoio fecham automaticamente',
+  'Escalamento para a empresa de apoio informático e aviso/fecho automático de tickets inativos',
+  'Painel inicial e login em design moderno (com opção de voltar ao clássico), modo escuro e versão para telemóvel (PWA)',
+  'Estatísticas, base de conhecimento, sugestões, cópias de segurança automáticas (incluindo OneDrive) e registo de emails',
+]
 
 const techs = [
   { name: 'FastAPI', desc: 'Backend Python — API REST assíncrona', icon: 'bolt', color: '#009688' },
@@ -144,6 +163,8 @@ const techs = [
   { name: 'Web Push (RFC 8291)', desc: 'Notificações push nativas — iOS, Android, PC', icon: 'notifications', color: '#FF6B35' },
   { name: 'Docker + nginx', desc: 'Containerização e reverse proxy', icon: 'dns', color: '#2496ED' },
   { name: 'Jinja2 + fastapi-mail', desc: 'Templates HTML de email', icon: 'email', color: '#E91E63' },
+  { name: 'Microsoft Graph', desc: 'Leitura da caixa de correio e cópias no OneDrive', icon: 'cloud', color: '#0078D4' },
+  { name: 'Chart.js', desc: 'Gráficos das estatísticas', icon: 'bar_chart', color: '#FF6384' },
 ]
 </script>
 
@@ -196,32 +217,25 @@ const techs = [
   color: var(--c-text);
 }
 
-/* ── AI tools ────────────────────────────────────────────── */
-.about-tools {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 24px;
+/* ── Stats ── */
+.about-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+.about-stat { padding: 12px; border-radius: 10px; background: var(--c-primary-soft); text-align: center; }
+.about-stat-value { font-size: 18px; font-weight: 800; color: var(--c-primary); }
+.about-stat-label { font-size: 11px; color: var(--c-muted); margin-top: 2px; }
+
+/* ── Claude ── */
+.about-claude { border: 1px solid var(--c-border); border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+.about-claude-head {
+  display: flex; align-items: center; gap: 12px; padding: 16px 18px; color: #fff;
+  background: linear-gradient(135deg, #C15F3C, #D97757);
 }
-.about-tool-card {
-  border: 1px solid var(--c-border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.about-tool-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  color: #fff;
-}
-.about-tool-desc {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--c-muted);
-  padding: 14px 16px;
-  margin: 0;
-}
+.about-claude-mark { font-size: 26px; line-height: 1; }
+.about-claude-body { padding: 16px 18px; }
+.about-claude-sub { font-size: 12px; font-weight: 700; color: var(--c-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.about-claude-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.about-claude-list li { font-size: 13px; line-height: 1.55; color: var(--c-text); }
+.about-minor { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-muted); margin: 0 0 20px; }
+.about-steps code { font-size: 12px; padding: 1px 5px; border-radius: 4px; background: var(--c-primary-soft); }
 
 /* ── Workflow ────────────────────────────────────────────── */
 .about-workflow {
@@ -283,7 +297,7 @@ const techs = [
 }
 
 @media (max-width: 600px) {
-  .about-tools { grid-template-columns: 1fr; }
+  .about-stats { grid-template-columns: repeat(2, 1fr); }
   .about-tech-grid { grid-template-columns: 1fr; }
 }
 </style>
