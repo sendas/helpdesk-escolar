@@ -13,6 +13,8 @@ bearer = HTTPBearer()
 acting_as_demo: ContextVar[bool] = ContextVar("acting_as_demo", default=False)
 # Id of the authenticated user for the current request (reminders are only serialised for their author).
 current_viewer_id: ContextVar[int | None] = ContextVar("current_viewer_id", default=None)
+# Whether that user is a technician/admin (internal notes are only serialised for staff).
+current_viewer_is_staff: ContextVar[bool] = ContextVar("current_viewer_is_staff", default=False)
 
 
 async def get_current_user(
@@ -30,6 +32,7 @@ async def get_current_user(
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
     current_viewer_id.set(user.id)
+    current_viewer_is_staff.set(user.role in {UserRole.TECHNICIAN, UserRole.ADMIN} or user.is_technician)
     if user.auth_provider == "demo":
         from app.api.v1.settings import _read_settings
         demo_role = user.username.removeprefix("demo_")

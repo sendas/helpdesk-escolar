@@ -30,7 +30,7 @@
       <template v-else>
         <table class="hd-table">
           <thead>
-            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>CATEGORIA</th></tr>
+            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th></tr>
           </thead>
           <tbody>
             <tr v-for="t in activeTickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
@@ -46,11 +46,15 @@
                 </div>
               </td>
               <td><PriorityBadge :priority="t.priority" /></td>
-              <td class="cell-person" :title="t.creator?.display_name">{{ shortName(t.creator?.display_name) }}</td>
+              <td class="cell-person" :title="t.creator?.display_name">
+                {{ shortName(t.creator?.display_name) }}
+                <span v-if="groupTag(t.creator?.display_name)" class="group-tag">{{ groupTag(t.creator?.display_name) }}</span>
+              </td>
+              <td class="cell-school" :title="t.school?.name">{{ t.school?.short_name || t.school?.name || '—' }}</td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
             </tr>
             <tr v-if="!activeTickets.length">
-              <td colspan="6" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets em aberto.</td>
+              <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets em aberto.</td>
             </tr>
           </tbody>
         </table>
@@ -65,7 +69,7 @@
 
         <table v-if="showCompleted && completedTickets.length" class="hd-table completed-table">
           <thead>
-            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>CATEGORIA</th></tr>
+            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th></tr>
           </thead>
           <tbody>
             <tr v-for="t in completedTickets" :key="t.id" class="completed-row" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
@@ -76,7 +80,11 @@
               <td class="cell-title">{{ t.title }}</td>
               <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
               <td><PriorityBadge :priority="t.priority" /></td>
-              <td class="cell-person" :title="t.creator?.display_name">{{ shortName(t.creator?.display_name) }}</td>
+              <td class="cell-person" :title="t.creator?.display_name">
+                {{ shortName(t.creator?.display_name) }}
+                <span v-if="groupTag(t.creator?.display_name)" class="group-tag">{{ groupTag(t.creator?.display_name) }}</span>
+              </td>
+              <td class="cell-school" :title="t.school?.name">{{ t.school?.short_name || t.school?.name || '—' }}</td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
             </tr>
           </tbody>
@@ -93,7 +101,7 @@ import PriorityBadge from '../components/PriorityBadge.vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
-import { shortName } from '../utils/names'
+import { shortName, groupTag } from '../utils/names'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -183,7 +191,12 @@ function statusLabel(s: string) {
 .reminder-flag { font-size: 15px; color: #D97706; vertical-align: -3px; margin-left: 4px; }
 .dark .reminder-flag { color: #FCD34D; }
 .cell-title { font-weight: 500; min-width: 220px; }
-.cell-person { white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.cell-person { white-space: nowrap; }
+.cell-school { white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; color: var(--c-muted); font-size: 13px; }
+.group-tag {
+  display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 700; color: var(--c-muted);
+  border: 1px solid var(--c-border); border-radius: 6px; padding: 0 6px; line-height: 17px; vertical-align: 1px;
+}
 .cat-chip {
   display: inline-block; font-size: 12px; font-weight: 600; color: var(--c-primary);
   background: rgba(64, 87, 216, .08); border-radius: 999px; padding: 3px 10px; white-space: nowrap;

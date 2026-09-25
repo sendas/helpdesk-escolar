@@ -1,8 +1,21 @@
-export const APP_VERSION = '1.9.7'
+export const APP_VERSION = '1.9.8'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '13:30'
+export const APP_VERSION_TIME = '14:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.8',
+    date: '2026-09-25',
+    time: '14:00',
+    title: 'Nomes reduzidos com grupo de recrutamento, escola na lista e notas internas protegidas',
+    changes: [
+      'Nomes reduzidos na conversa, em "Aberto por" e nos detalhes (ex.: "Maria Serra"), com o grupo de recrutamento e a sua abreviatura (ex.: "510 FQ"); o nome completo aparece ao passar o rato.',
+      'Nova coluna "Escola" na lista "Os meus tickets", e o grupo de recrutamento junto ao solicitante.',
+      'As notas internas passam a ser enviadas pelo servidor apenas a técnicos e administradores — quem abriu o pedido deixa de as poder ver.',
+      'Editar ou apagar uma nota interna já não aparece no histórico público do ticket.',
+      'Corrigida a cor da etiqueta da escola no modo claro.',
+    ],
+  },
   {
     version: '1.9.7',
     date: '2026-09-25',

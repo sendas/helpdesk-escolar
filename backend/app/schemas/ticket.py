@@ -130,11 +130,13 @@ class TicketRead(BaseModel):
 
     @model_validator(mode="after")
     def _hide_private_messages(self):
-        from app.api.deps import current_viewer_id
+        from app.api.deps import current_viewer_id, current_viewer_is_staff
         viewer = current_viewer_id.get()
+        is_staff = current_viewer_is_staff.get()
         self.comments = [
             c for c in self.comments
-            if c.private_to is None or viewer in (c.author.id, c.private_to.id)
+            if (c.private_to is None or viewer in (c.author.id, c.private_to.id))
+            and (not c.is_internal or is_staff)
         ]
         return self
 

@@ -76,7 +76,7 @@
           </template>
         </div>
         <div class="ticket-meta">
-          Aberto por <strong>{{ ticket.creator.display_name }}</strong> · {{ formatDate(ticket.created_at) }}
+          Aberto por <strong :title="ticket.creator.display_name">{{ personLabel(ticket.creator.display_name) }}</strong> · {{ formatDate(ticket.created_at) }}
         </div>
       </div>
 
@@ -85,10 +85,11 @@
         <div>
           <!-- Description message -->
           <div class="hd-msg" style="margin-bottom:12px">
-            <AvatarCircle :name="ticket.creator.display_name" size="36" />
+            <AvatarCircle :name="shortName(ticket.creator.display_name)" size="36" />
             <div class="hd-msg-body">
               <div class="hd-msg-header">
-                <span class="hd-msg-author">{{ ticket.creator.display_name }}</span>
+                <span class="hd-msg-author" :title="ticket.creator.display_name">{{ shortName(ticket.creator.display_name) }}</span>
+                <span v-if="groupTag(ticket.creator.display_name)" class="group-tag">{{ groupTag(ticket.creator.display_name) }}</span>
                 <span class="hd-msg-time">{{ formatDate(ticket.created_at) }}</span>
               </div>
               <div v-if="!editingContent" class="hd-msg-bubble" v-html="renderText(ticket.description)"></div>
@@ -140,10 +141,11 @@
             :class="{ 'hd-msg-internal': c.is_internal, 'hd-msg-private': !!c.private_to }"
             style="margin-bottom:12px"
           >
-            <AvatarCircle :name="c.author.display_name" size="36" />
+            <AvatarCircle :name="shortName(c.author.display_name)" size="36" />
             <div class="hd-msg-body">
               <div class="hd-msg-header">
-                <span class="hd-msg-author">{{ c.author.display_name }}</span>
+                <span class="hd-msg-author" :title="c.author.display_name">{{ shortName(c.author.display_name) }}</span>
+                <span v-if="groupTag(c.author.display_name)" class="group-tag">{{ groupTag(c.author.display_name) }}</span>
                 <span v-if="c.is_internal" class="hd-internal-tag">NOTA INTERNA</span>
                 <span v-if="c.remind_at" class="reminder-tag" :class="{ sent: !!c.reminder_sent_at }" :title="c.reminder_sent_at ? 'Lembrete já enviado' : 'Vai receber um lembrete por email e notificação'">
                   <span class="material-icons">{{ c.reminder_sent_at ? 'notifications_off' : 'alarm' }}</span>
@@ -305,8 +307,8 @@
             <div class="hd-detail-row">
               <div class="hd-detail-label">Solicitante</div>
               <div class="hd-row" style="gap:6px">
-                <AvatarCircle :name="ticket.creator.display_name" size="22" />
-                <span style="font-size:13px">{{ ticket.creator.display_name }}</span>
+                <AvatarCircle :name="shortName(ticket.creator.display_name)" size="22" />
+                <span style="font-size:13px" :title="ticket.creator.display_name">{{ personLabel(ticket.creator.display_name) }}</span>
               </div>
             </div>
 
@@ -330,7 +332,7 @@
               <div class="hd-detail-label">Em conhecimento</div>
               <div v-if="ticket.watchers?.length" class="watcher-list" style="width:100%">
                 <div v-for="user in ticket.watchers" :key="user.id" class="watcher-mini">
-                  <AvatarCircle :name="user.display_name" size="22" />
+                  <AvatarCircle :name="shortName(user.display_name)" size="22" />
                   <span>{{ user.display_name }}</span>
                   <button
                     v-if="canEditWatchers"
@@ -354,7 +356,7 @@
                   <div v-if="watcherSearch.trim().length >= 2 && (watcherLoading || filteredWatcherUsers.length)" class="person-search-menu">
                     <div v-if="watcherLoading" class="person-search-empty">A pesquisar...</div>
                     <button v-for="u in filteredWatcherUsers" :key="u.id" type="button" @mousedown.prevent="addWatcherCandidate(u)">
-                      <AvatarCircle :name="u.display_name" size="22" />
+                      <AvatarCircle :name="shortName(u.display_name)" size="22" />
                       <span>
                         <strong>{{ u.display_name }}</strong>
                         <small>{{ u.email }}</small>
@@ -378,7 +380,7 @@
               <div v-if="auth.isStaff" class="assignee-editor">
                 <div v-if="assignedTechnicians.length" class="assignee-chip-list">
                   <span v-for="user in assignedTechnicians" :key="user.id" class="assignee-chip">
-                    <AvatarCircle :name="user.display_name" size="20" />
+                    <AvatarCircle :name="shortName(user.display_name)" size="20" />
                     {{ user.display_name }}
                     <button type="button" title="Remover técnico" @click="removeAssignee(user.id)">
                       <span class="material-icons">close</span>
@@ -398,7 +400,7 @@
                   />
                   <div v-if="assigneeSearchOpen && filteredAssigneeUsers.length" class="person-search-menu">
                     <button v-for="u in filteredAssigneeUsers" :key="u.id" type="button" @mousedown.prevent="addAssignee(u)">
-                      <AvatarCircle :name="u.display_name" size="22" />
+                      <AvatarCircle :name="shortName(u.display_name)" size="22" />
                       <span>
                         <strong>{{ u.display_name }}</strong>
                         <small>{{ u.email }}</small>
@@ -516,7 +518,7 @@ import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import { formatDateTime } from '../utils/dates'
-import { shortName } from '../utils/names'
+import { shortName, groupTag, personLabel } from '../utils/names'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -1592,13 +1594,17 @@ function formatSize(size: number) {
 .reply-status.changed { border-color: var(--c-primary); background: var(--c-primary-soft); color: var(--c-primary); }
 .reply-status.changed select { color: var(--c-primary); }
 .dark .reply-status select option { background: #111827; color: #F9FAFB; }
+.group-tag {
+  display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--c-muted);
+  border: 1px solid var(--c-border); border-radius: 6px; padding: 0 6px; line-height: 17px;
+}
 .school-badge {
   display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
   font-size: 13px; font-weight: 700; color: #0E7490; background: #CFFAFE;
   border: 1px solid #A5F3FC; border-radius: 999px; padding: 3px 12px 3px 9px;
 }
 .school-badge .material-icons { font-size: 16px; }
-.dark .send-group { gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.send-group { gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .reply-status {
   display: inline-flex; align-items: center; gap: 4px; padding: 0 4px 0 10px; height: 36px;
   border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-muted); cursor: pointer;
@@ -1608,7 +1614,7 @@ function formatSize(size: number) {
 .reply-status.changed { border-color: var(--c-primary); background: var(--c-primary-soft); color: var(--c-primary); }
 .reply-status.changed select { color: var(--c-primary); }
 .dark .reply-status select option { background: #111827; color: #F9FAFB; }
-.school-badge { color: #A5F3FC; background: rgba(8, 145, 178, .2); border-color: rgba(34, 211, 238, .35); }
+.dark .school-badge { color: #A5F3FC; background: rgba(8, 145, 178, .2); border-color: rgba(34, 211, 238, .35); }
 /* Private messages: grouped in one indented block with its own colour */
 .private-thread {
   margin: 0 0 14px 56px; padding: 12px 14px 2px;

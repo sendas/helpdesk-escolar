@@ -311,7 +311,7 @@ async def update_comment(db: AsyncSession, comment: Comment, body: str) -> Comme
     comment.body = body
     comment.updated_at = datetime.utcnow()
     comment.ticket.updated_at = datetime.utcnow()
-    if not comment.private_to_id:
+    if not comment.private_to_id and not comment.is_internal:
         db.add(TicketEvent(ticket_id=comment.ticket_id, actor_id=comment.author_id, event_type="comment_edited", message="Resposta editada"))
     await db.commit()
     result = await db.execute(
@@ -323,7 +323,7 @@ async def update_comment(db: AsyncSession, comment: Comment, body: str) -> Comme
 async def delete_comment(db: AsyncSession, comment: Comment) -> None:
     comment.deleted_at = datetime.utcnow()
     comment.ticket.updated_at = datetime.utcnow()
-    if not comment.private_to_id:
+    if not comment.private_to_id and not comment.is_internal:
         db.add(TicketEvent(ticket_id=comment.ticket_id, actor_id=comment.author_id, event_type="comment_deleted", message="Resposta apagada"))
     await db.commit()
 
