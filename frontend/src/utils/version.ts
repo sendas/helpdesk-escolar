@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.9.6'
+export const APP_VERSION = '1.9.7'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '13:00'
+export const APP_VERSION_TIME = '13:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.7',
+    date: '2026-09-25',
+    time: '13:30',
+    title: 'Responder e alterar o estado num só clique',
+    changes: [
+      'Novo seletor de estado junto ao botão Enviar (técnicos e administradores): escolha, por exemplo, "Resolvido" e o botão passa a "Enviar e marcar Resolvido".',
+      'Por omissão fica "Manter estado"; depois de enviar volta a "Manter estado".',
+      'A resposta rápida "Resolvido ✓" pré-seleciona o estado Fechado, que pode ser alterado antes de enviar.',
+    ],
+  },
   {
     version: '1.9.6',
     date: '2026-09-25',

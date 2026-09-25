@@ -201,9 +201,9 @@
                 v-for="reply in quickReplies"
                 :key="reply.label"
                 class="quick-reply"
-                :class="{ 'quick-reply-active': reply.autoClose && autoCloseOnSend }"
+                :class="{ 'quick-reply-active': reply.autoClose && replyStatus === 'closed' }"
                 type="button"
-                @click="newComment = reply.body; autoCloseOnSend = !!reply.autoClose"
+                @click="newComment = reply.body; if (reply.autoClose) replyStatus = 'closed'"
               >
                 {{ reply.label }}
               </button>
@@ -274,14 +274,23 @@
                   Anexar
                 </button>
               </div>
+              <div class="hd-row send-group">
+              <label v-if="auth.isStaff" class="reply-status" :class="{ changed: !!replyStatus }" :title="'Estado atual: ' + statusLabel(ticket.status) + '. Pode alterá-lo ao enviar a resposta.'">
+                <span class="material-icons">sync_alt</span>
+                <select v-model="replyStatus">
+                  <option value="">Manter estado</option>
+                  <option v-for="o in statusOpts.filter(o => o.v !== ticket.status)" :key="o.v" :value="o.v">{{ o.l }}</option>
+                </select>
+              </label>
               <button
                 class="hd-btn hd-btn-primary"
                 :disabled="(!newComment.trim() && !commentFile) || commenting"
                 @click="onAddComment"
               >
                 <span class="material-icons" style="font-size:16px">send</span>
-                {{ commenting ? 'A enviar...' : (privateOn ? 'Enviar em privado' : 'Enviar') }}
+                {{ commenting ? 'A enviar...' : sendLabel }}
               </button>
+              </div>
             </div>
             <div v-if="commentError" style="color:#DC2626;font-size:13px;margin-top:8px">{{ commentError }}</div>
           </div>
@@ -625,7 +634,8 @@ const addingWatcher = ref(false)
 let watcherSearchTimer: ReturnType<typeof setTimeout> | null = null
 const attachBlobUrls = ref<Record<number, string>>({})
 const lightboxSrc = ref<string | null>(null)
-const autoCloseOnSend = ref(false)
+// Status to apply together with the reply ('' keeps the current one)
+const replyStatus = ref('')
 const commentFile = ref<File | null>(null)
 const commentFileInput = ref<HTMLInputElement | null>(null)
 const editingContent = ref(false)
@@ -837,14 +847,13 @@ async function onAddComment() {
     commentError.value = 'Escolha o dia do lembrete, ou desligue "Lembrar-me deste ticket".'
     return
   }
-  commenting.value = true
-  commentError.value = ''
   if (privateOn.value && !privateTo.value) {
     commentError.value = 'Escolha a quem enviar a mensagem privada.'
     return
   }
-  const shouldClose = autoCloseOnSend.value && auth.isStaff && !privateOn.value
-  autoCloseOnSend.value = false
+  commenting.value = true
+  commentError.value = ''
+  const newStatus = auth.isStaff && replyStatus.value && replyStatus.value !== ticket.value.status ? replyStatus.value : ''
   try {
     const remindAt = reminderOn.value && remindDate.value
       ? new Date(`${remindDate.value}T${remindTime.value || '09:00'}`).toISOString()
@@ -862,9 +871,10 @@ async function onAddComment() {
       commentFile.value = null
       if (commentFileInput.value) commentFileInput.value.value = ''
     }
-    if (shouldClose && ticket.value.status !== 'closed') {
-      await adminUpdateTicket(ticket.value.id, { status: 'closed' })
+    if (newStatus) {
+      await adminUpdateTicket(ticket.value.id, { status: newStatus })
     }
+    replyStatus.value = ''
     await load()
   } catch (e: any) {
     commentError.value = e?.response?.data?.detail || 'Erro ao enviar resposta'
@@ -891,6 +901,12 @@ function formatReminder(iso?: string | null) {
   const d = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z')
   return d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) + ' às ' + d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
 }
+
+const sendLabel = computed(() => {
+  const base = privateOn.value ? 'Enviar em privado' : 'Enviar'
+  const target = statusOpts.find((o) => o.v === replyStatus.value)
+  return target ? `${base} e marcar ${target.l}` : base
+})
 
 async function onStatusChange() {
   try {
@@ -1566,13 +1582,33 @@ function formatSize(size: number) {
 .hd-lightbox-close:hover {
   background: rgba(255, 255, 255, .25);
 }
+.send-group { gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.reply-status {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0 4px 0 10px; height: 36px;
+  border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-muted); cursor: pointer;
+}
+.reply-status .material-icons { font-size: 16px; }
+.reply-status select { max-width: 190px; border: 0; background: transparent; color: var(--c-text); font-size: 13px; font-weight: 600; padding: 6px 4px; cursor: pointer; outline: none; }
+.reply-status.changed { border-color: var(--c-primary); background: var(--c-primary-soft); color: var(--c-primary); }
+.reply-status.changed select { color: var(--c-primary); }
+.dark .reply-status select option { background: #111827; color: #F9FAFB; }
 .school-badge {
   display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
   font-size: 13px; font-weight: 700; color: #0E7490; background: #CFFAFE;
   border: 1px solid #A5F3FC; border-radius: 999px; padding: 3px 12px 3px 9px;
 }
 .school-badge .material-icons { font-size: 16px; }
-.dark .school-badge { color: #A5F3FC; background: rgba(8, 145, 178, .2); border-color: rgba(34, 211, 238, .35); }
+.dark .send-group { gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.reply-status {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0 4px 0 10px; height: 36px;
+  border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-muted); cursor: pointer;
+}
+.reply-status .material-icons { font-size: 16px; }
+.reply-status select { max-width: 190px; border: 0; background: transparent; color: var(--c-text); font-size: 13px; font-weight: 600; padding: 6px 4px; cursor: pointer; outline: none; }
+.reply-status.changed { border-color: var(--c-primary); background: var(--c-primary-soft); color: var(--c-primary); }
+.reply-status.changed select { color: var(--c-primary); }
+.dark .reply-status select option { background: #111827; color: #F9FAFB; }
+.school-badge { color: #A5F3FC; background: rgba(8, 145, 178, .2); border-color: rgba(34, 211, 238, .35); }
 /* Private messages: grouped in one indented block with its own colour */
 .private-thread {
   margin: 0 0 14px 56px; padding: 12px 14px 2px;
