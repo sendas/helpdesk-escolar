@@ -11,7 +11,7 @@ from app.models.user import User, UserRole
 from app.models.ticket import Attachment, Comment, TicketEvent, TicketStatus
 from app.models.category import Category
 from app.models.school import School
-from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, CommentCreate, CommentRead, CommentUpdate, WatcherAdd
+from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, TicketListItem, CommentCreate, CommentRead, CommentUpdate, WatcherAdd
 from app.services import ticket_service, email_service, push_service
 from app.api.v1.settings import _read_settings
 from app.config import settings
@@ -87,7 +87,23 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
 ):
     items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id, search, exclude_category_ids, status_in, overdue, expiring)
-    return {"items": items, "total": total, "page": page, "size": size}
+    # Reminders are private, so the list only flags the viewer's own pending ones
+    reminded: set[int] = set()
+    if items:
+        rows = await db.execute(
+            select(Comment.ticket_id).where(
+                Comment.ticket_id.in_([t.id for t in items]),
+                Comment.author_id == current_user.id,
+                Comment.remind_at.is_not(None),
+                Comment.reminder_sent_at.is_(None),
+                Comment.deleted_at.is_(None),
+            )
+        )
+        reminded = {row[0] for row in rows}
+    data = [TicketListItem.model_validate(t) for t in items]
+    for item in data:
+        item.has_reminder = item.id in reminded
+    return {"items": data, "total": total, "page": page, "size": size}
 
 
 @router.post("", response_model=TicketRead, status_code=status.HTTP_201_CREATED)

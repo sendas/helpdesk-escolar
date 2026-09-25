@@ -159,6 +159,7 @@ class TicketListItem(BaseModel):
     watchers: list[UserRead] = []
     category: CategoryRead
     school: SchoolRead | None = None
+    has_reminder: bool = False
 
 
 class TicketRoutingRuleRead(BaseModel):

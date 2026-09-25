@@ -30,28 +30,25 @@
       <template v-else>
         <table class="hd-table">
           <thead>
-            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>TEMPO DE RESPOSTA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
+            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>CATEGORIA</th></tr>
           </thead>
           <tbody>
             <tr v-for="t in activeTickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
-              <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
+              <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">
+                T-{{ t.id }}
+                <span v-if="t.has_reminder" class="material-icons reminder-flag" title="Tem um lembrete seu por enviar">alarm</span>
+              </td>
               <td style="font-weight:500">{{ t.title }}</td>
               <td style="white-space:nowrap;display:flex;align-items:center;gap:6px">
                 <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
                 <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
               </td>
               <td><PriorityBadge :priority="t.priority" /></td>
-              <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
-              <td>
-                <button class="email-pill" :class="{ active: t.creator_email_notifications }" @click.stop="toggleEmailNotifications(t)">
-                  <span class="material-icons">{{ t.creator_email_notifications ? 'notifications_active' : 'notifications_off' }}</span>
-                  {{ t.creator_email_notifications ? 'Ativos' : 'Desativados' }}
-                </button>
-              </td>
-              <td style="color:var(--c-muted)">{{ timeAgo(t.updated_at) }}</td>
+              <td class="cell-person">{{ t.creator?.display_name }}</td>
+              <td><span class="cat-chip">{{ t.category?.name }}</span></td>
             </tr>
             <tr v-if="!activeTickets.length">
-              <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets em aberto.</td>
+              <td colspan="6" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets em aberto.</td>
             </tr>
           </tbody>
         </table>
@@ -66,22 +63,19 @@
 
         <table v-if="showCompleted && completedTickets.length" class="hd-table completed-table">
           <thead>
-            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>TEMPO DE RESPOSTA</th><th>EMAILS</th><th>ATUALIZADO</th></tr>
+            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>CATEGORIA</th></tr>
           </thead>
           <tbody>
             <tr v-for="t in completedTickets" :key="t.id" class="completed-row" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
-              <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}</td>
+              <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">
+                T-{{ t.id }}
+                <span v-if="t.has_reminder" class="material-icons reminder-flag" title="Tem um lembrete seu por enviar">alarm</span>
+              </td>
               <td style="font-weight:500">{{ t.title }}</td>
               <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
               <td><PriorityBadge :priority="t.priority" /></td>
-              <td><SlaBadge :created-at="t.created_at" :sla-hours="t.category?.sla_hours" :status="t.status" /></td>
-              <td>
-                <button class="email-pill" :class="{ active: t.creator_email_notifications }" @click.stop="toggleEmailNotifications(t)">
-                  <span class="material-icons">{{ t.creator_email_notifications ? 'notifications_active' : 'notifications_off' }}</span>
-                  {{ t.creator_email_notifications ? 'Ativos' : 'Desativados' }}
-                </button>
-              </td>
-              <td style="color:var(--c-muted)">{{ timeAgo(t.updated_at) }}</td>
+              <td class="cell-person">{{ t.creator?.display_name }}</td>
+              <td><span class="cat-chip">{{ t.category?.name }}</span></td>
             </tr>
           </tbody>
         </table>
@@ -92,10 +86,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { getTickets, getCategories, updateTicket } from '../api/tickets'
+import { getTickets, getCategories } from '../api/tickets'
 import PriorityBadge from '../components/PriorityBadge.vue'
-import SlaBadge from '../components/SlaBadge.vue'
-import { timeAgo } from '../utils/dates'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
@@ -182,14 +174,17 @@ function statusLabel(s: string) {
   return { open:'Aberto', assigned:'Atribuído', in_progress:'Em Curso', waiting_user:'A aguardar utilizador', resolved:'Resolvido', closed:'Fechado' }[s] ?? s
 }
 
-async function toggleEmailNotifications(ticket: any) {
-  const updated = await updateTicket(ticket.id, { creator_email_notifications: !ticket.creator_email_notifications })
-  const idx = tickets.value.findIndex(t => t.id === updated.id)
-  if (idx !== -1) tickets.value[idx] = { ...tickets.value[idx], ...updated }
-}
 </script>
 
 <style scoped>
+.reminder-flag { font-size: 15px; color: #D97706; vertical-align: -3px; margin-left: 4px; }
+.dark .reminder-flag { color: #FCD34D; }
+.cell-person { white-space: nowrap; }
+.cat-chip {
+  display: inline-block; font-size: 12px; font-weight: 600; color: var(--c-primary);
+  background: rgba(64, 87, 216, .08); border-radius: 999px; padding: 3px 10px; white-space: nowrap;
+}
+.dark .cat-chip { background: rgba(99, 125, 255, .16); color: #A5B4FC; }
 .badge-fornecedor {
   display: inline-flex;
   align-items: center;
@@ -205,31 +200,6 @@ async function toggleEmailNotifications(ticket: any) {
   cursor: default;
 }
 
-.email-pill {
-  align-items: center;
-  background: var(--c-bg);
-  border: 1px solid var(--c-border);
-  border-radius: 999px;
-  color: var(--c-muted);
-  cursor: pointer;
-  display: inline-flex;
-  font-size: 12px;
-  font-weight: 800;
-  gap: 5px;
-  justify-content: center;
-  min-width: 116px;
-  padding: 5px 9px;
-}
-
-.email-pill.active {
-  background: rgba(22, 163, 74, 0.1);
-  border-color: rgba(22, 163, 74, 0.24);
-  color: #15803D;
-}
-
-.email-pill .material-icons {
-  font-size: 14px;
-}
 
 .completed-toggle {
   padding: 12px 16px;

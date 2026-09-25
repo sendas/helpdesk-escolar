@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.9.0'
+export const APP_VERSION = '1.9.1'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '10:00'
+export const APP_VERSION_TIME = '10:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.1',
+    date: '2026-09-25',
+    time: '10:30',
+    title: '"Os meus tickets" com solicitante, categoria e indicação de lembrete',
+    changes: [
+      'Retiradas as colunas "Tempo de resposta", "Emails" e "Atualizado" da lista "Os meus tickets".',
+      'Novas colunas "Solicitante" (quem fez o pedido) e "Categoria".',
+      'Ícone de despertador a seguir ao ID quando tem um lembrete seu por enviar nesse ticket (só você o vê).',
+      'As notificações por email do autor continuam a poder ser ligadas ou desligadas dentro do ticket.',
+    ],
+  },
   {
     version: '1.9.0',
     date: '2026-09-25',
