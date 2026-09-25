@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.9.4'
+export const APP_VERSION = '1.9.5'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '12:00'
+export const APP_VERSION_TIME = '12:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.5',
+    date: '2026-09-25',
+    time: '12:30',
+    title: 'Mensagens privadas agrupadas num bloco',
+    changes: [
+      'Mensagens privadas seguidas entre as mesmas duas pessoas aparecem agora juntas dentro de um único bloco violeta, recuado da conversa pública.',
+      'O bloco tem um cabeçalho "Conversa privada · você e …" com o botão "Responder em privado".',
+      'Conversas privadas com pessoas diferentes ficam em blocos separados.',
+    ],
+  },
   {
     version: '1.9.4',
     date: '2026-09-25',

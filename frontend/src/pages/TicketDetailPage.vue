@@ -121,9 +121,16 @@
             </div>
           </div>
 
-          <!-- Comments -->
+          <!-- Comments (consecutive private messages between the same two people are grouped in one block) -->
+          <div v-for="b in commentBlocks" :key="b.key" :class="{ 'private-thread': b.partner }">
+          <div v-if="b.partner" class="private-thread-head">
+            <span class="material-icons">lock</span>
+            <span>Conversa privada · você e {{ shortName(b.partner.display_name) }}</span>
+            <span class="private-thread-note">só vocês os dois veem</span>
+            <button class="msg-action" @click="replyPrivately(b.partner.id)">Responder em privado</button>
+          </div>
           <div
-            v-for="c in ticket.comments"
+            v-for="c in b.items"
             :key="c.id"
             class="hd-msg"
             :class="{ 'hd-msg-internal': c.is_internal, 'hd-msg-private': !!c.private_to }"
@@ -134,16 +141,11 @@
               <div class="hd-msg-header">
                 <span class="hd-msg-author">{{ c.author.display_name }}</span>
                 <span v-if="c.is_internal" class="hd-internal-tag">NOTA INTERNA</span>
-                <span v-if="c.private_to" class="private-tag" title="Só visível para estas duas pessoas">
-                  <span class="material-icons">lock</span>
-                  Privada · {{ c.author.id === auth.user?.id ? 'para ' + shortName(c.private_to.display_name) : 'para si' }}
-                </span>
                 <span v-if="c.remind_at" class="reminder-tag" :class="{ sent: !!c.reminder_sent_at }" :title="c.reminder_sent_at ? 'Lembrete já enviado' : 'Vai receber um lembrete por email e notificação'">
                   <span class="material-icons">{{ c.reminder_sent_at ? 'notifications_off' : 'alarm' }}</span>
                   {{ c.reminder_sent_at ? 'Lembrete enviado' : 'Lembrete ' + formatReminder(c.remind_at) }}
                 </span>
                 <span class="hd-msg-time">{{ formatDate(c.created_at) }}</span>
-                <button v-if="c.private_to && c.private_to.id === auth.user?.id" class="msg-action" @click="replyPrivately(c.author.id)">Responder em privado</button>
                 <button v-if="canEditComment(c)" class="msg-action" @click="startEditComment(c)">Editar</button>
                 <button v-if="canEditComment(c)" class="msg-action danger" @click="onDeleteComment(c)">Apagar</button>
                 <button
@@ -165,6 +167,7 @@
               </div>
               <div v-else class="hd-msg-bubble" v-html="renderText(c.body)"></div>
             </div>
+          </div>
           </div>
 
           <!-- Reply box -->
@@ -521,6 +524,17 @@ const canRemind = computed(() => {
 // Private message: to someone assigned to the ticket, or back to whoever wrote to me privately
 const privateOn = ref(false)
 const privateTo = ref<number | null>(null)
+const commentBlocks = computed(() => {
+  const me = auth.user?.id
+  const blocks: { key: string; partner: any; items: any[] }[] = []
+  for (const c of (ticket.value?.comments ?? []) as any[]) {
+    const partner = c.private_to ? (c.author.id === me ? c.private_to : c.author) : null
+    const last = blocks[blocks.length - 1]
+    if (partner && last?.partner?.id === partner.id) last.items.push(c)
+    else blocks.push({ key: `c${c.id}`, partner, items: [c] })
+  }
+  return blocks
+})
 const staffPeople = ref<any[]>([])
 const canWritePrivate = computed(() => {
   const me = auth.user?.id
@@ -1548,21 +1562,23 @@ function formatSize(size: number) {
 .hd-lightbox-close:hover {
   background: rgba(255, 255, 255, .25);
 }
-/* Private messages: own colour and indented from the public conversation */
-.hd-msg.hd-msg-private { margin-left: 56px; }
-@media (max-width: 600px) { .hd-msg.hd-msg-private { margin-left: 20px; } }
-.hd-msg-private .hd-msg-bubble {
-  background: #F3EEFF; border: 1px solid #DDD1FB; border-left: 3px solid #7C3AED; color: #2E1065;
+/* Private messages: grouped in one indented block with its own colour */
+.private-thread {
+  margin: 0 0 14px 56px; padding: 12px 14px 2px;
+  background: #F3EEFF; border: 1px solid #DDD1FB; border-left: 4px solid #7C3AED; border-radius: 12px;
 }
-.dark .hd-msg-private .hd-msg-bubble {
-  background: rgba(124, 58, 237, .16); border-color: rgba(167, 139, 250, .32); border-left-color: #A78BFA; color: #EDE9FE;
+.dark .private-thread { background: rgba(124, 58, 237, .14); border-color: rgba(167, 139, 250, .30); border-left-color: #A78BFA; }
+@media (max-width: 600px) { .private-thread { margin-left: 16px; } }
+.private-thread-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px;
+  font-size: 12.5px; font-weight: 700; color: #6D28D9;
 }
-.private-tag {
-  display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700;
-  color: #6D28D9; background: #EDE9FE; border-radius: 999px; padding: 2px 8px; letter-spacing: .02em;
-}
-.private-tag .material-icons { font-size: 12px; }
-.dark .private-tag { color: #DDD6FE; background: rgba(124, 58, 237, .28); }
+.private-thread-head .material-icons { font-size: 16px; }
+.private-thread-note { flex: 1 1 0; min-width: 0; font-weight: 400; color: var(--c-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.private-thread-head .msg-action { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+.dark .private-thread-head { color: #DDD6FE; }
+.hd-msg-private .hd-msg-bubble { background: rgba(255, 255, 255, .75); border: 1px solid #E9E1FD; }
+.dark .hd-msg-private .hd-msg-bubble { background: rgba(255, 255, 255, .05); border-color: rgba(167, 139, 250, .18); }
 .private-box { border: 1px solid #DDD1FB; background: rgba(124, 58, 237, .06); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
 .private-box.off { border-color: var(--c-border); background: transparent; padding: 8px 12px; }
 .private-box.off .private-title { color: var(--c-muted); font-weight: 600; }
