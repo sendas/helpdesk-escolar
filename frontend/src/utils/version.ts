@@ -1,8 +1,18 @@
-export const APP_VERSION = '1.9.3'
+export const APP_VERSION = '1.9.4'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '11:30'
+export const APP_VERSION_TIME = '12:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.4',
+    date: '2026-09-25',
+    time: '12:00',
+    title: 'Mensagens privadas destacadas na conversa',
+    changes: [
+      'As mensagens privadas têm agora uma cor de fundo própria (violeta), com uma barra lateral, diferente das respostas públicas e das notas internas.',
+      'Aparecem ligeiramente recuadas para a direita, separadas do fluxo normal da conversa.',
+    ],
+  },
   {
     version: '1.9.3',
     date: '2026-09-25',

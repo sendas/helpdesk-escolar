@@ -1548,20 +1548,27 @@ function formatSize(size: number) {
 .hd-lightbox-close:hover {
   background: rgba(255, 255, 255, .25);
 }
-.hd-msg-private .hd-msg-bubble { background: #EEF2FF; border: 1px solid #C7D2FE; }
-.dark .hd-msg-private .hd-msg-bubble { background: rgba(99, 102, 241, .14); border-color: rgba(129, 140, 248, .35); }
+/* Private messages: own colour and indented from the public conversation */
+.hd-msg.hd-msg-private { margin-left: 56px; }
+@media (max-width: 600px) { .hd-msg.hd-msg-private { margin-left: 20px; } }
+.hd-msg-private .hd-msg-bubble {
+  background: #F3EEFF; border: 1px solid #DDD1FB; border-left: 3px solid #7C3AED; color: #2E1065;
+}
+.dark .hd-msg-private .hd-msg-bubble {
+  background: rgba(124, 58, 237, .16); border-color: rgba(167, 139, 250, .32); border-left-color: #A78BFA; color: #EDE9FE;
+}
 .private-tag {
   display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700;
-  color: #4338CA; background: #E0E7FF; border-radius: 999px; padding: 2px 8px; letter-spacing: .02em;
+  color: #6D28D9; background: #EDE9FE; border-radius: 999px; padding: 2px 8px; letter-spacing: .02em;
 }
 .private-tag .material-icons { font-size: 12px; }
-.dark .private-tag { color: #C7D2FE; background: rgba(99, 102, 241, .22); }
-.private-box { border: 1px solid #C7D2FE; background: rgba(99, 102, 241, .06); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+.dark .private-tag { color: #DDD6FE; background: rgba(124, 58, 237, .28); }
+.private-box { border: 1px solid #DDD1FB; background: rgba(124, 58, 237, .06); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
 .private-box.off { border-color: var(--c-border); background: transparent; padding: 8px 12px; }
 .private-box.off .private-title { color: var(--c-muted); font-weight: 600; }
 .private-box.off .private-title .material-icons { color: var(--c-muted); }
 .private-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--c-text); }
-.private-title .material-icons { font-size: 17px; color: #4F46E5; }
+.private-title .material-icons { font-size: 17px; color: #7C3AED; }
 .private-select { width: auto; max-width: 340px; padding: 5px 10px; font-size: 13px; }
 .private-hint { font-size: 12px; color: var(--c-muted); margin-top: 8px; }
 .reminder-tag {
