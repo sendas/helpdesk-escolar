@@ -30,6 +30,38 @@ def _can_set_reminder(ticket, user: User) -> bool:
     return ticket.assignee_id == user.id or any(a.id == user.id for a in getattr(ticket, "assignees", []))
 
 
+def _assigned_ids(ticket) -> set[int]:
+    return {uid for uid in [ticket.assignee_id, *(a.id for a in getattr(ticket, "assignees", []))] if uid}
+
+
+async def _private_message_recipient(db: AsyncSession, ticket, sender: User, recipient_id: int) -> User:
+    """A private message goes to someone assigned to the ticket, or back to whoever wrote to the sender privately."""
+    if recipient_id == sender.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não pode enviar uma mensagem privada a si próprio.")
+    assigned = _assigned_ids(ticket)
+    allowed = recipient_id in assigned and (
+        sender.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or sender.is_technician or sender.id in assigned
+    )
+    if not allowed:
+        previous = await db.execute(
+            select(Comment.id).where(
+                Comment.ticket_id == ticket.id,
+                Comment.author_id == recipient_id,
+                Comment.private_to_id == sender.id,
+                Comment.deleted_at.is_(None),
+            ).limit(1)
+        )
+        allowed = previous.scalar_one_or_none() is not None
+    recipient = await db.get(User, recipient_id) if allowed else None
+    if not recipient:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só pode enviar mensagens privadas a quem está atribuído ao ticket.")
+    return recipient
+
+
+def _private_comment_visible(comment: Comment, user: User) -> bool:
+    return comment.private_to_id is None or user.id in (comment.author_id, comment.private_to_id)
+
+
 def _can_access_ticket(ticket, user: User, *, allow_watcher: bool = True) -> bool:
     if user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or user.is_technician:
         return True
@@ -400,8 +432,8 @@ async def escalate_comment(
     comment = result.scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comentário não encontrado")
-    if comment.is_internal:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não é possível reenviar notas internas")
+    if comment.is_internal or comment.private_to_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não é possível reenviar notas internas nem mensagens privadas")
     app_settings = _read_settings()
     provider_email = (app_settings.get("support_provider_email") or "").strip()
     provider_name = (app_settings.get("support_provider_name") or "Empresa de apoio").strip()
@@ -504,7 +536,27 @@ async def add_comment(
         when = data.remind_at if data.remind_at.tzinfo else data.remind_at.replace(tzinfo=timezone.utc)
         if when <= datetime.now(timezone.utc):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha uma data e hora no futuro para o lembrete.")
+    private_to = None
+    if data.private_to_id is not None:
+        private_to = await _private_message_recipient(db, ticket, current_user, data.private_to_id)
+        data.is_internal = False
     comment = await ticket_service.add_comment(db, ticket, data, current_user)
+
+    if private_to:
+        if private_to.email:
+            await email_service.send_private_message(private_to.email, {
+                "id": ticket.id,
+                "title": ticket.title,
+                "author": current_user.display_name,
+                "comment": data.body,
+            })
+        asyncio.create_task(push_service.send_push_to_users_bg(
+            {private_to.id},
+            f"Mensagem privada: {ticket.title}",
+            f"{current_user.display_name}: {data.body[:80]}",
+            f"/tickets/{ticket.id}",
+        ))
+        return comment
 
     # Auto-subscribe the commenter as watcher so they receive future updates
     is_linked = (
@@ -588,11 +640,15 @@ async def update_comment(
     comment = result.scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+    if not _private_comment_visible(comment, current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+    if comment.private_to_id and comment.author_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só o autor pode alterar uma mensagem privada.")
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician and comment.author_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     comment.ticket = ticket
     updated = await ticket_service.update_comment(db, comment, data.body)
-    if not comment.is_internal:
+    if not comment.is_internal and not comment.private_to_id:
         recipients = _ticket_update_recipients(ticket, current_user)
         for recipient in recipients:
             await email_service.send_ticket_notification(
@@ -622,6 +678,10 @@ async def delete_comment(
     comment = result.scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+    if not _private_comment_visible(comment, current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+    if comment.private_to_id and comment.author_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só o autor pode alterar uma mensagem privada.")
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician and comment.author_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     comment.ticket = ticket

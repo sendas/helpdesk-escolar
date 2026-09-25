@@ -101,6 +101,26 @@ async def send_no_access_contact(to_email: str, contact_data: dict) -> None:
         logger.warning("No-access contact email failed to %s: %s", to_email, exc)
 
 
+async def send_private_message(to_email: str, data: dict) -> None:
+    """Private message inside a ticket: sent only to its recipient, never merged into the update digest."""
+    if not settings.mail_server or _is_hidden_demo_action() or to_email.lower().endswith("@demo.escola.pt"):
+        return
+    data = _normalize_ticket_data(data)
+    try:
+        html_body = jinja_env.get_template("ticket_private_message.html").render(**data)
+        message = MessageSchema(
+            subject=f"[Ticket #{data.get('id')}] [Privada] {data.get('title')}",
+            recipients=[to_email],
+            body=html_body,
+            subtype=MessageType.html,
+            headers={"Reply-To": settings.mail_from},
+        )
+        await FastMail(_get_conf()).send_message(message)
+        logger.info("Private message email sent to %s for ticket %s", to_email, data.get("id"))
+    except Exception as exc:
+        logger.warning("Private message email failed to %s for ticket %s: %s", to_email, data.get("id"), exc)
+
+
 async def send_reminder(to_email: str, data: dict) -> None:
     """Reminder set on an internal note. Sent right away (not merged into the update digest)."""
     if not settings.mail_server:

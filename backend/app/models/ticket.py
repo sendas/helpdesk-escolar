@@ -94,12 +94,15 @@ class Comment(Base):
     # Private reminder for the author of an internal note (stored in UTC)
     remind_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Private message: only the author and this user can see the comment
+    private_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     ticket: Mapped["Ticket"] = relationship("Ticket", back_populates="comments")
-    author: Mapped["User"] = relationship("User", back_populates="comments")
+    author: Mapped["User"] = relationship("User", back_populates="comments", foreign_keys=[author_id])
+    private_to: Mapped["User"] = relationship("User", foreign_keys=[private_to_id], lazy="selectin")
 
 
 class TicketEvent(Base):

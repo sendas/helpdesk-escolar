@@ -295,6 +295,7 @@ async def add_comment(db: AsyncSession, ticket: Ticket, data: CommentCreate, aut
         ticket_id=ticket.id,
         author_id=author.id,
         remind_at=remind_at,
+        private_to_id=data.private_to_id,
     )
     db.add(comment)
     ticket.updated_at = datetime.utcnow()
@@ -310,7 +311,8 @@ async def update_comment(db: AsyncSession, comment: Comment, body: str) -> Comme
     comment.body = body
     comment.updated_at = datetime.utcnow()
     comment.ticket.updated_at = datetime.utcnow()
-    db.add(TicketEvent(ticket_id=comment.ticket_id, actor_id=comment.author_id, event_type="comment_edited", message="Resposta editada"))
+    if not comment.private_to_id:
+        db.add(TicketEvent(ticket_id=comment.ticket_id, actor_id=comment.author_id, event_type="comment_edited", message="Resposta editada"))
     await db.commit()
     result = await db.execute(
         select(Comment).where(Comment.id == comment.id).options(selectinload(Comment.author))
@@ -321,7 +323,8 @@ async def update_comment(db: AsyncSession, comment: Comment, body: str) -> Comme
 async def delete_comment(db: AsyncSession, comment: Comment) -> None:
     comment.deleted_at = datetime.utcnow()
     comment.ticket.updated_at = datetime.utcnow()
-    db.add(TicketEvent(ticket_id=comment.ticket_id, actor_id=comment.author_id, event_type="comment_deleted", message="Resposta apagada"))
+    if not comment.private_to_id:
+        db.add(TicketEvent(ticket_id=comment.ticket_id, actor_id=comment.author_id, event_type="comment_deleted", message="Resposta apagada"))
     await db.commit()
 
 

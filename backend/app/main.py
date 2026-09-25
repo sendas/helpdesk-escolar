@@ -52,6 +52,9 @@ async def _add_missing_columns(conn) -> None:
         await conn.execute(text("ALTER TABLE comments ADD COLUMN remind_at DATETIME"))
     if "reminder_sent_at" not in existing_c:
         await conn.execute(text("ALTER TABLE comments ADD COLUMN reminder_sent_at DATETIME"))
+    # 7. Private messages between two people inside a ticket
+    if "private_to_id" not in existing_c:
+        await conn.execute(text("ALTER TABLE comments ADD COLUMN private_to_id INTEGER REFERENCES users(id)"))
 
     # 4. Add closed_via_email if missing + backfill from email-triggered status events
     if "closed_via_email" not in existing:

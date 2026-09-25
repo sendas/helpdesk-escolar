@@ -53,6 +53,7 @@ class CommentCreate(BaseModel):
     body: str
     is_internal: bool = False
     remind_at: datetime | None = None
+    private_to_id: int | None = None
 
 
 class CommentRead(BaseModel):
@@ -67,6 +68,7 @@ class CommentRead(BaseModel):
     remind_at: datetime | None = None
     reminder_sent_at: datetime | None = None
     author: UserRead
+    private_to: UserRead | None = None
 
     @model_validator(mode="after")
     def _private_reminder(self):
@@ -125,6 +127,16 @@ class TicketRead(BaseModel):
     attachments: list[AttachmentRead] = []
     watchers: list[UserRead] = []
     events: list[TicketEventRead] = []
+
+    @model_validator(mode="after")
+    def _hide_private_messages(self):
+        from app.api.deps import current_viewer_id
+        viewer = current_viewer_id.get()
+        self.comments = [
+            c for c in self.comments
+            if c.private_to is None or viewer in (c.author.id, c.private_to.id)
+        ]
+        return self
 
 
 class TicketListItem(BaseModel):

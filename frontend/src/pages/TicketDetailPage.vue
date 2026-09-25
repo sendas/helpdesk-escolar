@@ -126,7 +126,7 @@
             v-for="c in ticket.comments"
             :key="c.id"
             class="hd-msg"
-            :class="{ 'hd-msg-internal': c.is_internal }"
+            :class="{ 'hd-msg-internal': c.is_internal, 'hd-msg-private': !!c.private_to }"
             style="margin-bottom:12px"
           >
             <AvatarCircle :name="c.author.display_name" size="36" />
@@ -134,15 +134,20 @@
               <div class="hd-msg-header">
                 <span class="hd-msg-author">{{ c.author.display_name }}</span>
                 <span v-if="c.is_internal" class="hd-internal-tag">NOTA INTERNA</span>
+                <span v-if="c.private_to" class="private-tag" title="Só visível para estas duas pessoas">
+                  <span class="material-icons">lock</span>
+                  Privada · {{ c.author.id === auth.user?.id ? 'para ' + c.private_to.display_name : 'para si' }}
+                </span>
                 <span v-if="c.remind_at" class="reminder-tag" :class="{ sent: !!c.reminder_sent_at }" :title="c.reminder_sent_at ? 'Lembrete já enviado' : 'Vai receber um lembrete por email e notificação'">
                   <span class="material-icons">{{ c.reminder_sent_at ? 'notifications_off' : 'alarm' }}</span>
                   {{ c.reminder_sent_at ? 'Lembrete enviado' : 'Lembrete ' + formatReminder(c.remind_at) }}
                 </span>
                 <span class="hd-msg-time">{{ formatDate(c.created_at) }}</span>
+                <button v-if="c.private_to && c.private_to.id === auth.user?.id" class="msg-action" @click="replyPrivately(c.author.id)">Responder em privado</button>
                 <button v-if="canEditComment(c)" class="msg-action" @click="startEditComment(c)">Editar</button>
                 <button v-if="canEditComment(c)" class="msg-action danger" @click="onDeleteComment(c)">Apagar</button>
                 <button
-                  v-if="auth.isStaff && isEscalated && !c.is_internal"
+                  v-if="auth.isStaff && isEscalated && !c.is_internal && !c.private_to"
                   class="msg-action"
                   :disabled="sendingCommentId === c.id"
                   :title="'Reenviar esta resposta à empresa de apoio'"
@@ -165,7 +170,24 @@
           <!-- Reply box -->
           <div class="hd-card" style="padding:20px">
             <div style="font-weight:600;font-size:14px;margin-bottom:12px">Responder</div>
-            <div v-if="auth.isStaff" class="quick-replies">
+            <div v-if="privateTargets.length" class="private-box" :class="{ off: !privateOn }">
+              <div class="private-title">
+                <div class="hd-toggle-wrap" @click="togglePrivate">
+                  <div class="hd-toggle-track" :class="{ on: privateOn }">
+                    <div class="hd-toggle-thumb"></div>
+                  </div>
+                </div>
+                <span class="material-icons">lock</span>
+                Mensagem privada
+                <select v-if="privateOn" v-model="privateTo" class="hd-input private-select">
+                  <option v-for="u in privateTargets" :key="u.id" :value="u.id">para {{ u.display_name }}</option>
+                </select>
+              </div>
+              <div v-if="privateOn" class="private-hint">
+                Só {{ privateTargetName }} e você veem esta mensagem. O solicitante, os seguidores, os outros técnicos e os administradores não a veem.
+              </div>
+            </div>
+            <div v-if="auth.isStaff && !privateOn" class="quick-replies">
               <button
                 v-for="reply in quickReplies"
                 :key="reply.label"
@@ -181,7 +203,7 @@
               class="hd-textarea"
               v-model="newComment"
               rows="4"
-              placeholder="Escreva a sua resposta..."
+:placeholder="privateOn ? 'Escreva a mensagem privada...' : 'Escreva a sua resposta...'"
             ></textarea>
             <!-- Hidden file input -->
             <input
@@ -223,7 +245,7 @@
             </div>
             <div class="hd-row" style="justify-content:space-between;margin-top:12px">
               <div class="hd-row" style="gap:8px">
-                <label v-if="auth.isStaff" class="hd-row" style="gap:8px;cursor:pointer;font-size:13px;color:var(--c-muted)">
+                <label v-if="auth.isStaff && !privateOn" class="hd-row" style="gap:8px;cursor:pointer;font-size:13px;color:var(--c-muted)">
                   <div class="hd-toggle-wrap" @click="isInternal = !isInternal">
                     <div class="hd-toggle-track" :class="{ on: isInternal }">
                       <div class="hd-toggle-thumb"></div>
@@ -232,6 +254,7 @@
                   Nota interna
                 </label>
                 <button
+                  v-if="!privateOn"
                   type="button"
                   class="hd-btn hd-btn-outline"
                   style="font-size:12px;padding:5px 10px"
@@ -248,7 +271,7 @@
                 @click="onAddComment"
               >
                 <span class="material-icons" style="font-size:16px">send</span>
-                {{ commenting ? 'A enviar...' : 'Enviar' }}
+                {{ commenting ? 'A enviar...' : (privateOn ? 'Enviar em privado' : 'Enviar') }}
               </button>
             </div>
             <div v-if="commentError" style="color:#DC2626;font-size:13px;margin-top:8px">{{ commentError }}</div>
@@ -491,6 +514,36 @@ const canRemind = computed(() => {
   if (!me || !t) return false
   return auth.isStaff || t.assignee?.id === me || (t.assignees ?? []).some((a: any) => a.id === me)
 })
+
+// Private message: to someone assigned to the ticket, or back to whoever wrote to me privately
+const privateOn = ref(false)
+const privateTo = ref<number | null>(null)
+const privateTargets = computed(() => {
+  const me = auth.user?.id
+  const t: any = ticket.value
+  if (!me || !t) return []
+  const assigned: any[] = [...(t.assignees ?? []), ...(t.assignee ? [t.assignee] : [])]
+  const iCanWrite = auth.isStaff || assigned.some((a) => a.id === me)
+  const people = new Map<number, any>()
+  if (iCanWrite) assigned.forEach((a) => { if (a.id !== me) people.set(a.id, a) })
+  ;(t.comments ?? []).forEach((c: any) => { if (c.private_to?.id === me && c.author.id !== me) people.set(c.author.id, c.author) })
+  return [...people.values()]
+})
+const privateTargetName = computed(() => privateTargets.value.find((u: any) => u.id === privateTo.value)?.display_name ?? '')
+function togglePrivate() {
+  privateOn.value = !privateOn.value
+  if (privateOn.value) {
+    isInternal.value = false
+    commentFile.value = null
+    if (!privateTargets.value.some((u: any) => u.id === privateTo.value)) privateTo.value = privateTargets.value[0]?.id ?? null
+  }
+}
+function replyPrivately(userId: number) {
+  privateOn.value = true
+  isInternal.value = false
+  commentFile.value = null
+  privateTo.value = userId
+}
 
 function toggleReminder() {
   reminderOn.value = !reminderOn.value
@@ -742,15 +795,21 @@ async function onAddComment() {
   }
   commenting.value = true
   commentError.value = ''
-  const shouldClose = autoCloseOnSend.value && auth.isStaff
+  if (privateOn.value && !privateTo.value) {
+    commentError.value = 'Escolha a quem enviar a mensagem privada.'
+    return
+  }
+  const shouldClose = autoCloseOnSend.value && auth.isStaff && !privateOn.value
   autoCloseOnSend.value = false
   try {
     const remindAt = reminderOn.value && remindDate.value
       ? new Date(`${remindDate.value}T${remindTime.value || '09:00'}`).toISOString()
       : null
-    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value, remindAt)
+    const privateToId = privateOn.value ? privateTo.value : null
+    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value && !privateToId, remindAt, privateToId)
     newComment.value = ''
     isInternal.value = false
+    privateOn.value = false
     remindDate.value = ''
     remindTime.value = '09:00'
     reminderOn.value = false
@@ -840,6 +899,7 @@ async function toggleEmailNotifications() {
 }
 
 function canEditComment(comment: any) {
+  if (comment.private_to) return comment.author?.id === auth.user?.id
   return auth.isStaff || comment.author?.id === auth.user?.id
 }
 
@@ -1462,6 +1522,22 @@ function formatSize(size: number) {
 .hd-lightbox-close:hover {
   background: rgba(255, 255, 255, .25);
 }
+.hd-msg-private .hd-msg-bubble { background: #EEF2FF; border: 1px solid #C7D2FE; }
+.dark .hd-msg-private .hd-msg-bubble { background: rgba(99, 102, 241, .14); border-color: rgba(129, 140, 248, .35); }
+.private-tag {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700;
+  color: #4338CA; background: #E0E7FF; border-radius: 999px; padding: 2px 8px; letter-spacing: .02em;
+}
+.private-tag .material-icons { font-size: 12px; }
+.dark .private-tag { color: #C7D2FE; background: rgba(99, 102, 241, .22); }
+.private-box { border: 1px solid #C7D2FE; background: rgba(99, 102, 241, .06); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+.private-box.off { border-color: var(--c-border); background: transparent; padding: 8px 12px; }
+.private-box.off .private-title { color: var(--c-muted); font-weight: 600; }
+.private-box.off .private-title .material-icons { color: var(--c-muted); }
+.private-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--c-text); }
+.private-title .material-icons { font-size: 17px; color: #4F46E5; }
+.private-select { width: auto; max-width: 260px; padding: 5px 10px; font-size: 13px; }
+.private-hint { font-size: 12px; color: var(--c-muted); margin-top: 8px; }
 .reminder-tag {
   display: inline-flex; align-items: center; gap: 3px;
   font-size: 10.5px; font-weight: 700;

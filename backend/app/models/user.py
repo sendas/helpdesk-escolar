@@ -45,7 +45,7 @@ class User(Base):
         secondary="ticket_assignees",
         back_populates="assignees",
     )
-    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="author")
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="author", foreign_keys="Comment.author_id")
     helpdesk_groups: Mapped[list["HelpdeskGroup"]] = relationship(
         "HelpdeskGroup",
         secondary="helpdesk_group_members",

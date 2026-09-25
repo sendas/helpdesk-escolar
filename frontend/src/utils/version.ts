@@ -1,8 +1,21 @@
-export const APP_VERSION = '1.8.9'
-export const APP_VERSION_DATE = '2026-09-24'
-export const APP_VERSION_TIME = '17:00'
+export const APP_VERSION = '1.9.0'
+export const APP_VERSION_DATE = '2026-09-25'
+export const APP_VERSION_TIME = '10:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.0',
+    date: '2026-09-25',
+    time: '10:00',
+    title: 'Mensagens privadas dentro do ticket',
+    changes: [
+      'Nova opção "Mensagem privada" na caixa de resposta: escolha a pessoa atribuída ao ticket e só ela e você veem a mensagem.',
+      'O solicitante, os seguidores, os outros técnicos e os administradores não veem as mensagens privadas — a filtragem é feita no servidor.',
+      'Quem recebe uma mensagem privada pode clicar em "Responder em privado" para continuar a conversa só entre os dois.',
+      'O destinatário recebe email e notificação só para si; se responder ao email, a resposta fica também privada.',
+      'Mensagens privadas não geram eventos no histórico, não são reenviadas à empresa de apoio e só o autor as pode editar ou apagar.',
+    ],
+  },
   {
     version: '1.8.9',
     date: '2026-09-24',
