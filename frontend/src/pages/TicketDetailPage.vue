@@ -586,7 +586,7 @@ const privateGroups = computed(() => {
   if (canWritePrivate.value) {
     groups.push({ label: 'Técnicos e administradores', people: staffPeople.value
       .filter((u: any) => u.id !== me && !inTicket.has(u.id))
-      .map((u: any) => ({ ...u, tag: u.role === 'admin' ? 'administrador' : 'técnico' })) })
+      .map((u: any) => ({ ...u, tag: u.role_label || (u.role === 'admin' ? 'Administrador' : 'Técnico') })) })
   }
   return groups.filter((g) => g.people.length)
 })

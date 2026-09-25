@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.9.9'
+export const APP_VERSION = '1.9.10'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '15:00'
+export const APP_VERSION_TIME = '15:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.10',
+    date: '2026-09-25',
+    time: '15:30',
+    title: 'Papel correto na lista de destinatários das mensagens privadas',
+    changes: [
+      'Na escolha do destinatário de uma mensagem privada aparece agora o papel atribuído a cada pessoa (ex.: "Equipa TIC", "Direção"), em vez de "técnico" para todos.',
+    ],
+  },
   {
     version: '1.9.9',
     date: '2026-09-25',
