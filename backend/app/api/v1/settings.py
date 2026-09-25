@@ -36,6 +36,18 @@ DEFAULT_SETTINGS = {
     "demo_mode_enabled": False,
     "demo_profiles": ["teacher"],
     "demo_content_visible": False,
+    # Live support chat (balão de apoio); days are ISO weekdays (1 = segunda-feira)
+    "support_chat_enabled": True,
+    "support_wait_minutes": 5,
+    "support_hours": {
+        "1": {"enabled": True, "start": "14:00", "end": "17:00"},
+        "2": {"enabled": True, "start": "10:00", "end": "13:00"},
+        "3": {"enabled": True, "start": "14:00", "end": "17:00"},
+        "4": {"enabled": True, "start": "10:00", "end": "13:00"},
+        "5": {"enabled": True, "start": "10:00", "end": "13:00"},
+        "6": {"enabled": False, "start": "10:00", "end": "13:00"},
+        "7": {"enabled": False, "start": "10:00", "end": "13:00"},
+    },
 }
 
 UI_DESIGNS = {"modern", "classic"}
@@ -181,6 +193,37 @@ async def update_demo_mode(payload: DemoModeSettings, _: User = Depends(require_
         "demo_profiles": data["demo_profiles"],
         "demo_content_visible": data.get("demo_content_visible", False),
     }
+
+
+class SupportDay(BaseModel):
+    enabled: bool = False
+    start: str = "09:00"
+    end: str = "17:00"
+
+
+class SupportChatSettings(BaseModel):
+    enabled: bool = True
+    wait_minutes: int = 5
+    hours: dict[str, SupportDay] = {}
+
+
+@router.put("/support-chat")
+async def update_support_chat(payload: SupportChatSettings, _: User = Depends(require_perm("settings.manage"))):
+    import re
+    hours = {}
+    for day in [str(d) for d in range(1, 8)]:
+        d = payload.hours.get(day) or SupportDay()
+        if not (re.fullmatch(r"\d{2}:\d{2}", d.start) and re.fullmatch(r"\d{2}:\d{2}", d.end)):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Horas inválidas: use o formato HH:MM.")
+        if d.enabled and d.start >= d.end:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A hora de fim tem de ser depois da hora de início.")
+        hours[day] = d.model_dump()
+    data = _read_settings()
+    data["support_chat_enabled"] = payload.enabled
+    data["support_wait_minutes"] = max(1, min(payload.wait_minutes, 120))
+    data["support_hours"] = hours
+    _write_settings(data)
+    return {k: data[k] for k in ("support_chat_enabled", "support_wait_minutes", "support_hours")}
 
 
 @router.put("/suggestion-emails")

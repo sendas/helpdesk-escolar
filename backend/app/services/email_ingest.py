@@ -194,6 +194,9 @@ async def _import_messages(db: AsyncSession, messages: list[dict]) -> dict:
 
     await db.commit()
     for msg in messages:
+        if msg.get("processed"):
+            from app.services.realtime_hooks import notify_ticket
+            await notify_ticket(msg["ticket_id"])
         if msg.get("processed") and msg.get("private_to_id"):
             await _notify_private_partner(db, msg)
         elif msg.get("processed") and not msg.get("private"):

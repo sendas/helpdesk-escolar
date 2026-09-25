@@ -26,6 +26,7 @@ const routes = [
       { path: 'version', component: () => import('../pages/VersionPage.vue') },
       { path: 'about', component: () => import('../pages/AboutPage.vue') },
       { path: 'suggestions', component: () => import('../pages/SuggestionsPage.vue') },
+      { path: 'chat', meta: { perm: ['chat.team', 'chat.support'] }, component: () => import('../pages/ChatPage.vue') },
       {
         path: 'admin',
         meta: { requiresAdminArea: true },

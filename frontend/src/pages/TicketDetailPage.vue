@@ -75,6 +75,13 @@
             </button>
           </template>
         </div>
+        <div v-if="otherViewers.length" class="live-viewers" title="Pessoas com este ticket aberto agora">
+          <span class="live-dot"></span>
+          <span class="live-avatars">
+            <span v-for="v in otherViewers" :key="v.id" class="live-avatar" :title="v.name">{{ shortName(v.name).split(' ').map(w => w[0]).join('').slice(0, 2) }}</span>
+          </span>
+          {{ otherViewers.length === 1 ? shortName(otherViewers[0].name) + ' também está a ver este ticket' : otherViewers.length + ' pessoas também estão a ver este ticket' }}
+        </div>
         <div class="ticket-meta">
           Aberto por <strong :title="ticket.creator.display_name">{{ personLabel(ticket.creator.display_name) }}</strong> · {{ formatDate(ticket.created_at) }}
         </div>
@@ -218,8 +225,10 @@
               class="hd-textarea"
               v-model="newComment"
               rows="4"
-:placeholder="privateOn ? 'Escreva a mensagem privada...' : 'Escreva a sua resposta...'"
+              :placeholder="privateOn ? 'Escreva a mensagem privada...' : 'Escreva a sua resposta...'"
+              @input="onReplyTyping"
             ></textarea>
+            <div v-if="typingNames.length" class="live-typing"><span class="live-dots"><i></i><i></i><i></i></span>{{ typingNames.join(', ') }} {{ typingNames.length > 1 ? 'estão' : 'está' }} a escrever…</div>
             <!-- Hidden file input -->
             <input
               ref="commentFileInput"
@@ -337,7 +346,7 @@
               <div v-if="ticket.watchers?.length" class="watcher-list" style="width:100%">
                 <div v-for="user in ticket.watchers" :key="user.id" class="watcher-mini">
                   <AvatarCircle :name="shortName(user.display_name)" size="22" />
-                  <span>{{ user.display_name }}</span>
+                  <span :title="user.display_name">{{ personLabel(user.display_name) }}</span>
                   <button
                     v-if="canEditWatchers"
                     class="watcher-remove-btn"
@@ -362,7 +371,7 @@
                     <button v-for="u in filteredWatcherUsers" :key="u.id" type="button" @mousedown.prevent="addWatcherCandidate(u)">
                       <AvatarCircle :name="shortName(u.display_name)" size="22" />
                       <span>
-                        <strong>{{ u.display_name }}</strong>
+                        <strong :title="u.display_name">{{ personLabel(u.display_name) }}</strong>
                         <small>{{ u.email }}</small>
                       </span>
                     </button>
@@ -385,7 +394,7 @@
                 <div v-if="assignedTechnicians.length" class="assignee-chip-list">
                   <span v-for="user in assignedTechnicians" :key="user.id" class="assignee-chip">
                     <AvatarCircle :name="shortName(user.display_name)" size="20" />
-                    {{ user.display_name }}
+                    {{ personLabel(user.display_name) }}
                     <button type="button" title="Remover técnico" @click="removeAssignee(user.id)">
                       <span class="material-icons">close</span>
                     </button>
@@ -406,7 +415,7 @@
                     <button v-for="u in filteredAssigneeUsers" :key="u.id" type="button" @mousedown.prevent="addAssignee(u)">
                       <AvatarCircle :name="shortName(u.display_name)" size="22" />
                       <span>
-                        <strong>{{ u.display_name }}</strong>
+                        <strong :title="u.display_name">{{ personLabel(u.display_name) }}</strong>
                         <small>{{ u.email }}</small>
                       </span>
                     </button>
@@ -482,7 +491,7 @@
                   <div class="event-message">{{ event.message }}</div>
                   <div class="event-meta">
                     {{ formatDate(event.created_at) }}
-                    <span v-if="event.actor"> · {{ event.actor.display_name }}</span>
+                    <span v-if="event.actor"> · {{ shortName(event.actor.display_name) }}</span>
                   </div>
                 </div>
               </div>
@@ -523,6 +532,7 @@ import AvatarCircle from '../components/AvatarCircle.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import { formatDateTime } from '../utils/dates'
 import { shortName, groupTag, personLabel } from '../utils/names'
+import { forgetSticky, onRealtime, sendRealtime } from '../services/realtime'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -755,8 +765,57 @@ function isStatusDone(status: string) {
   return statusOrder.indexOf(status) <= current
 }
 
+// ── Live updates (see services/realtime.ts) ─────────────────────────────
+const viewers = ref<{ id: number; name: string }[]>([])
+const otherViewers = computed(() => viewers.value.filter((v) => v.id !== auth.user?.id))
+const typers = ref<Record<number, { name: string; timer: ReturnType<typeof setTimeout> }>>({})
+const typingNames = computed(() => Object.values(typers.value).map((t) => shortName(t.name)))
+const realtimeOffs: Array<() => void> = []
+let viewTimer: ReturnType<typeof setInterval> | null = null
+let lastTypingSent = 0
+let liveTicketId = 0
+
+function startLive(id: number) {
+  liveTicketId = id
+  sendRealtime({ type: 'view', ticket_id: id }, 'ticket-view')
+  if (viewTimer) clearInterval(viewTimer)
+  viewTimer = setInterval(() => sendRealtime({ type: 'view', ticket_id: id }), 20000)
+}
+
+function stopLive() {
+  if (viewTimer) clearInterval(viewTimer)
+  if (liveTicketId) sendRealtime({ type: 'leave', ticket_id: liveTicketId })
+  forgetSticky('ticket-view')
+  liveTicketId = 0
+  viewers.value = []
+}
+
+function onReplyTyping() {
+  if (!ticket.value) return
+  const now = Date.now()
+  if (now - lastTypingSent < 3000) return
+  lastTypingSent = now
+  sendRealtime({ type: 'typing', ticket_id: ticket.value.id, private_to: privateOn.value ? privateTo.value : null, internal: isInternal.value })
+}
+
+realtimeOffs.push(
+  onRealtime('ticket.changed', async (e) => {
+    if (e.ticket_id !== liveTicketId) return
+    await load()
+    loadImageBlobs()
+  }),
+  onRealtime('ticket.viewers', (e) => { if (e.ticket_id === liveTicketId) viewers.value = e.viewers }),
+  onRealtime('ticket.typing', (e) => {
+    if (e.ticket_id !== liveTicketId || e.user.id === auth.user?.id) return
+    const prev = typers.value[e.user.id]
+    if (prev) clearTimeout(prev.timer)
+    typers.value[e.user.id] = { name: e.user.name, timer: setTimeout(() => { delete typers.value[e.user.id] }, 5000) }
+  }),
+)
+
 onMounted(async () => {
   await load()
+  if (ticket.value) startLive(ticket.value.id)
   loadImageBlobs()
   if (auth.isStaff) {
     const [users, grps] = await Promise.all([getUsers(), getGroups()])
@@ -766,6 +825,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  stopLive()
+  realtimeOffs.forEach((off) => off())
   if (watcherSearchTimer) clearTimeout(watcherSearchTimer)
   Object.values(attachBlobUrls.value).forEach(url => URL.revokeObjectURL(url))
 })
@@ -1610,6 +1671,17 @@ function formatSize(size: number) {
   display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--c-muted);
   border: 1px solid var(--c-border); border-radius: 6px; padding: 0 6px; line-height: 17px;
 }
+.live-viewers { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--c-muted); margin: 2px 0 6px; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 0 3px rgba(34, 197, 94, .2); }
+.live-avatars { display: inline-flex; }
+.live-avatar { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 9.5px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #2563EB, #0891B2); border: 2px solid var(--c-bg); margin-left: -6px; }
+.live-avatar:first-child { margin-left: 0; }
+.live-typing { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--c-muted); margin-top: 6px; font-style: italic; }
+.live-dots { display: inline-flex; gap: 3px; }
+.live-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--c-muted); animation: live-bounce 1.2s infinite ease-in-out; }
+.live-dots i:nth-child(2) { animation-delay: .15s; }
+.live-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes live-bounce { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-3px); opacity: 1; } }
 .read-only-note { display: flex; align-items: center; gap: 10px; padding: 14px 18px; font-size: 13px; color: var(--c-muted); }
 .read-only-note .material-icons { font-size: 18px; color: var(--c-primary); }
 .school-badge {

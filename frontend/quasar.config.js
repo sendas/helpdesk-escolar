@@ -21,6 +21,7 @@ export default defineConfig((ctx) => {
         '/api': {
           target: 'http://localhost:8089',
           changeOrigin: true,
+          ws: true,
         },
       },
     },

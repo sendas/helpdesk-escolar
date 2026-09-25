@@ -17,6 +17,9 @@ export interface PublicSettings {
   demo_mode_enabled?: boolean
   demo_profiles?: string[]
   demo_content_visible?: boolean
+  support_chat_enabled?: boolean
+  support_wait_minutes?: number
+  support_hours?: Record<string, { enabled: boolean; start: string; end: string }>
 }
 
 export interface AzureSyncSettings {
@@ -60,6 +63,11 @@ export async function updateLoginNoticeSettings(payload: { enabled: boolean; tex
 
 export async function updateDesignSettings(design: 'modern' | 'classic') {
   const { data } = await api.put<{ ui_design: 'modern' | 'classic' }>('/api/v1/settings/design', { design })
+  return data
+}
+
+export async function updateSupportChatSettings(payload: { enabled: boolean; wait_minutes: number; hours: Record<string, { enabled: boolean; start: string; end: string }> }) {
+  const { data } = await api.put('/api/v1/settings/support-chat', payload)
   return data
 }
 

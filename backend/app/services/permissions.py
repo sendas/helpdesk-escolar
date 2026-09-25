@@ -17,6 +17,8 @@ PERMISSIONS: list[dict] = [
     {"key": "tickets.manage", "label": "Gerir tickets", "hint": "Atribuir, alterar estados, notas internas e mensagens privadas."},
     {"key": "stats.view", "label": "Ver estatísticas", "hint": "Página de estatísticas."},
     {"key": "knowledge.edit", "label": "Editar a base de conhecimento", "hint": "Criar, editar e apagar artigos."},
+    {"key": "chat.team", "label": "Usar o chat da equipa", "hint": "Conversas diretas e em grupo com a equipa."},
+    {"key": "chat.support", "label": "Responder ao apoio ao vivo", "hint": "Atender os docentes no balão de apoio."},
     {"key": "users.manage", "label": "Gerir utilizadores e papéis", "hint": "Alterar papéis, grupos e contas."},
     {"key": "settings.manage", "label": "Configurações do sistema", "hint": "Configurações, categorias, escolas, emails e cópias de segurança."},
 ]
@@ -28,11 +30,11 @@ DEFAULT_ROLES: list[dict] = [
     {"key": "non_teaching", "label": "Não docente", "icon": "badge", "color": "#64748B", "permissions": [], "sort": 20},
     {"key": "secretary", "label": "Secretaria", "icon": "business_center", "color": "#0D9488", "permissions": [], "sort": 30},
     {"key": "direcao", "label": "Direção", "icon": "account_balance", "color": "#7C3AED",
-     "permissions": ["tickets.view_all", "stats.view"], "sort": 40},
+     "permissions": ["tickets.view_all", "stats.view", "chat.team"], "sort": 40},
     {"key": "technician", "label": "Técnico", "icon": "build", "color": "#F59E0B",
-     "permissions": ["tickets.view_all", "tickets.manage", "stats.view"], "sort": 50},
+     "permissions": ["tickets.view_all", "tickets.manage", "stats.view", "chat.team", "chat.support"], "sort": 50},
     {"key": "tic", "label": "Equipa TIC", "icon": "computer", "color": "#0891B2",
-     "permissions": ["tickets.view_all", "tickets.manage", "stats.view", "knowledge.edit"], "sort": 60},
+     "permissions": ["tickets.view_all", "tickets.manage", "stats.view", "knowledge.edit", "chat.team", "chat.support"], "sort": 60},
     {"key": "admin", "label": "Administrador", "icon": "admin_panel_settings", "color": "#EF4444",
      "permissions": sorted(ALL_PERMISSIONS), "sort": 90},
 ]
@@ -56,12 +58,30 @@ async def load_roles(db: AsyncSession) -> None:
     _roles.update({r.key: _row_to_dict(r) for r in rows})
 
 
+# Permissions added after the first release: given once to the default papéis that already exist
+LATER_PERMISSIONS = ["chat.team", "chat.support"]
+
+
 async def ensure_default_roles(db: AsyncSession) -> None:
-    existing = {r.key for r in (await db.execute(select(Role))).scalars().all()}
+    from app.api.v1.settings import _read_settings, _write_settings
+    rows = {r.key: r for r in (await db.execute(select(Role))).scalars().all()}
     for r in DEFAULT_ROLES:
-        if r["key"] not in existing:
+        if r["key"] not in rows:
             db.add(Role(key=r["key"], label=r["label"], icon=r["icon"], color=r["color"],
                         permissions=",".join(r["permissions"]), builtin=True, sort=r["sort"]))
+    app_settings = _read_settings()
+    granted = set(app_settings.get("role_permissions_granted") or [])
+    pending = [p for p in LATER_PERMISSIONS if p not in granted]
+    if pending:
+        for r in DEFAULT_ROLES:
+            row = rows.get(r["key"])
+            if row is None:
+                continue
+            perms = {p for p in (row.permissions or "").split(",") if p}
+            perms |= {p for p in pending if p in r["permissions"]}
+            row.permissions = ",".join(sorted(perms))
+        app_settings["role_permissions_granted"] = sorted(granted | set(pending))
+        _write_settings(app_settings)
     await db.commit()
     await load_roles(db)
 

@@ -23,7 +23,12 @@
       <button class="hd-tab" :class="{ active: tab === 'knowledge' }" @click="tab = 'knowledge'">
         <span class="material-icons" style="font-size:15px">menu_book</span> Base de conhecimento
       </button>
+      <button class="hd-tab" :class="{ active: tab === 'chat' }" @click="tab = 'chat'">
+        <span class="material-icons" style="font-size:15px">forum</span> Chat e apoio ao vivo
+      </button>
     </div>
+
+    <SupportChatSettings v-if="tab === 'chat'" />
 
     <!-- General -->
     <div v-if="tab === 'general'" class="hd-card" style="padding:28px;max-width:640px">
@@ -584,9 +589,10 @@ import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool
 import { getPublicSettings, updateDemoModeSettings, updateDesignSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
 import { setUiDesign, type UiDesign } from '../../composables/useUiDesign'
 import { api } from '../../boot/axios'
+import SupportChatSettings from '../../components/SupportChatSettings.vue'
 import { getGroups, getUsers } from '../../api/users'
 
-const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools' | 'routing' | 'knowledge'>('general')
+const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools' | 'routing' | 'knowledge' | 'chat'>('general')
 const saved = ref(false)
 const testing = ref(false)
 const ldapTestResult = ref('')

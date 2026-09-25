@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 import asyncio
 import os
+import re
 import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -98,7 +99,9 @@ async def lifespan(app: FastAPI):
     backup_task = asyncio.create_task(_backup_periodically())
     inactivity_task = asyncio.create_task(_inactivity_check_periodically())
     reminder_task = asyncio.create_task(_reminders_periodically())
+    support_task = asyncio.create_task(_support_timeouts_periodically())
     yield
+    support_task.cancel()
     if sync_task:
         sync_task.cancel()
     if mail_task:
@@ -175,6 +178,19 @@ async def _reminders_periodically() -> None:
         await asyncio.sleep(300)
 
 
+async def _support_timeouts_periodically() -> None:
+    from app.database import AsyncSessionLocal
+    from app.services import chat_service
+
+    while True:
+        await asyncio.sleep(30)
+        async with AsyncSessionLocal() as db:
+            try:
+                await chat_service.expire_waiting(db)
+            except Exception:
+                pass
+
+
 async def _backup_periodically() -> None:
     from app.database import AsyncSessionLocal
     from app.services import backup_service
@@ -234,6 +250,23 @@ app.add_middleware(
 
 app.add_middleware(SessionMiddleware, secret_key=settings.app_secret_key)
 
+_TICKET_PATH = re.compile(r"^/api/v1/(?:admin/)?tickets/(\d+)(?:/|$)")
+
+
+@app.middleware("http")
+async def realtime_ticket_middleware(request: Request, call_next):
+    """After any successful change to a ticket, tell the browsers looking at it (see services/realtime.py)."""
+    response = await call_next(request)
+    if request.method in {"POST", "PATCH", "PUT", "DELETE"} and response.status_code < 400 and request.url.path.startswith("/api/v1/"):
+        from app.services import realtime_hooks
+        match = _TICKET_PATH.match(request.url.path)
+        if match:
+            asyncio.create_task(realtime_hooks.notify_ticket(int(match.group(1))))
+        elif request.url.path.rstrip("/") in {"/api/v1/tickets", "/api/v1/admin/tickets/bulk", "/api/v1/admin/tickets/bulk-action"}:
+            asyncio.create_task(realtime_hooks.notify_ticket_lists())
+    return response
+
+
 @app.middleware("http")
 async def access_log_middleware(request: Request, call_next):
     start = time.perf_counter()
@@ -261,6 +294,7 @@ def _should_log_access(path: str) -> bool:
     ignored = (
         "/api/v1/notifications/vapid-public-key",
         "/api/v1/settings/public",
+        "/api/v1/realtime/",
     )
     return not any(path.startswith(prefix) for prefix in ignored)
 

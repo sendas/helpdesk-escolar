@@ -1,8 +1,23 @@
-export const APP_VERSION = '1.9.10'
+export const APP_VERSION = '2.0.0'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '15:30'
+export const APP_VERSION_TIME = '17:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.0.0',
+    date: '2026-09-25',
+    time: '17:00',
+    title: 'Tempo real: tickets ao vivo, chat da equipa e apoio ao vivo',
+    changes: [
+      'Tickets ao vivo: novas respostas, mudanças de estado e atribuições aparecem sem recarregar a página; vê-se quem está a ver o ticket e quem está a escrever ("Maria Serra está a escrever…"). Os contadores do menu atualizam-se sozinhos.',
+      'Chat da equipa (menu Chat): conversas diretas e grupos, com grupos automáticos por papel (ex.: Equipa TIC, Direção), mensagens não lidas, "visto", "a escrever…", referências a tickets (T-123) e notificação no telemóvel quando não se está na aplicação.',
+      'Apoio ao vivo: balão de chat no canto do ecrã para os docentes. Os técnicos ligam "Disponível para apoio", aceitam o pedido e respondem em tempo real; a conversa pode ser convertida em ticket.',
+      'Horário do apoio ao vivo: segunda e quarta 14h–17h; terça, quinta e sexta 10h–13h. Fora do horário, ou se ninguém aceitar em 5 minutos, a mensagem passa automaticamente a ticket.',
+      'Novas permissões em Papéis e permissões: "Usar o chat da equipa" e "Responder ao apoio ao vivo". Novo separador Configurações → Chat e apoio ao vivo (horário, tempo de espera e estado da ligação em tempo real).',
+      'Se a rede ou um proxy bloquear WebSockets, a aplicação passa sozinha a um modo compatível que atualiza de poucos em poucos segundos.',
+      'As mensagens privadas e as notas internas continuam protegidas: os avisos em tempo real nunca levam conteúdo, só pedem ao navegador para recarregar o que cada pessoa já pode ver.',
+    ],
+  },
   {
     version: '1.9.10',
     date: '2026-09-25',

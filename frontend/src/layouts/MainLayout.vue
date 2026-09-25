@@ -43,6 +43,11 @@
         <router-link class="hd-nav-item" :class="{ active: $route.path === '/version' }" to="/version" @click="mobileMenuOpen = false">
           <span class="material-icons" style="font-size:16px">new_releases</span> Versão / Atualizações
         </router-link>
+        <router-link v-if="auth.can('chat.team') || auth.can('chat.support')" class="hd-nav-item" :class="{ active: $route.path === '/chat' }" :to="auth.can('chat.team') ? '/chat' : '/chat?tab=apoio'" @click="mobileMenuOpen = false">
+          <span class="material-icons">forum</span> Chat
+          <span v-if="chatUnread" class="hd-nav-badge">{{ chatUnread }}</span>
+          <span v-if="supportWaiting" class="hd-nav-badge warn" title="Pedidos de apoio ao vivo à espera">{{ supportWaiting }}</span>
+        </router-link>
         <router-link class="hd-nav-item" :class="{ active: $route.path === '/about' }" to="/about" @click="mobileMenuOpen = false">
           <span class="material-icons" style="font-size:16px">info</span> Sobre
         </router-link>
@@ -83,9 +88,9 @@
       </nav>
 
       <div class="hd-sidebar-user" @click="auth.logout()">
-        <AvatarCircle :name="auth.user?.display_name || '?'" size="32" />
+        <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="32" />
         <div>
-          <div class="hd-sidebar-user-name">{{ auth.user?.display_name }}</div>
+          <div class="hd-sidebar-user-name" :title="auth.user?.display_name">{{ personLabel(auth.user?.display_name) }}</div>
           <div class="hd-sidebar-user-role">{{ roleLabel }}</div>
         </div>
         <span class="material-icons" style="font-size:16px;color:var(--c-muted);margin-left:auto">logout</span>
@@ -198,7 +203,7 @@
               </div>
             </div>
           </div>
-          <AvatarCircle :name="auth.user?.display_name || '?'" size="36" style="cursor:pointer" />
+          <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="36" style="cursor:pointer" />
         </div>
       </header>
 
@@ -214,6 +219,7 @@
       <!-- Page content -->
       <main class="app-content">
         <router-view />
+        <SupportWidget v-if="showSupportWidget" />
         <div style="height:env(safe-area-inset-bottom,0px)"></div>
       </main>
     </div>
@@ -221,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getTickets } from '../api/tickets'
@@ -230,6 +236,10 @@ import { applyFavicon } from '../utils/branding'
 import { versionLabel } from '../utils/version'
 import AvatarCircle from '../components/AvatarCircle.vue'
 import { usePushNotifications } from '../composables/usePushNotifications'
+import SupportWidget from '../components/SupportWidget.vue'
+import { personLabel, shortName } from '../utils/names'
+import { onRealtime, startRealtime } from '../services/realtime'
+import { getChatUnread, getSupportQueue } from '../api/chat'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -242,6 +252,10 @@ const showNotifications = ref(false)
 const mobileMenuOpen = ref(false)
 const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '', knowledge_enabled: true })
 const versionLabelText = versionLabel()
+const chatUnread = ref(0)
+const supportWaiting = ref(0)
+// Docentes and other staff get the live-support bubble; those who answer it use the Chat page instead
+const showSupportWidget = computed(() => (settings.value as any).support_chat_enabled !== false && !auth.can('chat.support') && !auth.isDemo)
 
 const roleLabel = computed(() => {
   const map: Record<string, string> = {
@@ -271,6 +285,7 @@ const titleMap: Record<string, string> = {
   '/admin/categories': 'Categorias',
   '/admin/settings': 'Configurações',
   '/admin/backup': 'Backup & Restauro',
+  '/chat': 'Chat',
 }
 
 const pageTitle = computed(() => {
@@ -287,11 +302,8 @@ function closeNotifications() {
   showNotifications.value = false
 }
 
-onMounted(async () => {
-  document.addEventListener('click', closeNotifications)
+async function refreshCounts() {
   try {
-    settings.value = await getPublicSettings()
-    applyFavicon(settings.value.favicon_url || settings.value.logo_url)
     const d = await getTickets({ page: 1, size: 1, status: 'open' })
     openCount.value = d.total
     if (auth.isStaff || auth.can('tickets.view_all')) {
@@ -299,10 +311,48 @@ onMounted(async () => {
       adminOpenCount.value = d2.total
     }
   } catch { /* ignore */ }
+}
+
+async function refreshChatBadges() {
+  try {
+    if (auth.can('chat.team')) chatUnread.value = route.path === '/chat' ? 0 : await getChatUnread()
+    if (auth.can('chat.support')) supportWaiting.value = (await getSupportQueue()).filter((c) => c.support_status === 'waiting').length
+  } catch { /* ignore */ }
+}
+
+// Many events can arrive together: refresh at most once per second
+function debounced(fn: () => void, ms = 1000) {
+  let t: ReturnType<typeof setTimeout> | null = null
+  return () => { if (t) clearTimeout(t); t = setTimeout(fn, ms) }
+}
+const refreshCountsSoon = debounced(refreshCounts)
+const refreshChatSoon = debounced(refreshChatBadges, 600)
+const realtimeOffs: Array<() => void> = []
+
+onMounted(async () => {
+  document.addEventListener('click', closeNotifications)
+  if (auth.token) startRealtime(auth.token)
+  realtimeOffs.push(
+    onRealtime('ticket.changed', refreshCountsSoon),
+    onRealtime('tickets.changed', refreshCountsSoon),
+    onRealtime('chat.message', refreshChatSoon),
+    onRealtime('chat.read', refreshChatSoon),
+    onRealtime('chat.conversation', refreshChatSoon),
+    onRealtime('support.queue', refreshChatSoon),
+  )
+  try {
+    settings.value = await getPublicSettings()
+    applyFavicon(settings.value.favicon_url || settings.value.logo_url)
+  } catch { /* ignore */ }
+  refreshCounts()
+  refreshChatBadges()
 })
+
+watch(() => route.path, (p) => { if (p === '/chat') chatUnread.value = 0; else refreshChatSoon() })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeNotifications)
+  realtimeOffs.forEach((off) => off())
 })
 </script>
 

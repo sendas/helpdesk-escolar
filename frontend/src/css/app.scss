@@ -770,3 +770,5 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
 
 /* ── Quasar overrides (minimal) ─────────────────── */
 .q-layout__section--marginal { display: none !important; }
+.hd-nav-badge + .hd-nav-badge { margin-left: 4px; }
+.hd-nav-badge.warn { background: #F59E0B; }
