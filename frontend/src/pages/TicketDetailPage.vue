@@ -33,6 +33,10 @@
             </button>
             <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
             <PriorityBadge :priority="ticket.priority" />
+            <span v-if="ticket.school" class="school-badge" :title="ticket.school.name">
+              <span class="material-icons">school</span>
+              {{ ticket.school.name }}
+            </span>
             <span v-if="isEscalated && !isDeescalated" class="escalated-badge" title="Ticket reportado à empresa de apoio">
               <span class="material-icons" style="font-size:13px;vertical-align:middle">open_in_new</span>
               Empresa de apoio
@@ -1562,6 +1566,13 @@ function formatSize(size: number) {
 .hd-lightbox-close:hover {
   background: rgba(255, 255, 255, .25);
 }
+.school-badge {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+  font-size: 13px; font-weight: 700; color: #0E7490; background: #CFFAFE;
+  border: 1px solid #A5F3FC; border-radius: 999px; padding: 3px 12px 3px 9px;
+}
+.school-badge .material-icons { font-size: 16px; }
+.dark .school-badge { color: #A5F3FC; background: rgba(8, 145, 178, .2); border-color: rgba(34, 211, 238, .35); }
 /* Private messages: grouped in one indented block with its own colour */
 .private-thread {
   margin: 0 0 14px 56px; padding: 12px 14px 2px;

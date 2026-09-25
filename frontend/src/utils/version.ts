@@ -1,8 +1,17 @@
-export const APP_VERSION = '1.9.5'
+export const APP_VERSION = '1.9.6'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '12:30'
+export const APP_VERSION_TIME = '13:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.6',
+    date: '2026-09-25',
+    time: '13:00',
+    title: 'Escola em destaque no topo do ticket',
+    changes: [
+      'O nome da escola aparece agora no topo de cada ticket, junto ao estado e à prioridade, num destaque azul-turquesa — sem ser preciso procurar nos detalhes.',
+    ],
+  },
   {
     version: '1.9.5',
     date: '2026-09-25',
