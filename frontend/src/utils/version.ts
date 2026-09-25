@@ -1,8 +1,20 @@
-export const APP_VERSION = '1.9.2'
+export const APP_VERSION = '1.9.3'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '11:00'
+export const APP_VERSION_TIME = '11:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.3',
+    date: '2026-09-25',
+    time: '11:30',
+    title: 'Mensagens privadas para mais pessoas',
+    changes: [
+      'As mensagens privadas podem ser enviadas a qualquer técnico ou administrador, mesmo que o ticket ainda não esteja atribuído.',
+      'Também é possível escrever em privado ao solicitante, aos responsáveis e aos seguidores do ticket.',
+      'A lista de destinatários está agrupada em "Neste ticket" e "Técnicos e administradores", com nomes reduzidos.',
+      'Corrigido: em tickets sem técnico atribuído a opção "Mensagem privada" não aparecia.',
+    ],
+  },
   {
     version: '1.9.2',
     date: '2026-09-25',

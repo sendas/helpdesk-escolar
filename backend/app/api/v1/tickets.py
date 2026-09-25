@@ -35,13 +35,18 @@ def _assigned_ids(ticket) -> set[int]:
 
 
 async def _private_message_recipient(db: AsyncSession, ticket, sender: User, recipient_id: int) -> User:
-    """A private message goes to someone assigned to the ticket, or back to whoever wrote to the sender privately."""
+    """Staff and people assigned to the ticket can write privately to any technician/admin or to anyone in the ticket
+    (requester, assignees, followers). Anyone can answer privately whoever wrote to them privately."""
     if recipient_id == sender.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não pode enviar uma mensagem privada a si próprio.")
+    recipient = await db.get(User, recipient_id)
+    if not recipient or not recipient.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilizador não encontrado.")
     assigned = _assigned_ids(ticket)
-    allowed = recipient_id in assigned and (
-        sender.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or sender.is_technician or sender.id in assigned
-    )
+    sender_can_write = sender.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or sender.is_technician or sender.id in assigned
+    in_ticket = {ticket.creator_id, *assigned, *(w.id for w in ticket.watchers)}
+    recipient_is_staff = recipient.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or recipient.is_technician
+    allowed = sender_can_write and (recipient_is_staff or recipient.id in in_ticket)
     if not allowed:
         previous = await db.execute(
             select(Comment.id).where(
@@ -52,9 +57,11 @@ async def _private_message_recipient(db: AsyncSession, ticket, sender: User, rec
             ).limit(1)
         )
         allowed = previous.scalar_one_or_none() is not None
-    recipient = await db.get(User, recipient_id) if allowed else None
-    if not recipient:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só pode enviar mensagens privadas a quem está atribuído ao ticket.")
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Só pode enviar mensagens privadas a técnicos, administradores ou pessoas deste ticket (solicitante, responsáveis e seguidores).",
+        )
     return recipient
 
 

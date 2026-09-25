@@ -36,7 +36,7 @@ export async function getUsers() {
   return data
 }
 
-export async function searchUsers(q: string, options: { technicians_only?: boolean; limit?: number } = {}) {
+export async function searchUsers(q: string, options: { technicians_only?: boolean; staff_only?: boolean; limit?: number } = {}) {
   const { data } = await api.get<UserFull[]>('/api/v1/users/search', { params: { q, ...options } })
   return data
 }

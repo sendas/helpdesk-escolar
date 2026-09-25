@@ -51,8 +51,9 @@ async def list_users(
 @router.get("/search", response_model=list[UserRead])
 async def search_users(
     q: str = Query("", max_length=100),
-    limit: int = Query(20, ge=1, le=50),
+    limit: int = Query(20, ge=1, le=100),
     technicians_only: bool = Query(False),
+    staff_only: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -60,6 +61,8 @@ async def search_users(
     query = select(User).where(User.is_active.is_(True), User.id != current_user.id)
     if technicians_only:
         query = query.where(or_(User.role == UserRole.TECHNICIAN, User.is_technician.is_(True)))
+    if staff_only:
+        query = query.where(or_(User.role.in_([UserRole.TECHNICIAN, UserRole.ADMIN]), User.is_technician.is_(True)))
     if term:
         like = f"%{term}%"
         query = query.where(

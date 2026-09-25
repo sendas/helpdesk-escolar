@@ -136,7 +136,7 @@
                 <span v-if="c.is_internal" class="hd-internal-tag">NOTA INTERNA</span>
                 <span v-if="c.private_to" class="private-tag" title="Só visível para estas duas pessoas">
                   <span class="material-icons">lock</span>
-                  Privada · {{ c.author.id === auth.user?.id ? 'para ' + c.private_to.display_name : 'para si' }}
+                  Privada · {{ c.author.id === auth.user?.id ? 'para ' + shortName(c.private_to.display_name) : 'para si' }}
                 </span>
                 <span v-if="c.remind_at" class="reminder-tag" :class="{ sent: !!c.reminder_sent_at }" :title="c.reminder_sent_at ? 'Lembrete já enviado' : 'Vai receber um lembrete por email e notificação'">
                   <span class="material-icons">{{ c.reminder_sent_at ? 'notifications_off' : 'alarm' }}</span>
@@ -180,11 +180,13 @@
                 <span class="material-icons">lock</span>
                 Mensagem privada
                 <select v-if="privateOn" v-model="privateTo" class="hd-input private-select">
-                  <option v-for="u in privateTargets" :key="u.id" :value="u.id">para {{ u.display_name }}</option>
+                  <optgroup v-for="g in privateGroups" :key="g.label" :label="g.label">
+                    <option v-for="u in g.people" :key="u.id" :value="u.id">{{ shortName(u.display_name) }}{{ u.tag ? ' (' + u.tag + ')' : '' }}</option>
+                  </optgroup>
                 </select>
               </div>
               <div v-if="privateOn" class="private-hint">
-                Só {{ privateTargetName }} e você veem esta mensagem. O solicitante, os seguidores, os outros técnicos e os administradores não a veem.
+                Só {{ privateTargetName }} e você veem esta mensagem. Mais ninguém a vê — nem os outros técnicos, nem os administradores.
               </div>
             </div>
             <div v-if="auth.isStaff && !privateOn" class="quick-replies">
@@ -498,6 +500,7 @@ import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import { formatDateTime } from '../utils/dates'
+import { shortName } from '../utils/names'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -518,18 +521,41 @@ const canRemind = computed(() => {
 // Private message: to someone assigned to the ticket, or back to whoever wrote to me privately
 const privateOn = ref(false)
 const privateTo = ref<number | null>(null)
-const privateTargets = computed(() => {
+const staffPeople = ref<any[]>([])
+const canWritePrivate = computed(() => {
+  const me = auth.user?.id
+  const t: any = ticket.value
+  if (!me || !t) return false
+  return auth.isStaff || t.assignee?.id === me || (t.assignees ?? []).some((a: any) => a.id === me)
+})
+// Grouped recipients: people in this ticket first, then every technician/admin
+const privateGroups = computed(() => {
   const me = auth.user?.id
   const t: any = ticket.value
   if (!me || !t) return []
-  const assigned: any[] = [...(t.assignees ?? []), ...(t.assignee ? [t.assignee] : [])]
-  const iCanWrite = auth.isStaff || assigned.some((a) => a.id === me)
-  const people = new Map<number, any>()
-  if (iCanWrite) assigned.forEach((a) => { if (a.id !== me) people.set(a.id, a) })
-  ;(t.comments ?? []).forEach((c: any) => { if (c.private_to?.id === me && c.author.id !== me) people.set(c.author.id, c.author) })
-  return [...people.values()]
+  const inTicket = new Map<number, any>()
+  const add = (u: any, tag: string) => { if (u && u.id !== me && !inTicket.has(u.id)) inTicket.set(u.id, { ...u, tag }) }
+  if (canWritePrivate.value) {
+    ;[...(t.assignees ?? []), ...(t.assignee ? [t.assignee] : [])].forEach((u: any) => add(u, 'responsável'))
+    add(t.creator, 'solicitante')
+    ;(t.watchers ?? []).forEach((u: any) => add(u, 'seguidor'))
+  }
+  ;(t.comments ?? []).forEach((c: any) => { if (c.private_to?.id === me) add(c.author, 'escreveu-lhe em privado') })
+  const groups = [{ label: 'Neste ticket', people: [...inTicket.values()] }]
+  if (canWritePrivate.value) {
+    groups.push({ label: 'Técnicos e administradores', people: staffPeople.value
+      .filter((u: any) => u.id !== me && !inTicket.has(u.id))
+      .map((u: any) => ({ ...u, tag: u.role === 'admin' ? 'administrador' : 'técnico' })) })
+  }
+  return groups.filter((g) => g.people.length)
 })
-const privateTargetName = computed(() => privateTargets.value.find((u: any) => u.id === privateTo.value)?.display_name ?? '')
+const privateTargets = computed(() => privateGroups.value.flatMap((g) => g.people))
+async function loadStaffPeople() {
+  if (staffPeople.value.length || !canWritePrivate.value) return
+  try { staffPeople.value = await searchUsers('', { staff_only: true, limit: 100 }) } catch { staffPeople.value = [] }
+}
+watch(canWritePrivate, (v) => { if (v) loadStaffPeople() }, { immediate: true })
+const privateTargetName = computed(() => shortName(privateTargets.value.find((u: any) => u.id === privateTo.value)?.display_name))
 function togglePrivate() {
   privateOn.value = !privateOn.value
   if (privateOn.value) {
@@ -1536,7 +1562,7 @@ function formatSize(size: number) {
 .private-box.off .private-title .material-icons { color: var(--c-muted); }
 .private-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--c-text); }
 .private-title .material-icons { font-size: 17px; color: #4F46E5; }
-.private-select { width: auto; max-width: 260px; padding: 5px 10px; font-size: 13px; }
+.private-select { width: auto; max-width: 340px; padding: 5px 10px; font-size: 13px; }
 .private-hint { font-size: 12px; color: var(--c-muted); margin-top: 8px; }
 .reminder-tag {
   display: inline-flex; align-items: center; gap: 3px;
