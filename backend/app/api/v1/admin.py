@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import distinct, select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from app.api.deps import get_db, require_staff, require_admin
+from app.api.deps import get_db, require_staff, require_admin, require_perm
 from app.models.user import User, UserRole
 from app.models.group import HelpdeskGroup
 from app.models.ticket import Ticket, Comment, TicketEvent, TicketRoutingRule, TicketStatus
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("/routing-rules", response_model=list[TicketRoutingRuleRead])
-async def list_routing_rules(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def list_routing_rules(db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     result = await db.execute(
         select(TicketRoutingRule)
         .options(
@@ -34,7 +34,7 @@ async def list_routing_rules(db: AsyncSession = Depends(get_db), _: User = Depen
 
 
 @router.post("/routing-rules", response_model=TicketRoutingRuleRead, status_code=status.HTTP_201_CREATED)
-async def create_routing_rule(data: TicketRoutingRuleCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def create_routing_rule(data: TicketRoutingRuleCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     await _validate_routing_assignee(db, data.assignee_id)
     rule = TicketRoutingRule(**data.model_dump())
     db.add(rule)
@@ -49,7 +49,7 @@ async def create_routing_rule(data: TicketRoutingRuleCreate, db: AsyncSession = 
 
 
 @router.patch("/routing-rules/{rule_id}", response_model=TicketRoutingRuleRead)
-async def update_routing_rule(rule_id: int, data: TicketRoutingRuleUpdate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def update_routing_rule(rule_id: int, data: TicketRoutingRuleUpdate, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     rule = (await db.execute(select(TicketRoutingRule).where(TicketRoutingRule.id == rule_id))).scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routing rule not found")
@@ -68,7 +68,7 @@ async def update_routing_rule(rule_id: int, data: TicketRoutingRuleUpdate, db: A
 
 
 @router.delete("/routing-rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_routing_rule(rule_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def delete_routing_rule(rule_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     rule = (await db.execute(select(TicketRoutingRule).where(TicketRoutingRule.id == rule_id))).scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routing rule not found")
@@ -88,7 +88,7 @@ async def admin_list_tickets(
     is_escalated: bool | None = None,
     search: str | None = Query(None, max_length=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_staff),
+    current_user: User = Depends(require_perm("tickets.view_all")),
 ):
     query = select(Ticket).options(
         selectinload(Ticket.creator),
@@ -189,7 +189,7 @@ async def admin_bulk_update_tickets(
 async def admin_bulk_action_tickets(
     data: TicketBulkAction,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(require_admin),
+    actor: User = Depends(require_perm("settings.manage")),
 ):
     if not data.ids:
         return {"affected": 0}
@@ -317,7 +317,7 @@ async def _notify_new_assignees(ticket: Ticket, previous_ids: set[int]) -> None:
 @router.post("/mail/sync")
 async def admin_sync_mail_replies(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     from app.config import settings as cfg
     if not cfg.mail_reply_enabled:
@@ -328,7 +328,7 @@ async def admin_sync_mail_replies(
 @router.post("/mail/sync/force")
 async def admin_force_sync_mail_replies(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     from app.config import settings as cfg
     if not cfg.mail_reply_enabled:
@@ -339,7 +339,7 @@ async def admin_force_sync_mail_replies(
 @router.get("/stats")
 async def admin_stats(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_staff),
+    _: User = Depends(require_perm("stats.view")),
 ):
     counts = {}
     for s in TicketStatus:
@@ -511,13 +511,13 @@ async def _build_access_stats(db: AsyncSession) -> dict:
 
 
 @router.get("/backup")
-async def backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     data = await backup_service.build_backup(db)
     return JSONResponse(content=data, headers={"Content-Disposition": "attachment; filename=helpdesk-backup.json"})
 
 
 @router.get("/backup/full")
-async def backup_full(_: User = Depends(require_admin)):
+async def backup_full(_: User = Depends(require_perm("settings.manage"))):
     import os
     tmp_path, filename = backup_service.build_full_zip()
 
@@ -540,28 +540,28 @@ async def backup_full(_: User = Depends(require_admin)):
 
 
 @router.post("/backup/full/save")
-async def backup_full_save(_: User = Depends(require_admin)):
+async def backup_full_save(_: User = Depends(require_perm("settings.manage"))):
     result = backup_service.write_full_zip_to_disk()
     return result
 
 
 @router.get("/backup/history")
-async def get_backup_history(_: User = Depends(require_admin)):
+async def get_backup_history(_: User = Depends(require_perm("settings.manage"))):
     return backup_service.load_history()
 
 
 @router.get("/backup/config")
-async def get_backup_config(_: User = Depends(require_admin)):
+async def get_backup_config(_: User = Depends(require_perm("settings.manage"))):
     return backup_service.load_config()
 
 
 @router.patch("/backup/config")
-async def update_backup_config(data: dict, _: User = Depends(require_admin)):
+async def update_backup_config(data: dict, _: User = Depends(require_perm("settings.manage"))):
     return backup_service.save_config(data)
 
 
 @router.post("/backup/run")
-async def run_backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def run_backup(db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     import asyncio
     result = await backup_service.write_backup(db)
     config = backup_service.load_config()
@@ -574,7 +574,7 @@ async def run_backup(db: AsyncSession = Depends(get_db), _: User = Depends(requi
 @router.post("/backup/restore")
 async def restore_backup(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     from fastapi import Request
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Use POST /admin/backup/restore com Content-Type: application/json")
@@ -583,7 +583,7 @@ async def restore_backup(
 @router.post("/backup/restore/upload")
 async def restore_backup_upload(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     from fastapi import UploadFile, File as FastAPIFile
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envie o ficheiro no corpo da requisição")
@@ -596,7 +596,7 @@ from fastapi import UploadFile, File as FastAPIFile  # noqa: E402
 async def restore_backup_json(
     file: UploadFile = FastAPIFile(...),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     try:
         content = await file.read()
@@ -613,7 +613,7 @@ async def restore_backup_json(
 async def restore_backup_zip(
     file: UploadFile = FastAPIFile(...),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     import os
     import shutil
@@ -697,7 +697,7 @@ async def restore_backup_zip(
 
 
 @router.post("/onedrive/test")
-async def test_onedrive(_: User = Depends(require_admin)):
+async def test_onedrive(_: User = Depends(require_perm("settings.manage"))):
     import asyncio
     from app.services import onedrive_service
     from app.services.backup_service import load_config
@@ -725,7 +725,7 @@ async def test_onedrive(_: User = Depends(require_admin)):
 
 
 @router.post("/mail/test")
-async def test_mail(current_admin: User = Depends(require_admin)):
+async def test_mail(current_admin: User = Depends(require_perm("settings.manage"))):
     if not current_admin.email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O utilizador não tem email configurado")
     try:
@@ -740,13 +740,13 @@ async def test_mail(current_admin: User = Depends(require_admin)):
 
 
 @router.post("/inactivity/run")
-async def run_inactivity_check(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def run_inactivity_check(db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     from app.services import inactivity_service
     return await inactivity_service.run_inactivity_check(db)
 
 
 @router.post("/fix-resolved-tickets")
-async def fix_resolved_tickets(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def fix_resolved_tickets(db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     """Close tickets where the 'Resolvido ✓' quick reply was used but status was never changed."""
     from sqlalchemy import text
     # Only close tickets whose LAST comment matches the quick reply text exactly
@@ -768,7 +768,7 @@ async def fix_resolved_tickets(db: AsyncSession = Depends(get_db), _: User = Dep
 async def get_mail_log(
     limit: int = Query(200, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     result = await db.execute(
         select(TicketEvent)
@@ -802,7 +802,7 @@ async def get_mail_log(
 
 
 @router.post("/reopen-wrongly-closed")
-async def reopen_wrongly_closed(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def reopen_wrongly_closed(db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     """Reopen tickets that were closed by the fix script but have no 'closed' event in ticket_events."""
     from sqlalchemy import text
     result = await db.execute(text("""

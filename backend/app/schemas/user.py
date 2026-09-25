@@ -12,6 +12,9 @@ class UserRead(BaseModel):
     display_name: str
     department: str | None = None
     role: UserRole
+    role_key: str | None = None
+    effective_role_key: str = "teacher"
+    role_label: str = ""
     is_technician: bool = False
     role_source: str = "entra"
     role_locked: bool = False
@@ -36,8 +39,13 @@ class UserPreferences(BaseModel):
     hidden_category_ids: list[int] = []
 
 
+class MeRead(UserRead):
+    permissions: list[str] = []
+
+
 class UserUpdate(BaseModel):
     role: UserRole | None = None
+    role_key: str | None = None
     is_technician: bool | None = None
     is_active: bool | None = None
     department: str | None = None
@@ -58,6 +66,7 @@ class UserCreate(BaseModel):
 class UserBulkUpdate(BaseModel):
     ids: list[int]
     role: UserRole | None = None
+    role_key: str | None = None
     is_technician: bool | None = None
     is_active: bool | None = None
     role_locked: bool | None = None
@@ -85,3 +94,29 @@ class HelpdeskGroupUpdate(BaseModel):
 
 class HelpdeskGroupMembersUpdate(BaseModel):
     user_ids: list[int]
+
+
+class RoleRead(BaseModel):
+    key: str
+    label: str
+    icon: str
+    color: str
+    permissions: list[str]
+    builtin: bool
+    locked: bool
+    sort: int
+    user_count: int = 0
+
+
+class RoleCreate(BaseModel):
+    label: str
+    icon: str = "badge"
+    color: str = "#64748B"
+    permissions: list[str] = []
+
+
+class RoleUpdate(BaseModel):
+    label: str | None = None
+    icon: str | None = None
+    color: str | None = None
+    permissions: list[str] | None = None

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import get_db, get_current_user, require_admin
+from app.api.deps import get_db, get_current_user, require_admin, require_perm
 from app.models.school import School
 from app.models.user import User
 from app.schemas.school import SchoolCreate, SchoolRead
@@ -16,7 +16,7 @@ async def list_schools(db: AsyncSession = Depends(get_db), _: User = Depends(get
 
 
 @router.post("", response_model=SchoolRead, status_code=status.HTTP_201_CREATED)
-async def create_school(data: SchoolCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def create_school(data: SchoolCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     school = School(**data.model_dump())
     db.add(school)
     await db.commit()
@@ -25,7 +25,7 @@ async def create_school(data: SchoolCreate, db: AsyncSession = Depends(get_db), 
 
 
 @router.put("/{school_id}", response_model=SchoolRead)
-async def update_school(school_id: int, data: SchoolCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def update_school(school_id: int, data: SchoolCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     result = await db.execute(select(School).where(School.id == school_id))
     school = result.scalar_one_or_none()
     if not school:
@@ -38,7 +38,7 @@ async def update_school(school_id: int, data: SchoolCreate, db: AsyncSession = D
 
 
 @router.delete("/{school_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_school(school_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def delete_school(school_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     result = await db.execute(select(School).where(School.id == school_id))
     school = result.scalar_one_or_none()
     if not school:

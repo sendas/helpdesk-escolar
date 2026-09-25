@@ -11,6 +11,10 @@ export interface UserFull extends UserBrief {
   created_at: string
   last_login?: string
   hidden_category_ids?: number[]
+  role_key?: string | null
+  effective_role_key?: string
+  role_label?: string
+  permissions?: string[]
 }
 
 export interface HelpdeskGroup {
@@ -41,7 +45,7 @@ export async function searchUsers(q: string, options: { technicians_only?: boole
   return data
 }
 
-export async function updateUser(id: number, payload: { role?: string; is_technician?: boolean; is_active?: boolean; department?: string; role_locked?: boolean }) {
+export async function updateUser(id: number, payload: { role?: string; role_key?: string; is_technician?: boolean; is_active?: boolean; department?: string; role_locked?: boolean }) {
   const { data } = await api.patch<UserFull>(`/api/v1/users/${id}`, payload)
   return data
 }
@@ -68,7 +72,7 @@ export async function importAzureUsers() {
   return data
 }
 
-export async function bulkUpdateUsers(payload: { ids: number[]; role?: string; is_technician?: boolean; is_active?: boolean; role_locked?: boolean }) {
+export async function bulkUpdateUsers(payload: { ids: number[]; role?: string; role_key?: string; is_technician?: boolean; is_active?: boolean; role_locked?: boolean }) {
   const { data } = await api.patch<UserFull[]>('/api/v1/users/bulk', payload)
   return data
 }

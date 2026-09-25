@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, get_current_user, require_admin
+from app.api.deps import get_db, get_current_user, require_admin, require_perm
 from app.models.suggestion import Suggestion
 from app.models.user import User
 from app.schemas.suggestion import SuggestionCreate, SuggestionRead
@@ -51,7 +51,7 @@ async def create_suggestion(
 @router.get("", response_model=list[SuggestionRead])
 async def list_suggestions(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     result = await db.execute(select(Suggestion).order_by(Suggestion.created_at.desc()))
     return result.scalars().all()

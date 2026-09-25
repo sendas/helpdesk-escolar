@@ -29,6 +29,8 @@ class User(Base):
     onprem_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     auth_provider: Mapped[str] = mapped_column(String(20), default="ldap")
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Papel atribuído manualmente (chave em roles.key); vazio = papel por omissão do "role" base
+    role_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
     hidden_category_ids: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -56,3 +58,13 @@ class User(Base):
         secondary="ticket_watchers",
         back_populates="watchers",
     )
+
+    @property
+    def effective_role_key(self) -> str:
+        from app.services.permissions import effective_role_key
+        return effective_role_key(self)
+
+    @property
+    def role_label(self) -> str:
+        from app.services.permissions import role_label
+        return role_label(self)

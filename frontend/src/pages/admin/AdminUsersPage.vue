@@ -147,7 +147,7 @@
         <span class="material-icons" style="font-size:15px">people</span> Utilizadores
       </button>
       <button class="hd-tab" :class="{ active: tab === 'permissions' }" @click="tab = 'permissions'">
-        <span class="material-icons" style="font-size:15px">shield</span> Permissões
+        <span class="material-icons" style="font-size:15px">shield</span> Papéis e permissões
       </button>
       <button class="hd-tab" :class="{ active: tab === 'departments' }" @click="tab = 'departments'">
         <span class="material-icons" style="font-size:15px">apartment</span> Departamentos
@@ -230,7 +230,7 @@
               </td>
               <td style="font-size:13px;color:var(--c-muted)">{{ u.email }}</td>
               <td>
-                <select class="hd-select compact" :value="u.role" @change="changeRole(u, ($event.target as HTMLSelectElement).value)">
+                <select class="hd-select compact" :value="u.effective_role_key ?? u.role" @change="changeRole(u, ($event.target as HTMLSelectElement).value)">
                   <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
                 </select>
               </td>
@@ -282,7 +282,7 @@
             <div class="user-card-grid">
               <label>
                 <span>Papel</span>
-                <select class="hd-select compact" :value="u.role" @change="changeRole(u, ($event.target as HTMLSelectElement).value)">
+                <select class="hd-select compact" :value="u.effective_role_key ?? u.role" @change="changeRole(u, ($event.target as HTMLSelectElement).value)">
                   <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
                 </select>
               </label>
@@ -321,20 +321,7 @@
     </div>
 
     <div v-if="tab === 'permissions'" class="hd-card" style="padding:28px">
-      <div style="font-weight:600;font-size:15px;margin-bottom:20px">Mapeamento de papéis</div>
-      <div class="role-grid">
-        <div v-for="role in roleDefinitions" :key="role.name" class="role-card">
-          <div class="hd-row" style="margin-bottom:8px">
-            <span class="material-icons" :style="{ color: role.color, fontSize: '18px' }">{{ role.icon }}</span>
-            <div style="font-weight:600;font-size:14px;margin-left:8px">{{ role.label }}</div>
-            <div class="hd-spacer"></div>
-            <span class="role-count">{{ users.filter(u => u.role === role.name).length }} utilizadores</span>
-          </div>
-          <div v-for="perm in role.permissions" :key="perm" class="role-perm">
-            <span class="material-icons">check_circle</span>{{ perm }}
-          </div>
-        </div>
-      </div>
+      <RoleManager :can-edit="auth.can('users.manage')" @changed="onRolesChanged" />
     </div>
 
     <div v-if="tab === 'departments'" class="hd-card" style="padding:28px">
@@ -427,6 +414,11 @@ import { ref, computed, onMounted } from 'vue'
 import { bulkUpdateUsers, createGroup, createUser, deleteGroup, getGroups, getUsers, importAzureUsers, updateGroupMembers, updateUser } from '../../api/users'
 import { getAzureSyncSettings, updateAzureSyncSettings } from '../../api/settings'
 import AvatarCircle from '../../components/AvatarCircle.vue'
+import RoleManager from '../../components/RoleManager.vue'
+import { getRoles, type Role } from '../../api/roles'
+import { useAuthStore } from '../../stores/auth'
+
+const auth = useAuthStore()
 
 const users = ref<any[]>([])
 const groups = ref<any[]>([])
@@ -473,18 +465,28 @@ const suggestedOus = [
   'queiroz.local/aeeq/secretaria-eseq',
 ]
 
-const roleOptions = [
-  { value: 'teacher', label: 'Docente' },
-  { value: 'non_teaching', label: 'Não docente' },
-  { value: 'secretary', label: 'Secretaria' },
-  { value: 'technician', label: 'Técnico' },
-  { value: 'admin', label: 'Administrador' },
-]
+const roles = ref<Role[]>([])
+const roleOptions = computed(() => roles.value.length
+  ? roles.value.map((r) => ({ value: r.key, label: r.label }))
+  : [
+    { value: 'teacher', label: 'Docente' },
+    { value: 'non_teaching', label: 'Não docente' },
+    { value: 'secretary', label: 'Secretaria' },
+    { value: 'technician', label: 'Técnico' },
+    { value: 'admin', label: 'Administrador' },
+  ])
+const BASE_ROLES = ['teacher', 'non_teaching', 'secretary', 'technician', 'admin']
+
+function onRolesChanged(list: Role[]) {
+  const permsChanged = roles.value.length > 0
+  roles.value = list
+  if (permsChanged) loadUsers()
+}
 
 const filteredUsers = computed(() => users.value.filter(u => {
   const haystack = `${u.display_name} ${u.email} ${u.username}`.toLowerCase()
   const matchText = !search.value || haystack.includes(search.value.toLowerCase())
-  const matchRole = !filterRole.value || u.role === filterRole.value
+  const matchRole = !filterRole.value || (u.effective_role_key ?? u.role) === filterRole.value
   const matchSource = !filterSource.value || (filterSource.value === 'manual' ? u.role_locked : !u.role_locked)
   const matchActive = !filterActive.value || (filterActive.value === 'active' ? u.is_active : !u.is_active)
   const matchDepartment = !filterDepartment.value || u.department === filterDepartment.value
@@ -516,16 +518,9 @@ const groupCandidateUsers = computed(() => {
     .filter(u => groupMemberIds.value.includes(u.id) || (q && `${u.display_name} ${u.email} ${u.username} ${u.department || ''}`.toLowerCase().includes(q)))
 })
 
-const roleDefinitions = [
-  { name: 'teacher', label: 'Docente', icon: 'school', color: '#3D52D5', permissions: ['Criar e gerir os próprios tickets', 'Adicionar comentários', 'Ver estado dos pedidos'] },
-  { name: 'non_teaching', label: 'Não docente', icon: 'badge', color: '#64748B', permissions: ['Criar e gerir os próprios tickets', 'Adicionar comentários', 'Ver estado dos pedidos'] },
-  { name: 'secretary', label: 'Secretaria', icon: 'business_center', color: '#0D9488', permissions: ['Criar e gerir os próprios tickets', 'Adicionar comentários', 'Ver estado dos pedidos'] },
-  { name: 'technician', label: 'Técnico', icon: 'build', color: '#F59E0B', permissions: ['Ver e gerir todos os tickets', 'Atribuir e atualizar estados', 'Adicionar notas internas'] },
-  { name: 'admin', label: 'Administrador', icon: 'admin_panel_settings', color: '#EF4444', permissions: ['Gerir utilizadores e papéis', 'Configurar categorias e tempos de resposta', 'Exportar dados e fazer backup', 'Configurar integrações'] },
-]
 
 onMounted(async () => {
-  await Promise.all([loadUsers(), loadGroups(), loadAzureSyncSettings()])
+  await Promise.all([loadUsers(), loadGroups(), loadAzureSyncSettings(), getRoles().then((r) => { roles.value = r }).catch(() => {})])
 })
 
 async function loadUsers() {
@@ -593,12 +588,13 @@ async function addManualUser() {
       display_name: displayName,
       email,
       password,
-      role: manualUserForm.value.role,
+      role: BASE_ROLES.includes(manualUserForm.value.role) ? manualUserForm.value.role : 'teacher',
       is_technician: manualUserForm.value.is_technician || manualUserForm.value.role === 'technician',
       department: manualUserForm.value.department.trim(),
       is_active: manualUserForm.value.is_active,
     })
-    users.value = [...users.value, created].sort((a, b) => a.display_name.localeCompare(b.display_name))
+    const withRole = BASE_ROLES.includes(manualUserForm.value.role) ? created : await updateUser(created.id, { role_key: manualUserForm.value.role })
+    users.value = [...users.value, withRole].sort((a, b) => a.display_name.localeCompare(b.display_name))
     creatingManualUser.value = false
     closeCreateUserDialog()
   } catch (e: any) {
@@ -662,7 +658,7 @@ async function removeGroup(id: number) {
 
 async function changeRole(user: any, role: string) {
   try {
-    const updated = await updateUser(user.id, { role })
+    const updated = await updateUser(user.id, { role_key: role })
     replaceUser(updated)
   } catch { /* ignore */ }
 }
@@ -727,7 +723,7 @@ function toggleAllVisible() {
 
 async function applyBulkRole() {
   if (!bulkRole.value) return
-  await applyBulk({ role: bulkRole.value })
+  await applyBulk({ role_key: bulkRole.value })
   bulkRole.value = ''
 }
 

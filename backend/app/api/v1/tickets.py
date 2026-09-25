@@ -15,6 +15,7 @@ from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketU
 from app.services import ticket_service, email_service, push_service
 from app.api.v1.settings import _read_settings
 from app.config import settings
+from app.services.permissions import has_perm
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -291,7 +292,7 @@ async def download_attachment(
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
-    if not _can_access_ticket(ticket, current_user):
+    if not _can_access_ticket(ticket, current_user) and not has_perm(current_user, "tickets.view_all"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     attachment = (
@@ -315,7 +316,7 @@ async def get_ticket(
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
-    if not _can_access_ticket(ticket, current_user):
+    if not _can_access_ticket(ticket, current_user) and not has_perm(current_user, "tickets.view_all"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     hide_demo = ticket_service.hides_demo_content(current_user)
     if hide_demo and ticket.creator and ticket.creator.auth_provider == "demo":

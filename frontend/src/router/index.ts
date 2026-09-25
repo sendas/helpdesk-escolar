@@ -28,17 +28,17 @@ const routes = [
       { path: 'suggestions', component: () => import('../pages/SuggestionsPage.vue') },
       {
         path: 'admin',
-        meta: { requiresStaff: true },
+        meta: { requiresAdminArea: true },
         children: [
-          { path: '', component: () => import('../pages/admin/AdminDashboard.vue') },
-          { path: 'tickets', component: () => import('../pages/admin/AdminTicketsPage.vue') },
-          { path: 'users', component: () => import('../pages/admin/AdminUsersPage.vue') },
-          { path: 'categories', meta: { requiresAdmin: true }, component: () => import('../pages/admin/AdminCategoriesPage.vue') },
-          { path: 'stats', component: () => import('../pages/admin/AdminStatsPage.vue') },
-          { path: 'settings', meta: { requiresAdmin: true }, component: () => import('../pages/admin/AdminSettingsPage.vue') },
-          { path: 'backup', meta: { requiresAdmin: true }, component: () => import('../pages/admin/AdminBackupPage.vue') },
-          { path: 'suggestions', meta: { requiresAdmin: true }, component: () => import('../pages/admin/AdminSuggestionsPage.vue') },
-          { path: 'mail-log', meta: { requiresAdmin: true }, component: () => import('../pages/admin/AdminMailLogPage.vue') },
+          { path: '', meta: { perm: ['tickets.view_all', 'tickets.manage'] }, component: () => import('../pages/admin/AdminDashboard.vue') },
+          { path: 'tickets', meta: { perm: ['tickets.view_all', 'tickets.manage'] }, component: () => import('../pages/admin/AdminTicketsPage.vue') },
+          { path: 'users', meta: { perm: ['tickets.manage', 'users.manage'] }, component: () => import('../pages/admin/AdminUsersPage.vue') },
+          { path: 'categories', meta: { perm: 'settings.manage' }, component: () => import('../pages/admin/AdminCategoriesPage.vue') },
+          { path: 'stats', meta: { perm: 'stats.view' }, component: () => import('../pages/admin/AdminStatsPage.vue') },
+          { path: 'settings', meta: { perm: 'settings.manage' }, component: () => import('../pages/admin/AdminSettingsPage.vue') },
+          { path: 'backup', meta: { perm: 'settings.manage' }, component: () => import('../pages/admin/AdminBackupPage.vue') },
+          { path: 'suggestions', meta: { perm: 'settings.manage' }, component: () => import('../pages/admin/AdminSuggestionsPage.vue') },
+          { path: 'mail-log', meta: { perm: 'settings.manage' }, component: () => import('../pages/admin/AdminMailLogPage.vue') },
         ],
       },
     ],
@@ -60,10 +60,11 @@ export default route(function () {
     if (!to.meta?.public && !auth.isAuthenticated) {
       return '/login'
     }
-    if (to.meta?.requiresAdmin && !auth.isAdmin) {
+    const perm = to.meta?.perm as string | string[] | undefined
+    if (perm && !(Array.isArray(perm) ? perm : [perm]).some((p) => auth.can(p) || (p === 'tickets.manage' && auth.isStaff))) {
       return '/dashboard'
     }
-    if (to.meta?.requiresStaff && !auth.isStaff) {
+    if (to.meta?.requiresAdminArea && !auth.hasAdminArea) {
       return '/dashboard'
     }
   })

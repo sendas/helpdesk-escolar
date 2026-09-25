@@ -3,7 +3,7 @@ import os
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
-from app.api.deps import require_admin
+from app.api.deps import require_admin, require_perm
 from app.models.user import User
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -85,7 +85,7 @@ async def update_settings(
     support_provider_name: str = Form("Empresa de apoio informático"),
     support_provider_email: str = Form(""),
     logo: UploadFile | None = File(None),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     data = _read_settings()
     data["org_name"] = org_name.strip() or DEFAULT_SETTINGS["org_name"]
@@ -111,13 +111,13 @@ async def update_settings(
 
 
 @router.get("/azure-sync")
-async def get_azure_sync_settings(_: User = Depends(require_admin)):
+async def get_azure_sync_settings(_: User = Depends(require_perm("settings.manage"))):
     allowed = _normalize_ou_list(_read_settings().get("azure_allowed_onprem_ous", []))
     return {"allowed_onprem_ous": allowed}
 
 
 @router.put("/azure-sync")
-async def update_azure_sync_settings(payload: AzureSyncSettings, _: User = Depends(require_admin)):
+async def update_azure_sync_settings(payload: AzureSyncSettings, _: User = Depends(require_perm("settings.manage"))):
     data = _read_settings()
     data["azure_allowed_onprem_ous"] = _normalize_ou_list(payload.allowed_onprem_ous)
     _write_settings(data)
@@ -125,7 +125,7 @@ async def update_azure_sync_settings(payload: AzureSyncSettings, _: User = Depen
 
 
 @router.put("/features")
-async def update_feature_settings(payload: FeatureSettings, _: User = Depends(require_admin)):
+async def update_feature_settings(payload: FeatureSettings, _: User = Depends(require_perm("settings.manage"))):
     data = _read_settings()
     data["knowledge_enabled"] = payload.knowledge_enabled
     data["category_warnings_enabled"] = payload.category_warnings_enabled
@@ -134,7 +134,7 @@ async def update_feature_settings(payload: FeatureSettings, _: User = Depends(re
 
 
 @router.put("/login-notice")
-async def update_login_notice(payload: LoginNoticeSettings, _: User = Depends(require_admin)):
+async def update_login_notice(payload: LoginNoticeSettings, _: User = Depends(require_perm("settings.manage"))):
     data = _read_settings()
     data["login_notice_enabled"] = payload.enabled
     text = payload.text.strip()
@@ -145,7 +145,7 @@ async def update_login_notice(payload: LoginNoticeSettings, _: User = Depends(re
 
 
 @router.put("/no-access-contact")
-async def update_no_access_contact(payload: NoAccessContactSettings, _: User = Depends(require_admin)):
+async def update_no_access_contact(payload: NoAccessContactSettings, _: User = Depends(require_perm("settings.manage"))):
     data = _read_settings()
     email = payload.email.strip()
     if not email or "@" not in email:
@@ -156,7 +156,7 @@ async def update_no_access_contact(payload: NoAccessContactSettings, _: User = D
 
 
 @router.put("/design")
-async def update_design(payload: DesignSettings, _: User = Depends(require_admin)):
+async def update_design(payload: DesignSettings, _: User = Depends(require_perm("settings.manage"))):
     if payload.design not in UI_DESIGNS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Design inválido")
     data = _read_settings()
@@ -166,7 +166,7 @@ async def update_design(payload: DesignSettings, _: User = Depends(require_admin
 
 
 @router.put("/demo-mode")
-async def update_demo_mode(payload: DemoModeSettings, _: User = Depends(require_admin)):
+async def update_demo_mode(payload: DemoModeSettings, _: User = Depends(require_perm("settings.manage"))):
     profiles = [p for p in DEMO_PROFILES if p in payload.profiles]
     if payload.enabled and not profiles:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha pelo menos um perfil para o modo demo")
@@ -184,7 +184,7 @@ async def update_demo_mode(payload: DemoModeSettings, _: User = Depends(require_
 
 
 @router.put("/suggestion-emails")
-async def update_suggestion_emails(payload: SuggestionEmailSettings, _: User = Depends(require_admin)):
+async def update_suggestion_emails(payload: SuggestionEmailSettings, _: User = Depends(require_perm("settings.manage"))):
     data = _read_settings()
     clean = [e.strip().lower() for e in payload.emails if e.strip()]
     data["suggestion_emails"] = clean

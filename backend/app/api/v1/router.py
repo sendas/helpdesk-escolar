@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, tickets, categories, users, admin, schools, settings, knowledge, notifications, suggestions
+from app.api.v1 import auth, tickets, categories, users, admin, schools, settings, knowledge, notifications, suggestions, roles
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth.router)
@@ -12,3 +12,4 @@ router.include_router(settings.router)
 router.include_router(knowledge.router)
 router.include_router(notifications.router)
 router.include_router(suggestions.router)
+router.include_router(roles.router)

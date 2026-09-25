@@ -43,6 +43,16 @@ async def get_current_user(
     return user
 
 
+def require_perm(*perms: str):
+    """Dependency: the user needs at least one of these permissions (see app.services.permissions)."""
+    async def _check(user: User = Depends(get_current_user)) -> User:
+        from app.services.permissions import permissions_for
+        if not permissions_for(user) & set(perms):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem permissão para esta ação.")
+        return user
+    return _check
+
+
 async def require_staff(user: User = Depends(get_current_user)) -> User:
     """Technician or Admin."""
     if user.role not in {UserRole.TECHNICIAN, UserRole.ADMIN} and not user.is_technician:

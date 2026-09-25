@@ -176,8 +176,12 @@
           </div>
           </div>
 
+          <div v-if="!canReply" class="hd-card read-only-note">
+            <span class="material-icons">visibility</span>
+            Está a consultar este ticket em modo de leitura — o seu papel permite ver todos os tickets, mas não responder nem alterá-los.
+          </div>
           <!-- Reply box -->
-          <div class="hd-card" style="padding:20px">
+          <div v-else class="hd-card" style="padding:20px">
             <div style="font-weight:600;font-size:14px;margin-bottom:12px">Responder</div>
             <div v-if="privateTargets.length" class="private-box" :class="{ off: !privateOn }">
               <div class="private-title">
@@ -549,6 +553,14 @@ const commentBlocks = computed(() => {
     else blocks.push({ key: `c${c.id}`, partner, items: [c] })
   }
   return blocks
+})
+// Supervisors (tickets.view_all without tickets.manage) can open any ticket but only reply to their own
+const canReply = computed(() => {
+  const me = auth.user?.id
+  const t: any = ticket.value
+  if (!me || !t) return false
+  return auth.isStaff || t.creator?.id === me || t.assignee?.id === me
+    || [...(t.assignees ?? []), ...(t.watchers ?? [])].some((u: any) => u.id === me)
 })
 const staffPeople = ref<any[]>([])
 const canWritePrivate = computed(() => {
@@ -1598,6 +1610,8 @@ function formatSize(size: number) {
   display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--c-muted);
   border: 1px solid var(--c-border); border-radius: 6px; padding: 0 6px; line-height: 17px;
 }
+.read-only-note { display: flex; align-items: center; gap: 10px; padding: 14px 18px; font-size: 13px; color: var(--c-muted); }
+.read-only-note .material-icons { font-size: 18px; color: var(--c-primary); }
 .school-badge {
   display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
   font-size: 13px; font-weight: 700; color: #0E7490; background: #CFFAFE;

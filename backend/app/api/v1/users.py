@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from app.api.deps import get_db, get_current_user, require_admin, require_staff
+from app.api.deps import get_db, get_current_user, require_perm
 from app.models.group import HelpdeskGroup
 from app.models.user import User, UserRole
 from app.schemas.user import (
@@ -12,21 +12,28 @@ from app.schemas.user import (
     HelpdeskGroupUpdate,
     UserBulkUpdate,
     UserCreate,
+    MeRead,
     UserPreferences,
     UserRead,
     UserUpdate,
 )
-from app.services import azure_import, passwords
+from app.services import azure_import, passwords, permissions
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("/me", response_model=UserRead)
+def _me(user: User) -> MeRead:
+    data = MeRead.model_validate(user)
+    data.permissions = sorted(permissions.permissions_for(user))
+    return data
+
+
+@router.get("/me", response_model=MeRead)
 async def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
+    return _me(current_user)
 
 
-@router.put("/me/preferences", response_model=UserRead)
+@router.put("/me/preferences", response_model=MeRead)
 async def update_my_preferences(
     data: UserPreferences,
     current_user: User = Depends(get_current_user),
@@ -36,13 +43,13 @@ async def update_my_preferences(
     current_user.hidden_category_ids = ",".join(str(i) for i in ids) or None
     await db.commit()
     await db.refresh(current_user)
-    return current_user
+    return _me(current_user)
 
 
 @router.get("", response_model=list[UserRead])
 async def list_users(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_staff),
+    _: User = Depends(require_perm("tickets.manage", "tickets.view_all", "users.manage")),
 ):
     result = await db.execute(select(User).order_by(User.display_name))
     return result.scalars().all()
@@ -80,7 +87,7 @@ async def search_users(
 async def create_manual_user(
     data: UserCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("users.manage")),
 ):
     display_name = data.display_name.strip()
     email = data.email.strip().lower()
@@ -123,7 +130,7 @@ async def create_manual_user(
 @router.post("/import-azure")
 async def import_users_from_azure(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("users.manage")),
 ):
     try:
         return await azure_import.import_azure_users(db)
@@ -134,7 +141,7 @@ async def import_users_from_azure(
 @router.get("/groups", response_model=list[HelpdeskGroupRead])
 async def list_helpdesk_groups(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_staff),
+    _: User = Depends(require_perm("tickets.manage", "tickets.view_all", "users.manage")),
 ):
     result = await db.execute(
         select(HelpdeskGroup)
@@ -148,7 +155,7 @@ async def list_helpdesk_groups(
 async def create_helpdesk_group(
     data: HelpdeskGroupCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("users.manage")),
 ):
     name = data.name.strip()
     if not name:
@@ -168,7 +175,7 @@ async def update_helpdesk_group(
     group_id: int,
     data: HelpdeskGroupUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("users.manage")),
 ):
     result = await db.execute(
         select(HelpdeskGroup)
@@ -195,7 +202,7 @@ async def update_helpdesk_group_members(
     group_id: int,
     data: HelpdeskGroupMembersUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("users.manage")),
 ):
     result = await db.execute(
         select(HelpdeskGroup)
@@ -222,7 +229,7 @@ async def update_helpdesk_group_members(
 async def delete_helpdesk_group(
     group_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("users.manage")),
 ):
     result = await db.execute(
         select(HelpdeskGroup)
@@ -241,15 +248,18 @@ async def delete_helpdesk_group(
 async def bulk_update_users(
     data: UserBulkUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("users.manage")),
 ):
     if not data.ids:
         return []
     result = await db.execute(select(User).where(User.id.in_(data.ids)))
     users = result.scalars().all()
     for user in users:
+        if data.role_key:
+            _apply_role_key(user, data.role_key)
         if data.role is not None:
             user.role = data.role
+            user.role_key = None
             user.role_source = "manual"
             user.role_locked = True
             if data.role == UserRole.TECHNICIAN:
@@ -270,14 +280,17 @@ async def update_user(
     user_id: int,
     data: UserUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("users.manage")),
 ):
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if data.role_key:
+        _apply_role_key(user, data.role_key)
     if data.role is not None:
         user.role = data.role
+        user.role_key = None
         user.role_source = "manual"
         user.role_locked = True
         if data.role == UserRole.TECHNICIAN:
@@ -294,6 +307,24 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+def _apply_role_key(user: User, key: str) -> None:
+    """Assign a papel: keeps the base role and technician flag consistent (see permissions.sync_user_flags)."""
+    if key not in permissions._roles:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Papel desconhecido.")
+    user.role_source = "manual"
+    user.role_locked = True
+    if key == "admin":
+        user.role = UserRole.ADMIN
+        user.role_key = None
+        return
+    if user.role == UserRole.ADMIN:
+        user.role = UserRole.TEACHER
+    if key in UserRole._value2member_map_:
+        user.role = UserRole(key)
+    user.role_key = key
+    permissions.sync_user_flags(user)
 
 
 async def _unique_username(db: AsyncSession, base: str) -> str:

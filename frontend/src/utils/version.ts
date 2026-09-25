@@ -1,8 +1,23 @@
-export const APP_VERSION = '1.9.8'
+export const APP_VERSION = '1.9.9'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '14:00'
+export const APP_VERSION_TIME = '15:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.9',
+    date: '2026-09-25',
+    time: '15:00',
+    title: 'Papéis e permissões editáveis (Direção e Equipa TIC)',
+    changes: [
+      'Novo separador "Papéis e permissões" em Utilizadores: editar o nome, ícone, cor e permissões de cada papel, e criar papéis novos.',
+      'Novos papéis "Direção" (vê todos os tickets e as estatísticas, só de leitura) e "Equipa TIC" (gere tickets, vê estatísticas e edita a base de conhecimento).',
+      'Permissões disponíveis: ver todos os tickets, gerir tickets, ver estatísticas, editar a base de conhecimento, gerir utilizadores e papéis, configurações do sistema.',
+      'As permissões são verificadas no servidor; o menu e as páginas mostram só o que cada papel pode usar. O Administrador tem sempre todas as permissões.',
+      'Na lista de utilizadores, o seletor de papel inclui os papéis novos; atribuir um papel manualmente bloqueia a sincronização com o Entra ID para esse utilizador.',
+      'Quem só pode consultar vê os tickets em modo de leitura, sem caixa de resposta nem controlos de edição.',
+      'Corrigido: na Gestão de tickets a coluna Solicitante ficava desalinhada para técnicos; nomes reduzidos com o grupo de recrutamento.',
+    ],
+  },
   {
     version: '1.9.8',
     date: '2026-09-25',

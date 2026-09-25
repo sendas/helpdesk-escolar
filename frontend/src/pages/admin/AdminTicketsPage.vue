@@ -53,7 +53,7 @@
 
       <div v-if="mailSyncMessage" class="mail-sync-message">{{ mailSyncMessage }}</div>
 
-      <div v-if="selectedIds.length" class="bulk-bar">
+      <div v-if="selectedIds.length && !readOnly" class="bulk-bar">
         <strong>{{ selectedIds.length }} selecionado{{ selectedIds.length !== 1 ? 's' : '' }}</strong>
         <select class="hd-select" v-model="bulkStatus">
           <option value="">Estado...</option>
@@ -94,11 +94,11 @@
       <div v-if="loading" class="state-block">A carregar...</div>
 
       <template v-else>
-        <div class="desktop-table-wrap">
+        <div class="desktop-table-wrap" :class="{ 'read-only': readOnly }">
           <table class="hd-table tickets-table">
             <thead>
               <tr>
-                <th><input type="checkbox" :checked="allVisibleSelected" @change="toggleAllVisible" /></th>
+                <th v-if="!readOnly"><input type="checkbox" :checked="allVisibleSelected" @change="toggleAllVisible" /></th>
                 <th>Ticket</th>
                 <th>Assunto</th>
                 <th>Categoria</th>
@@ -115,17 +115,17 @@
             </thead>
             <tbody>
               <tr v-for="t in tickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined">
-                <td><input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" /></td>
+                <td v-if="!readOnly"><input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" /></td>
                 <td class="ticket-id">T-{{ t.id }}</td>
                 <td class="subject-cell">
                   <router-link :to="`/tickets/${t.id}`">{{ t.title }}</router-link>
                   <small>{{ t.school?.short_name || t.school?.name || 'Sem escola' }}</small>
                 </td>
                 <td><CategoryPill :category="t.category" /></td>
-                <td v-if="auth.isAdmin">
+                <td>
                   <div class="user-cell">
-                    <AvatarCircle :name="t.creator.display_name" size="24" />
-                    <span>{{ t.creator.display_name }}</span>
+                    <AvatarCircle :name="shortName(t.creator.display_name)" size="24" />
+                    <span :title="t.creator.display_name">{{ personLabel(t.creator.display_name) }}</span>
                   </div>
                 </td>
                 <td><PriorityBadge :priority="t.priority" /></td>
@@ -164,10 +164,10 @@
           </table>
         </div>
 
-        <div class="mobile-ticket-list">
+        <div class="mobile-ticket-list" :class="{ 'read-only': readOnly }">
           <article v-for="t in tickets" :key="t.id" class="ticket-card" :class="{ 'card-auto-closed': isAutoClosed(t) }">
             <div class="ticket-card-top">
-              <input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" />
+              <input v-if="!readOnly" type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" />
               <div class="ticket-card-title">
                 <router-link :to="`/tickets/${t.id}`">T-{{ t.id }} · {{ t.title }}</router-link>
                 <small>{{ t.school?.name || 'Sem escola' }} · {{ timeAgo(t.updated_at) }}</small>
@@ -179,8 +179,8 @@
               <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
             </div>
             <div class="ticket-card-user">
-              <AvatarCircle :name="t.creator.display_name" size="26" />
-              <span>{{ t.creator.display_name }}</span>
+              <AvatarCircle :name="shortName(t.creator.display_name)" size="26" />
+              <span :title="t.creator.display_name">{{ personLabel(t.creator.display_name) }}</span>
             </div>
             <div class="ticket-card-controls">
               <label>Estado<StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></label>
@@ -226,6 +226,7 @@ import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
 import SlaBadge from '../../components/SlaBadge.vue'
 import { timeAgo as formatTimeAgo } from '../../utils/dates'
+import { personLabel, shortName } from '../../utils/names'
 
 const CategoryPill = defineComponent({
   props: { category: { type: Object, required: true } },
@@ -293,6 +294,8 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = 25
 const selectedIds = ref<number[]>([])
+// Supervisors (e.g. Direção) see everything but cannot change tickets
+const readOnly = computed(() => !auth.isStaff)
 const bulkStatus = ref('')
 const bulkAssignee = ref('')
 const bulkGroup = ref('')
@@ -589,6 +592,8 @@ async function runInactivity() {
 }
 .danger-action:hover { background: rgba(239, 68, 68, .14); }
 .desktop-table-wrap { overflow-x: auto; }
+.read-only select { pointer-events: none; appearance: none; background-image: none; border-color: transparent; }
+.read-only .ticket-card-controls button { pointer-events: none; }
 .tickets-table { min-width: 1420px; }
 .tickets-table th, .tickets-table td { vertical-align: middle; }
 .ticket-id, .muted-cell { color: var(--c-muted); font-size: 12px; white-space: nowrap; }

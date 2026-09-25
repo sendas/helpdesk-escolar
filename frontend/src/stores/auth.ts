@@ -13,6 +13,10 @@ interface User {
   is_technician?: boolean
   auth_provider: string
   hidden_category_ids?: number[]
+  role_key?: string | null
+  effective_role_key?: string
+  role_label?: string
+  permissions?: string[]
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -22,7 +26,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
-  const isStaff = computed(() => user.value?.role === 'technician' || user.value?.role === 'admin' || !!user.value?.is_technician)
+  const permissions = computed(() => new Set(user.value?.permissions ?? []))
+  // Permission check (see backend app/services/permissions.py); administrators can do everything
+  function can(perm: string) {
+    return isAdmin.value || permissions.value.has(perm)
+  }
+  const isStaff = computed(() => can('tickets.manage') || user.value?.role === 'technician' || !!user.value?.is_technician)
+  // Can open the "Administração" area (manage or only supervise)
+  const hasAdminArea = computed(() => ['tickets.view_all', 'tickets.manage', 'stats.view', 'users.manage', 'settings.manage'].some(can))
   const isDemo = computed(() => user.value?.auth_provider === 'demo')
 
   function applyDark() {
@@ -96,5 +107,5 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = '/login'
   }
 
-  return { token, user, isDark, isAuthenticated, isAdmin, isStaff, isDemo, loginLdap, loginDemo, loginAzure, handleAzureCallback, fetchMe, init, setDark, toggleDark, logout }
+  return { token, user, isDark, isAuthenticated, isAdmin, isStaff, isDemo, can, hasAdminArea, loginLdap, loginDemo, loginAzure, handleAzureCallback, fetchMe, init, setDark, toggleDark, logout }
 })

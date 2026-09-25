@@ -56,6 +56,11 @@ async def _add_missing_columns(conn) -> None:
     if "private_to_id" not in existing_c:
         await conn.execute(text("ALTER TABLE comments ADD COLUMN private_to_id INTEGER REFERENCES users(id)"))
 
+    # 8. Editable papel per user
+    rows_u2 = await conn.execute(text("PRAGMA table_info(users)"))
+    if "role_key" not in {row[1] for row in rows_u2}:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN role_key VARCHAR(50)"))
+
     # 4. Add closed_via_email if missing + backfill from email-triggered status events
     if "closed_via_email" not in existing:
         await conn.execute(text("ALTER TABLE tickets ADD COLUMN closed_via_email BOOLEAN NOT NULL DEFAULT 0"))
@@ -81,6 +86,9 @@ async def lifespan(app: FastAPI):
     from app.services.bootstrap import ensure_defaults
     async with AsyncSessionLocal() as db:
         await ensure_defaults(db)
+    from app.services.permissions import ensure_default_roles
+    async with AsyncSessionLocal() as db:
+        await ensure_default_roles(db)
     sync_task = None
     if settings.azure_sync_interval_minutes > 0:
         sync_task = asyncio.create_task(_sync_azure_periodically())

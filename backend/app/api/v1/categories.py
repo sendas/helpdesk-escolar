@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import get_db, get_current_user, require_admin
+from app.api.deps import get_db, get_current_user, require_admin, require_perm
 from app.models.category import Category
 from app.models.user import User
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
@@ -22,7 +22,7 @@ async def list_categories(
 async def create_category(
     data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     category = Category(**data.model_dump())
     db.add(category)
@@ -36,7 +36,7 @@ async def update_category(
     category_id: int,
     data: CategoryUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     result = await db.execute(select(Category).where(Category.id == category_id))
     category = result.scalar_one_or_none()
@@ -57,7 +57,7 @@ async def update_category(
 async def delete_category(
     category_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_perm("settings.manage")),
 ):
     result = await db.execute(select(Category).where(Category.id == category_id))
     category = result.scalar_one_or_none()

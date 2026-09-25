@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from app.api.deps import get_db, get_current_user, require_admin
+from app.api.deps import get_db, get_current_user, require_admin, require_perm
 from app.api.v1.settings import _read_settings
 from app.models.knowledge import KnowledgeArticle
 from app.models.user import User
@@ -26,7 +26,7 @@ async def list_articles(db: AsyncSession = Depends(get_db), _: User = Depends(ge
 
 
 @router.get("/admin", response_model=list[KnowledgeArticleRead])
-async def admin_list_articles(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def admin_list_articles(db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("knowledge.edit"))):
     result = await db.execute(
         select(KnowledgeArticle)
         .options(selectinload(KnowledgeArticle.category))
@@ -36,7 +36,7 @@ async def admin_list_articles(db: AsyncSession = Depends(get_db), _: User = Depe
 
 
 @router.post("/admin", response_model=KnowledgeArticleRead, status_code=status.HTTP_201_CREATED)
-async def create_article(data: KnowledgeArticleCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def create_article(data: KnowledgeArticleCreate, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("knowledge.edit"))):
     article = KnowledgeArticle(**data.model_dump())
     db.add(article)
     await db.commit()
@@ -44,7 +44,7 @@ async def create_article(data: KnowledgeArticleCreate, db: AsyncSession = Depend
 
 
 @router.patch("/admin/{article_id}", response_model=KnowledgeArticleRead)
-async def update_article(article_id: int, data: KnowledgeArticleUpdate, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def update_article(article_id: int, data: KnowledgeArticleUpdate, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("knowledge.edit"))):
     article = (await db.execute(select(KnowledgeArticle).where(KnowledgeArticle.id == article_id))).scalar_one_or_none()
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
@@ -56,7 +56,7 @@ async def update_article(article_id: int, data: KnowledgeArticleUpdate, db: Asyn
 
 
 @router.delete("/admin/{article_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_article(article_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
+async def delete_article(article_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("knowledge.edit"))):
     article = (await db.execute(select(KnowledgeArticle).where(KnowledgeArticle.id == article_id))).scalar_one_or_none()
     if not article:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")

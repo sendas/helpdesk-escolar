@@ -10,7 +10,7 @@
       <article v-for="article in filtered" :key="article.id" class="hd-card article-card">
         <div class="article-top">
           <div v-if="article.category" class="article-category">{{ article.category.name }}</div>
-          <button v-if="auth.isAdmin" class="hd-icon-btn article-edit" title="Editar artigo" @click="startEdit(article)">
+          <button v-if="auth.can('knowledge.edit')" class="hd-icon-btn article-edit" title="Editar artigo" @click="startEdit(article)">
             <span class="material-icons" style="font-size:16px">edit</span>
           </button>
         </div>

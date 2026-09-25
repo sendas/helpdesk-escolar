@@ -50,19 +50,19 @@
           <span class="material-icons" style="font-size:16px">lightbulb</span> Sugestões
         </router-link>
 
-        <template v-if="auth.isStaff">
+        <template v-if="auth.hasAdminArea">
           <div class="hd-nav-section" style="margin-top:8px">Administração</div>
-          <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/tickets' }" to="/admin/tickets" @click="mobileMenuOpen = false">
+          <router-link v-if="auth.can('tickets.view_all') || auth.isStaff" class="hd-nav-item" :class="{ active: $route.path === '/admin/tickets' }" to="/admin/tickets" @click="mobileMenuOpen = false">
             <span class="material-icons">manage_search</span> Gestão de tickets
             <span v-if="adminOpenCount" class="hd-nav-badge">{{ adminOpenCount }}</span>
           </router-link>
-          <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/users' }" to="/admin/users" @click="mobileMenuOpen = false">
+          <router-link v-if="auth.isStaff || auth.can('users.manage')" class="hd-nav-item" :class="{ active: $route.path === '/admin/users' }" to="/admin/users" @click="mobileMenuOpen = false">
             <span class="material-icons">group</span> Utilizadores
           </router-link>
-          <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/stats' }" to="/admin/stats" @click="mobileMenuOpen = false">
+          <router-link v-if="auth.can('stats.view')" class="hd-nav-item" :class="{ active: $route.path === '/admin/stats' }" to="/admin/stats" @click="mobileMenuOpen = false">
             <span class="material-icons">bar_chart</span> Estatísticas
           </router-link>
-          <template v-if="auth.isAdmin">
+          <template v-if="auth.can('settings.manage')">
             <router-link class="hd-nav-item" :class="{ active: $route.path === '/admin/suggestions' }" to="/admin/suggestions" @click="mobileMenuOpen = false">
               <span class="material-icons">lightbulb</span> Sugestões
             </router-link>
@@ -130,7 +130,7 @@
                   <strong>{{ openCount }}</strong> ticket{{ openCount !== 1 ? 's' : '' }} aberto{{ openCount !== 1 ? 's' : '' }} nos meus pedidos
                 </div>
               </router-link>
-              <router-link v-if="auth.isStaff" class="notif-item" to="/admin/tickets" @click="showNotifications = false">
+              <router-link v-if="auth.can('tickets.view_all') || auth.isStaff" class="notif-item" to="/admin/tickets" @click="showNotifications = false">
                 <span class="material-icons">manage_search</span>
                 <div>
                   <strong>{{ adminOpenCount }}</strong> ticket{{ adminOpenCount !== 1 ? 's' : '' }} aberto{{ adminOpenCount !== 1 ? 's' : '' }} na gestão
@@ -251,10 +251,10 @@ const roleLabel = computed(() => {
     technician: 'Técnico',
     admin: 'Administrador',
   }
-  return map[auth.user?.role ?? ''] ?? ''
+  return auth.user?.role_label || map[auth.user?.role ?? ''] || ''
 })
 
-const notificationCount = computed(() => openCount.value + (auth.isStaff ? adminOpenCount.value : 0))
+const notificationCount = computed(() => openCount.value + (auth.isStaff || auth.can('tickets.view_all') ? adminOpenCount.value : 0))
 
 const titleMap: Record<string, string> = {
   '/dashboard': 'Painel inicial',
@@ -294,7 +294,7 @@ onMounted(async () => {
     applyFavicon(settings.value.favicon_url || settings.value.logo_url)
     const d = await getTickets({ page: 1, size: 1, status: 'open' })
     openCount.value = d.total
-    if (auth.isStaff) {
+    if (auth.isStaff || auth.can('tickets.view_all')) {
       const d2 = await getTickets({ page: 1, size: 1, admin: true, status: 'open' })
       adminOpenCount.value = d2.total
     }
