@@ -1,8 +1,19 @@
-export const APP_VERSION = '1.9.1'
+export const APP_VERSION = '1.9.2'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '10:30'
+export const APP_VERSION_TIME = '11:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '1.9.2',
+    date: '2026-09-25',
+    time: '11:00',
+    title: 'Lista "Os meus tickets" arrumada',
+    changes: [
+      'O solicitante aparece com o nome reduzido (primeiro e último nome); o nome completo surge ao passar o rato.',
+      'Corrigida a formatação das linhas da tabela (coluna Estado desalinhada e tabela a sair do ecrã).',
+      'O assunto tem mais espaço e as categorias compridas são encurtadas.',
+    ],
+  },
   {
     version: '1.9.1',
     date: '2026-09-25',

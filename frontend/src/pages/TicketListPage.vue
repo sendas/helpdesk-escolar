@@ -38,14 +38,16 @@
                 T-{{ t.id }}
                 <span v-if="t.has_reminder" class="material-icons reminder-flag" title="Tem um lembrete seu por enviar">alarm</span>
               </td>
-              <td style="font-weight:500">{{ t.title }}</td>
-              <td style="white-space:nowrap;display:flex;align-items:center;gap:6px">
-                <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
-                <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
+              <td class="cell-title">{{ t.title }}</td>
+              <td style="white-space:nowrap">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
+                  <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
+                </div>
               </td>
               <td><PriorityBadge :priority="t.priority" /></td>
-              <td class="cell-person">{{ t.creator?.display_name }}</td>
-              <td><span class="cat-chip">{{ t.category?.name }}</span></td>
+              <td class="cell-person" :title="t.creator?.display_name">{{ shortName(t.creator?.display_name) }}</td>
+              <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
             </tr>
             <tr v-if="!activeTickets.length">
               <td colspan="6" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets em aberto.</td>
@@ -71,11 +73,11 @@
                 T-{{ t.id }}
                 <span v-if="t.has_reminder" class="material-icons reminder-flag" title="Tem um lembrete seu por enviar">alarm</span>
               </td>
-              <td style="font-weight:500">{{ t.title }}</td>
+              <td class="cell-title">{{ t.title }}</td>
               <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
               <td><PriorityBadge :priority="t.priority" /></td>
-              <td class="cell-person">{{ t.creator?.display_name }}</td>
-              <td><span class="cat-chip">{{ t.category?.name }}</span></td>
+              <td class="cell-person" :title="t.creator?.display_name">{{ shortName(t.creator?.display_name) }}</td>
+              <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
             </tr>
           </tbody>
         </table>
@@ -91,6 +93,7 @@ import PriorityBadge from '../components/PriorityBadge.vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
+import { shortName } from '../utils/names'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -179,10 +182,12 @@ function statusLabel(s: string) {
 <style scoped>
 .reminder-flag { font-size: 15px; color: #D97706; vertical-align: -3px; margin-left: 4px; }
 .dark .reminder-flag { color: #FCD34D; }
-.cell-person { white-space: nowrap; }
+.cell-title { font-weight: 500; min-width: 220px; }
+.cell-person { white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
 .cat-chip {
   display: inline-block; font-size: 12px; font-weight: 600; color: var(--c-primary);
   background: rgba(64, 87, 216, .08); border-radius: 999px; padding: 3px 10px; white-space: nowrap;
+  max-width: 150px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle;
 }
 .dark .cat-chip { background: rgba(99, 125, 255, .16); color: #A5B4FC; }
 .badge-fornecedor {
