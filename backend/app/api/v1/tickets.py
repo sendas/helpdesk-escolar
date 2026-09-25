@@ -599,6 +599,9 @@ async def add_comment(
         ))
         await db.commit()
 
+    if current_user.id == ticket.creator_id and not data.is_internal:
+        from app.services import teams_service
+        teams_service.requester_reply(ticket, data.body)
     if not data.is_internal:
         recipients = _ticket_update_recipients(ticket, current_user)
         for recipient in recipients:

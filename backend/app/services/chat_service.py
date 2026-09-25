@@ -233,6 +233,10 @@ async def start_support(db: AsyncSession, requester: User, body: str, school_id:
         return conv
     await post_message(db, conv, None, "Pedido recebido. Um técnico vai responder dentro de momentos.", system=True)
     await notify_queue(db)
+    from app.models.school import School
+    from app.services import teams_service
+    school = await db.get(School, school_id) if school_id else None
+    teams_service.support_waiting(conv.id, requester.display_name, body, school.name if school else "")
     agents = await available_agents(db) or {u.id for u in await responders(db)}
     await _push_offline(agents, "Apoio ao vivo", f"{short_name(requester.display_name)}: {body}", "/chat?tab=apoio")
     return conv

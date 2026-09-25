@@ -136,7 +136,10 @@ async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> 
         )
     await db.commit()
     await db.refresh(ticket)
-    return await get_ticket(db, ticket.id)
+    created = await get_ticket(db, ticket.id)
+    from app.services import teams_service
+    teams_service.ticket_created(created)
+    return created
 
 
 async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:

@@ -4,6 +4,8 @@
       <router-link to="/tickets" style="color:var(--c-muted);text-decoration:none">Tickets</router-link> / Novo
     </div>
 
+    <SupportBanner compact only-when-open style="max-width:880px" />
+
     <div class="hd-card ticket-create-card">
       <div style="font-weight:600;font-size:15px;margin-bottom:4px">Novo pedido de apoio</div>
       <div style="font-size:13px;color:var(--c-muted);margin-bottom:28px">Descreva o seu pedido — quanto mais detalhe, mais rápida a resolução.</div>
@@ -262,6 +264,7 @@ import { useAuthStore } from '../stores/auth'
 import { createTicket, getCategories, getSchools, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, searchUsers, type HelpdeskGroup, type UserFull } from '../api/users'
 import { getPublicSettings } from '../api/settings'
+import SupportBanner from '../components/SupportBanner.vue'
 
 const router = useRouter()
 const route = useRoute()

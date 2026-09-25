@@ -556,7 +556,8 @@ const privateTo = ref<number | null>(null)
 const commentBlocks = computed(() => {
   const me = auth.user?.id
   const blocks: { key: string; partner: any; items: any[] }[] = []
-  for (const c of (ticket.value?.comments ?? []) as any[]) {
+  // In "Ver como docente" internal notes are hidden, as the server does for docentes
+  for (const c of (ticket.value?.comments ?? []).filter((x: any) => !(auth.inPreview && x.is_internal)) as any[]) {
     const partner = c.private_to ? (c.author.id === me ? c.private_to : c.author) : null
     const last = blocks[blocks.length - 1]
     if (partner && last?.partner?.id === partner.id) last.items.push(c)

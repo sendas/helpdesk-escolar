@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.0.0'
+export const APP_VERSION = '2.1.0'
 export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '17:00'
+export const APP_VERSION_TIME = '18:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.1.0',
+    date: '2026-09-25',
+    time: '18:00',
+    title: 'Microsoft Teams, apoio ao vivo mais visível e "Ver como docente"',
+    changes: [
+      'Avisos num canal do Microsoft Teams (Configurações → Microsoft Teams): novo ticket, apoio ao vivo à espera (com botão "Atender"), ticket fora do prazo e resposta de quem fez o pedido. Configura-se com um fluxo de trabalho do Teams, sem administrador nem acesso externo ao servidor.',
+      'Apoio ao vivo mais fácil de encontrar: faixa no Painel inicial ("Apoio ao vivo disponível agora… até às 17h" ou quando abre), entrada "Apoio ao vivo" no menu com indicação Online/Fechado, sugestão na página Novo ticket e balão de apresentação na primeira visita.',
+      'Novo interruptor "Ver como docente" no topo (técnicos, Direção e administradores): a aplicação passa a mostrar exatamente o menu, as páginas e os tickets que um docente vê, sem notas internas, com uma faixa para voltar à vista normal.',
+      'O endereço do Teams nunca é enviado a quem não é administrador.',
+    ],
+  },
   {
     version: '2.0.0',
     date: '2026-09-25',

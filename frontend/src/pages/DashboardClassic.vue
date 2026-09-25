@@ -1,6 +1,7 @@
 <template>
   <div class="hd-page dash-page">
     <h1 class="dash-greeting">Olá, {{ auth.user?.display_name?.split(' ')[0] }}</h1>
+    <SupportBanner />
 
     <!-- Stat cards -->
     <div class="stat-grid" :class="auth.isStaff ? 'cols-5' : 'cols-3'">
@@ -104,6 +105,7 @@ import { getTickets, getCategories } from '../api/tickets'
 import { useAuthStore } from '../stores/auth'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
+import SupportBanner from '../components/SupportBanner.vue'
 import { timeAgo } from '../utils/dates'
 
 const auth = useAuthStore()

@@ -75,6 +75,14 @@
       </section>
     </transition>
 
+    <transition name="sw-pop">
+      <div v-if="showIntro && !open" class="sw-intro-tip">
+        <button class="sw-tip-close" title="Fechar" @click="dismissIntro"><span class="material-icons">close</span></button>
+        <strong>Novo: apoio ao vivo 👋</strong>
+        <span>Tem um problema rápido? Fale aqui com a equipa TIC em tempo real{{ status?.open_now ? '' : ' (ou deixe a mensagem e criamos um ticket)' }}.</span>
+        <button class="sw-tip-btn" @click="dismissIntro(); toggle()">Experimentar</button>
+      </div>
+    </transition>
     <button class="sw-launcher" :title="open ? 'Fechar apoio ao vivo' : 'Apoio ao vivo'" @click="toggle">
       <span class="material-icons">{{ open ? 'expand_more' : 'forum' }}</span>
       <span v-if="!open" class="sw-launcher-label">Apoio ao vivo</span>
@@ -91,6 +99,7 @@ import { closeSupport, getMySupport, getSupportStatus, markRead, startSupport, s
 import { getSchools } from '../api/tickets'
 import { onRealtime, sendRealtime } from '../services/realtime'
 import { shortName } from '../utils/names'
+import { onOpenSupportChat } from '../utils/supportChat'
 
 const auth = useAuthStore()
 const open = ref(false)
@@ -143,6 +152,7 @@ async function load() {
 
 async function toggle() {
   open.value = !open.value
+  if (open.value) dismissIntro()
   if (open.value) {
     if (!schools.value.length) getSchools().then((s) => { schools.value = s }).catch(() => {})
     await load()
@@ -188,8 +198,17 @@ function typing() {
   sendRealtime({ type: 'chat.typing', conversation_id: conversation.value.id })
 }
 
+const INTRO_KEY = 'support_intro_seen'
+const showIntro = ref(false)
+function dismissIntro() {
+  showIntro.value = false
+  try { localStorage.setItem(INTRO_KEY, '1') } catch { /* ignore */ }
+}
+
 const offs: Array<() => void> = []
 onMounted(() => {
+  try { showIntro.value = !localStorage.getItem(INTRO_KEY) } catch { showIntro.value = false }
+  offs.push(onOpenSupportChat(() => { dismissIntro(); if (!open.value) toggle() }))
   getSupportStatus().then((s) => { status.value = s }).catch(() => {})
   getMySupport().then((m) => {
     if (m && ['waiting', 'active'].includes(m.conversation.support_status ?? '')) {
@@ -269,6 +288,13 @@ onBeforeUnmount(() => offs.forEach((off) => off()))
 .sw-link { border: 0; background: transparent; color: #DC2626; font-size: 12px; font-weight: 700; cursor: pointer; }
 .sw-new { font-size: 12.5px; padding: 6px 12px; }
 .sw-error { color: #DC2626; font-size: 12px; }
+.sw-intro-tip { position: relative; width: 260px; padding: 14px 14px 12px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: 0 16px 40px rgba(15, 23, 42, .18); font-size: 13px; line-height: 1.45; }
+.sw-intro-tip::after { content: ''; position: absolute; right: 28px; bottom: -7px; width: 12px; height: 12px; background: var(--c-surface); border-right: 1px solid var(--c-border); border-bottom: 1px solid var(--c-border); transform: rotate(45deg); }
+.sw-intro-tip strong { display: block; font-size: 14px; margin-bottom: 4px; padding-right: 18px; }
+.sw-intro-tip span { display: block; color: var(--c-muted); }
+.sw-tip-close { position: absolute; top: 8px; right: 8px; border: 0; background: transparent; color: var(--c-muted); cursor: pointer; }
+.sw-tip-close .material-icons { font-size: 16px; }
+.sw-tip-btn { margin-top: 10px; border: 0; border-radius: 10px; padding: 7px 12px; background: var(--c-primary); color: #fff; font-weight: 700; font-size: 12.5px; cursor: pointer; }
 .sw-pop-enter-active, .sw-pop-leave-active { transition: all .18s ease; }
 .sw-pop-enter-from, .sw-pop-leave-to { opacity: 0; transform: translateY(12px) scale(.98); }
 @media (max-width: 600px) { .sw { right: 12px; bottom: 12px; } .sw-launcher-label { display: none; } .sw-launcher { width: 52px; height: 52px; padding: 0; justify-content: center; } }

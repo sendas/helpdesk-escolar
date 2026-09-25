@@ -182,13 +182,22 @@ async def _support_timeouts_periodically() -> None:
     from app.database import AsyncSessionLocal
     from app.services import chat_service
 
+    from app.services import teams_service
+
+    rounds = 0
     while True:
         await asyncio.sleep(30)
+        rounds += 1
         async with AsyncSessionLocal() as db:
             try:
                 await chat_service.expire_waiting(db)
             except Exception:
                 pass
+            if rounds % 20 == 1:  # every 10 minutes
+                try:
+                    await teams_service.notify_overdue(db)
+                except Exception:
+                    pass
 
 
 async def _backup_periodically() -> None:

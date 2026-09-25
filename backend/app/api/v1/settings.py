@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from pydantic import BaseModel
 from app.api.deps import require_admin, require_perm
 from app.models.user import User
+from app.config import settings as app_config
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -48,7 +49,13 @@ DEFAULT_SETTINGS = {
         "6": {"enabled": False, "start": "10:00", "end": "13:00"},
         "7": {"enabled": False, "start": "10:00", "end": "13:00"},
     },
+    # Microsoft Teams channel notifications (Workflows webhook)
+    "teams_webhook_url": "",
+    "teams_events": ["ticket_created", "support_waiting", "ticket_overdue", "requester_reply"],
 }
+
+# Never sent by /settings/public (the Teams address lets anyone post in the channel)
+PRIVATE_KEYS = {"teams_webhook_url", "teams_overdue_notified", "role_permissions_granted"}
 
 UI_DESIGNS = {"modern", "classic"}
 DEMO_PROFILES = ("teacher", "technician", "admin")
@@ -88,7 +95,7 @@ class SuggestionEmailSettings(BaseModel):
 
 @router.get("/public")
 async def public_settings():
-    return _read_settings()
+    return {k: v for k, v in _read_settings().items() if k not in PRIVATE_KEYS}
 
 
 @router.put("")
@@ -224,6 +231,49 @@ async def update_support_chat(payload: SupportChatSettings, _: User = Depends(re
     data["support_hours"] = hours
     _write_settings(data)
     return {k: data[k] for k in ("support_chat_enabled", "support_wait_minutes", "support_hours")}
+
+
+class TeamsSettings(BaseModel):
+    webhook_url: str = ""
+    events: list[str] = []
+
+
+def _teams_view(data: dict) -> dict:
+    url = data.get("teams_webhook_url") or ""
+    return {"configured": bool(url), "webhook_url": url, "events": data.get("teams_events") or []}
+
+
+@router.get("/teams")
+async def get_teams(_: User = Depends(require_perm("settings.manage"))):
+    return _teams_view(_read_settings())
+
+
+@router.put("/teams")
+async def update_teams(payload: TeamsSettings, _: User = Depends(require_perm("settings.manage"))):
+    from app.services.teams_service import EVENTS
+    url = payload.webhook_url.strip()
+    if url and not url.startswith("https://"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O endereço do Teams tem de começar por https://")
+    data = _read_settings()
+    data["teams_webhook_url"] = url
+    data["teams_events"] = [e for e in payload.events if e in EVENTS]
+    _write_settings(data)
+    return _teams_view(data)
+
+
+@router.post("/teams/test")
+async def test_teams(payload: TeamsSettings, current_user: User = Depends(require_perm("settings.manage"))):
+    from app.services import teams_service
+    url = payload.webhook_url.strip() or _read_settings().get("teams_webhook_url")
+    card = teams_service.build_card(
+        "✅ Helpdesk ligado a este canal",
+        f"Mensagem de teste enviada por {teams_service._short(current_user.display_name)}. Os avisos do helpdesk vão aparecer aqui.",
+        url=app_config.frontend_url, button="Abrir o helpdesk",
+    )
+    ok, error = await teams_service.post(card, url)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+    return {"ok": True}
 
 
 @router.put("/suggestion-emails")

@@ -26,9 +26,13 @@
       <button class="hd-tab" :class="{ active: tab === 'chat' }" @click="tab = 'chat'">
         <span class="material-icons" style="font-size:15px">forum</span> Chat e apoio ao vivo
       </button>
+      <button class="hd-tab" :class="{ active: tab === 'teams' }" @click="tab = 'teams'">
+        <span class="material-icons" style="font-size:15px">groups</span> Microsoft Teams
+      </button>
     </div>
 
     <SupportChatSettings v-if="tab === 'chat'" />
+    <TeamsSettings v-if="tab === 'teams'" />
 
     <!-- General -->
     <div v-if="tab === 'general'" class="hd-card" style="padding:28px;max-width:640px">
@@ -590,9 +594,10 @@ import { getPublicSettings, updateDemoModeSettings, updateDesignSettings, update
 import { setUiDesign, type UiDesign } from '../../composables/useUiDesign'
 import { api } from '../../boot/axios'
 import SupportChatSettings from '../../components/SupportChatSettings.vue'
+import TeamsSettings from '../../components/TeamsSettings.vue'
 import { getGroups, getUsers } from '../../api/users'
 
-const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools' | 'routing' | 'knowledge' | 'chat'>('general')
+const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools' | 'routing' | 'knowledge' | 'chat' | 'teams'>('general')
 const saved = ref(false)
 const testing = ref(false)
 const ldapTestResult = ref('')

@@ -197,6 +197,11 @@ async def _import_messages(db: AsyncSession, messages: list[dict]) -> dict:
         if msg.get("processed"):
             from app.services.realtime_hooks import notify_ticket
             await notify_ticket(msg["ticket_id"])
+            if msg.get("body") and not msg.get("private") and not msg.get("status_action"):
+                from app.services import teams_service, ticket_service
+                ticket = await ticket_service.get_ticket(db, msg["ticket_id"])
+                if ticket and ticket.creator and (ticket.creator.email or "").lower() == msg["sender_email"].lower():
+                    teams_service.requester_reply(ticket, msg["body"])
         if msg.get("processed") and msg.get("private_to_id"):
             await _notify_private_partner(db, msg)
         elif msg.get("processed") and not msg.get("private"):

@@ -43,6 +43,10 @@
         <router-link class="hd-nav-item" :class="{ active: $route.path === '/version' }" to="/version" @click="mobileMenuOpen = false">
           <span class="material-icons" style="font-size:16px">new_releases</span> Versão / Atualizações
         </router-link>
+        <a v-if="showSupportWidget && supportStatus?.enabled" class="hd-nav-item" href="#" @click.prevent="openSupportChat(); mobileMenuOpen = false">
+          <span class="material-icons">support_agent</span> Apoio ao vivo
+          <span class="support-pill" :class="{ on: supportStatus?.open_now }">{{ supportStatus?.open_now ? 'Online' : 'Fechado' }}</span>
+        </a>
         <router-link v-if="auth.can('chat.team') || auth.can('chat.support')" class="hd-nav-item" :class="{ active: $route.path === '/chat' }" :to="auth.can('chat.team') ? '/chat' : '/chat?tab=apoio'" @click="mobileMenuOpen = false">
           <span class="material-icons">forum</span> Chat
           <span v-if="chatUnread" class="hd-nav-badge">{{ chatUnread }}</span>
@@ -119,6 +123,18 @@
           <input placeholder="Pesquisar tickets, utilizadores..." v-model="search" @keydown.enter="doSearch" />
         </div>
         <div class="hd-header-actions">
+          <button
+            v-if="auth.canPreviewAsUser"
+            class="preview-switch"
+            :class="{ on: auth.inPreview }"
+            type="button"
+            :title="auth.inPreview ? 'Voltar à sua vista normal' : 'Ver a aplicação como um docente a vê'"
+            @click="togglePreview"
+          >
+            <span class="material-icons">{{ auth.inPreview ? 'visibility' : 'visibility_off' }}</span>
+            <span class="preview-switch-label">Ver como docente</span>
+            <span class="hd-toggle-track" :class="{ on: auth.inPreview }"><span class="hd-toggle-thumb"></span></span>
+          </button>
           <button class="hd-icon-btn" @click="auth.toggleDark()" :title="auth.isDark ? 'Modo claro' : 'Modo escuro'">
             <span class="material-icons">{{ auth.isDark ? 'light_mode' : 'dark_mode' }}</span>
           </button>
@@ -207,6 +223,15 @@
         </div>
       </header>
 
+      <div v-if="auth.inPreview" class="demo-banner preview-banner">
+        <span class="material-icons" style="font-size:16px;flex-shrink:0">visibility</span>
+        <span>
+          Está a <strong>ver a aplicação como um docente</strong>: menus, páginas e tickets aparecem como para quem não tem permissões especiais.
+          As ações continuam a ser feitas com a sua conta.
+        </span>
+        <button type="button" class="demo-banner-btn" @click="togglePreview">Voltar à minha vista</button>
+      </div>
+
       <div v-if="auth.isDemo" class="demo-banner">
         <span class="material-icons" style="font-size:16px;flex-shrink:0">visibility</span>
         <span>
@@ -240,6 +265,7 @@ import SupportWidget from '../components/SupportWidget.vue'
 import { personLabel, shortName } from '../utils/names'
 import { onRealtime, startRealtime } from '../services/realtime'
 import { getChatUnread, getSupportQueue } from '../api/chat'
+import { loadSupportStatus, openSupportChat, supportStatus } from '../utils/supportChat'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -265,6 +291,7 @@ const roleLabel = computed(() => {
     technician: 'Técnico',
     admin: 'Administrador',
   }
+  if (auth.inPreview) return 'Docente (pré-visualização)'
   return auth.user?.role_label || map[auth.user?.role ?? ''] || ''
 })
 
@@ -298,6 +325,13 @@ function doSearch() {
   if (search.value.trim()) router.push({ path: '/tickets', query: { q: search.value } })
 }
 
+function togglePreview() {
+  auth.setPreviewAsUser(!auth.inPreview)
+  router.push('/dashboard')
+  refreshCounts()
+  refreshChatBadges()
+}
+
 function closeNotifications() {
   showNotifications.value = false
 }
@@ -328,6 +362,7 @@ function debounced(fn: () => void, ms = 1000) {
 const refreshCountsSoon = debounced(refreshCounts)
 const refreshChatSoon = debounced(refreshChatBadges, 600)
 const realtimeOffs: Array<() => void> = []
+let supportTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
   document.addEventListener('click', closeNotifications)
@@ -346,6 +381,8 @@ onMounted(async () => {
   } catch { /* ignore */ }
   refreshCounts()
   refreshChatBadges()
+  loadSupportStatus()
+  supportTimer = setInterval(() => loadSupportStatus(true), 5 * 60000)
 })
 
 watch(() => route.path, (p) => { if (p === '/chat') chatUnread.value = 0; else refreshChatSoon() })
@@ -353,10 +390,24 @@ watch(() => route.path, (p) => { if (p === '/chat') chatUnread.value = 0; else r
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeNotifications)
   realtimeOffs.forEach((off) => off())
+  if (supportTimer) clearInterval(supportTimer)
 })
 </script>
 
 <style scoped>
+.preview-switch { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px 0 10px; border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-surface); color: var(--c-muted); font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.preview-switch .material-icons { font-size: 17px; }
+.preview-switch .hd-toggle-track { position: relative; display: inline-block; width: 34px; height: 18px; border-radius: 9px; }
+.preview-switch .hd-toggle-thumb { top: 2px; left: 2px; width: 14px; height: 14px; }
+.preview-switch .hd-toggle-track.on .hd-toggle-thumb { transform: translateX(16px); }
+.preview-switch.on { border-color: #F59E0B; color: #B45309; background: rgba(245, 158, 11, .1); }
+.dark .preview-switch.on { color: #FCD34D; }
+.preview-banner { background: #FFF7ED; border-color: #FDBA74; color: #9A3412; }
+.dark .preview-banner { background: #431407; border-color: #7C2D12; color: #FED7AA; }
+@media (max-width: 900px) { .preview-switch-label { display: none; } }
+.support-pill { margin-left: auto; font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--c-bg); color: var(--c-muted); border: 1px solid var(--c-border); }
+.support-pill.on { background: rgba(34, 197, 94, .14); color: #15803D; border-color: rgba(34, 197, 94, .35); }
+.dark .support-pill.on { color: #4ADE80; }
 .demo-banner {
   align-items: center;
   background: #FEF3C7;
