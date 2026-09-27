@@ -165,11 +165,11 @@
         </div>
 
         <div class="mobile-ticket-list" :class="{ 'read-only': readOnly }">
-          <article v-for="t in tickets" :key="t.id" class="ticket-card" :class="{ 'card-auto-closed': isAutoClosed(t) }">
+          <article v-for="t in tickets" :key="t.id" class="ticket-card" :class="{ 'card-auto-closed': isAutoClosed(t), 'card-unread': t.is_unread }">
             <div class="ticket-card-top">
               <input v-if="!readOnly" type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" />
               <div class="ticket-card-title">
-                <router-link :to="`/tickets/${t.id}`">T-{{ t.id }} · {{ t.title }}</router-link>
+                <router-link :to="`/tickets/${t.id}`"><span class="unread-dot" :class="{ on: t.is_unread }"></span>T-{{ t.id }} · {{ t.title }}</router-link>
                 <ReminderChip :at="t.reminder_at" />
                 <small>{{ t.school?.name || 'Sem escola' }} · {{ timeAgo(t.updated_at) }}</small>
               </div>
@@ -706,63 +706,27 @@ async function runInactivity() {
   .filters-grid { grid-template-columns: 1fr; padding: 12px; }
   .bulk-bar { display: grid; grid-template-columns: 1fr; }
   .bulk-bar .hd-select, .bulk-bar .hd-btn { width: 100%; }
-  .desktop-table-wrap { display: none; }
-  .mobile-ticket-list {
-    display: grid;
-    gap: 12px;
-    padding: 12px;
-  }
-  .ticket-card {
-    border: 1px solid var(--c-border);
-    border-radius: 8px;
-    padding: 12px;
-    background: var(--c-surface);
-  }
-  .ticket-card.card-auto-closed {
-    background: rgba(34, 197, 94, 0.12);
-    border-left: 3px solid #22c55e;
-  }
-  .ticket-card-top {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 10px;
-    align-items: start;
-  }
-  .ticket-card-title a {
-    display: block;
-    color: var(--c-text);
-    font-weight: 800;
-    text-decoration: none;
-    line-height: 1.3;
-  }
-  .ticket-card-title small {
-    display: block;
-    color: var(--c-muted);
-    margin-top: 3px;
-  }
-  .ticket-card-meta, .ticket-card-user {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-top: 10px;
-  }
-  .ticket-card-user span { font-size: 13px; color: var(--c-muted); }
-  .ticket-card-controls {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-    margin-top: 12px;
-  }
-  .ticket-card-controls label {
-    display: grid;
-    gap: 5px;
-    color: var(--c-muted);
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-  }
-  :deep(.compact-select) { width: 100%; }
   .pagination-row { justify-content: center; }
+}
+/* Tablets and phones: the wide table becomes cards */
+@media (max-width: 1280px) {
+  .desktop-table-wrap { display: none; }
+  .mobile-ticket-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; padding: 12px; }
+  .tickets-heading { flex-direction: column; align-items: stretch; gap: 12px; text-align: left; }
+  .tickets-heading > * { text-align: left; }
+  .tickets-actions { flex-wrap: wrap; }
+  .ticket-card { min-width: 0; border: 1px solid var(--c-border); border-radius: 12px; padding: 12px; background: var(--c-surface); }
+  .ticket-card.card-unread { background: rgba(37, 99, 235, .06); border-color: rgba(37, 99, 235, .35); }
+  .ticket-card.card-auto-closed { background: rgba(34, 197, 94, 0.12); border-left: 3px solid #22c55e; }
+  .ticket-card-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; }
+  .ticket-card-title { min-width: 0; }
+  .ticket-card-title a { display: block; color: var(--c-text); font-weight: 800; text-decoration: none; line-height: 1.3; overflow-wrap: anywhere; }
+  .ticket-card-title small { display: block; color: var(--c-muted); margin-top: 3px; }
+  .ticket-card-meta, .ticket-card-user { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; min-width: 0; }
+  .ticket-card-user { flex-wrap: nowrap; }
+  .ticket-card-user span { font-size: 13px; color: var(--c-muted); }
+  .ticket-card-controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 12px; }
+  .ticket-card-controls label { display: grid; gap: 5px; color: var(--c-muted); font-size: 11px; font-weight: 800; text-transform: uppercase; min-width: 0; }
+  :deep(.compact-select) { width: 100%; }
 }
 </style>

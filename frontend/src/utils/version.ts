@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.2.4'
+export const APP_VERSION = '2.2.5'
 export const APP_VERSION_DATE = '2026-09-27'
-export const APP_VERSION_TIME = '15:00'
+export const APP_VERSION_TIME = '16:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.2.5',
+    date: '2026-09-27',
+    time: '16:00',
+    title: 'iPad e telemóvel: listas de tickets em cartões',
+    changes: [
+      '"Os meus tickets" e a Gestão de tickets deixam de usar a tabela larga em iPad e telemóvel: cada ticket aparece num cartão (como numa caixa de email) com ID, lembrete, assunto, estado, prioridade, escola, categoria e solicitante. Em ecrãs grandes continua a tabela.',
+      'No iPad os cartões aparecem em duas colunas; no telemóvel numa só.',
+      'Barra de filtros arrumada no telemóvel; os contadores do Painel inicial passam a duas linhas em vez de ficarem cortados; o logotipo nas Configurações já não sai do ecrã.',
+      'Os cartões da Gestão de tickets também mostram os não lidos e deixam de sair do ecrã no telemóvel.',
+    ],
+  },
   {
     version: '2.2.4',
     date: '2026-09-27',

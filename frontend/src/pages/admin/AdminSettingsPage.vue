@@ -907,7 +907,9 @@ async function removeArticle(id: number) {
 .set-err { font-size: 12.5px; color: #DC2626; margin: 8px 0 0; }
 .set-info { display: flex; gap: 12px; background: var(--c-bg); }
 .set-info > .material-icons { color: var(--c-primary); }
-.logo-row { display: flex; gap: 16px; align-items: center; }
+.logo-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.logo-row > div:last-child { min-width: 0; flex: 1 1 200px; }
+.logo-row input[type=file] { max-width: 100%; }
 .logo-preview { width: 120px; height: 64px; border: 1px dashed var(--c-border); border-radius: 12px; display: grid; place-items: center; background: var(--c-bg); flex-shrink: 0; }
 .logo-preview img { max-width: 108px; max-height: 52px; object-fit: contain; }
 .logo-preview .material-icons { color: var(--c-muted); }

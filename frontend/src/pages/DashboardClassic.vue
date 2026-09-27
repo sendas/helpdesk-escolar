@@ -388,7 +388,7 @@ function statusLabel(s: string) {
 }
 
 @media (max-width: 560px) {
-  .stat-grid { grid-auto-columns: minmax(92px, 1fr); gap: 8px; }
+  .stat-grid { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; gap: 8px; }
   .stat-card { padding: 9px 10px; }
   .stat-label { white-space: normal; font-size: 11px; line-height: 1.2; }
   .stat-card .stat-icon-wrap { display: none; }

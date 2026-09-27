@@ -7,9 +7,9 @@
     </div>
 
     <div class="hd-card">
-      <div style="display:flex;gap:10px;padding:14px 16px;border-bottom:1px solid var(--c-border);flex-wrap:wrap">
-        <input class="hd-input" style="width:220px" v-model="searchQuery" placeholder="Pesquisar tickets..." @input="debouncedLoad" />
-        <select class="hd-select" style="width:auto" v-model="filterStatus" @change="load">
+      <div class="list-toolbar">
+        <input class="hd-input list-search" v-model="searchQuery" placeholder="Pesquisar tickets..." @input="debouncedLoad" />
+        <select class="hd-select list-filter" v-model="filterStatus" @change="load">
           <option value="">Todos os estados</option>
           <option v-for="o in statusOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
           <template v-if="auth.isStaff">
@@ -17,7 +17,7 @@
             <option value="fora_prazo">Fora do prazo</option>
           </template>
         </select>
-        <select class="hd-select" style="width:auto" v-model="filterCat" @change="load">
+        <select class="hd-select list-filter" v-model="filterCat" @change="load">
           <option value="">Todas as categorias</option>
           <option v-for="c in visibleCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
@@ -28,14 +28,18 @@
         <button v-if="unreadCount" class="hd-btn hd-btn-outline mark-all" type="button" @click="markAllRead">
           <span class="material-icons">done_all</span> Marcar todos como lidos
         </button>
-        <div style="margin-left:auto">
+        <div class="list-toolbar-end">
           <CategoryFilterButton :categories="categories" @changed="onHiddenChanged" />
         </div>
       </div>
 
       <div v-if="loading" style="padding:48px;text-align:center;color:var(--c-muted)">A carregar...</div>
       <template v-else>
-        <table class="hd-table">
+        <div class="tcards">
+          <TicketCard v-for="t in activeTickets" :key="'c' + t.id" :ticket="t" />
+          <div v-if="!activeTickets.length" class="tcards-empty">{{ onlyUnread ? 'Não há tickets por ler.' : searchQuery.trim() ? `Nenhum ticket encontrado para "${searchQuery.trim()}".` : 'Sem tickets em aberto.' }}</div>
+        </div>
+        <table class="hd-table list-table">
           <thead>
             <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th></tr>
           </thead>
@@ -74,7 +78,10 @@
           </button>
         </div>
 
-        <table v-if="showCompleted && completedTickets.length" class="hd-table completed-table">
+        <div v-if="showCompleted && completedTickets.length" class="tcards">
+          <TicketCard v-for="t in completedTickets" :key="'d' + t.id" :ticket="t" done />
+        </div>
+        <table v-if="showCompleted && completedTickets.length" class="hd-table completed-table list-table">
           <thead>
             <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th></tr>
           </thead>
@@ -111,6 +118,7 @@ import { useAuthStore } from '../stores/auth'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
 import PersonName from '../components/PersonName.vue'
 import ReminderChip from '../components/ReminderChip.vue'
+import TicketCard from '../components/TicketCard.vue'
 import { schoolInitials } from '../utils/names'
 
 const route = useRoute()
@@ -226,6 +234,24 @@ function statusLabel(s: string) {
 </script>
 
 <style scoped>
+.list-toolbar { display: flex; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--c-border); flex-wrap: wrap; align-items: center; }
+.list-search { width: 220px; }
+.list-filter { width: auto; }
+.list-toolbar-end { margin-left: auto; }
+/* Wide screens: table. Tablets and phones: cards like an inbox */
+.tcards { display: none; }
+.tcards-empty { text-align: center; color: var(--c-muted); padding: 32px 12px; }
+@media (max-width: 1280px) {
+  .list-table { display: none; }
+  .tcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 10px; padding: 12px; }
+}
+@media (max-width: 700px) {
+  .list-toolbar { display: grid; grid-template-columns: 1fr 1fr; padding: 12px; }
+  .list-search { width: 100%; grid-column: 1 / -1; }
+  .list-filter { width: 100%; min-width: 0; }
+  .list-toolbar-end { margin-left: 0; grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+  .unread-filter, .mark-all { justify-content: center; }
+}
 .cell-id { color: var(--c-muted); font-size: 12px; white-space: nowrap; }
 .unread-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: transparent; }
 .unread-dot.on { background: #2563EB; box-shadow: 0 0 0 3px rgba(37, 99, 235, .18); }
