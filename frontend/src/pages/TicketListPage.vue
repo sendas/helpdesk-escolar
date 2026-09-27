@@ -59,7 +59,7 @@
               <td class="cell-person" :title="t.creator?.display_name">
                 <div class="person-box"><PersonName :name="t.creator?.display_name" /></div>
               </td>
-              <td class="cell-school" :title="t.school?.name">{{ t.school?.short_name || t.school?.name || '—' }}</td>
+              <td class="cell-school" :title="t.school?.name"><span v-if="t.school" class="school-initials">{{ schoolInitials(t.school.name) }}</span><template v-else>—</template></td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
             </tr>
             <tr v-if="!activeTickets.length">
@@ -95,7 +95,7 @@
               <td class="cell-person" :title="t.creator?.display_name">
                 <div class="person-box"><PersonName :name="t.creator?.display_name" /></div>
               </td>
-              <td class="cell-school" :title="t.school?.name">{{ t.school?.short_name || t.school?.name || '—' }}</td>
+              <td class="cell-school" :title="t.school?.name"><span v-if="t.school" class="school-initials">{{ schoolInitials(t.school.name) }}</span><template v-else>—</template></td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
             </tr>
           </tbody>
@@ -114,6 +114,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
 import PersonName from '../components/PersonName.vue'
+import { schoolInitials } from '../utils/names'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -252,7 +253,9 @@ function statusLabel(s: string) {
 .cell-title { font-weight: 500; min-width: 220px; color: var(--c-muted-strong, var(--c-text)); }
 .cell-person { white-space: nowrap; }
 .person-box { max-width: clamp(170px, 26vw, 520px); min-width: 0; }
-.cell-school { white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; color: var(--c-muted); font-size: 13px; }
+.cell-school { white-space: nowrap; }
+.school-initials { display: inline-block; min-width: 34px; text-align: center; font-size: 12px; font-weight: 800; letter-spacing: .04em; color: #0E7490; background: #CFFAFE; border: 1px solid #A5F3FC; border-radius: 8px; padding: 2px 7px; }
+.dark .school-initials { color: #A5F3FC; background: rgba(8, 145, 178, .2); border-color: rgba(34, 211, 238, .35); }
 .group-tag {
   display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 700; color: var(--c-muted);
   border: 1px solid var(--c-border); border-radius: 6px; padding: 0 6px; line-height: 17px; vertical-align: 1px;

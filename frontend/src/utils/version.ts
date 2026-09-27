@@ -1,8 +1,17 @@
-export const APP_VERSION = '2.2.0'
+export const APP_VERSION = '2.2.1'
 export const APP_VERSION_DATE = '2026-09-27'
-export const APP_VERSION_TIME = '12:00'
+export const APP_VERSION_TIME = '12:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.2.1',
+    date: '2026-09-27',
+    time: '12:30',
+    title: 'Escola com iniciais em "Os meus tickets"',
+    changes: [
+      'A coluna Escola mostra as iniciais da escola numa etiqueta (EQ, VG, PN); o nome completo aparece ao passar o rato.',
+    ],
+  },
   {
     version: '2.2.0',
     date: '2026-09-27',

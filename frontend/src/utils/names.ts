@@ -38,3 +38,12 @@ export function personLabel(name?: string | null): string {
   const tag = groupTag(name)
   return tag ? `${shortName(name)} · ${tag}` : shortName(name)
 }
+
+// "Escola Vasco da Gama" → "VG", "Escola Parque das Nações" → "PN", "Escola Eça de Queirós" → "EQ"
+const SCHOOL_WORDS = new Set(['escola', 'escolas', 'agrupamento', 'básica', 'basica', 'secundária', 'secundaria', 'eb', 'es', 'ebi', 'jardim', 'infância', 'infancia'])
+export function schoolInitials(name?: string | null): string {
+  const words = (name ?? '').split(/\s+/).filter(Boolean)
+  const main = words.filter((w) => /^\p{L}/u.test(w) && !SMALL_WORDS.has(w.toLowerCase()) && !SCHOOL_WORDS.has(w.toLowerCase()))
+  const picked = main.length ? main : words
+  return picked.map((w) => w[0]).join('').toUpperCase().slice(0, 3)
+}
