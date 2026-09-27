@@ -155,6 +155,41 @@ async def create_reminder(ticket_id: int, data: ReminderCreate, current_user: Us
     return await _my_reminders(db, ticket_id, current_user)
 
 
+@router.put("/{ticket_id}/reminders/mine")
+async def set_my_reminder(ticket_id: int, data: ReminderCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The "Lembrar-me deste ticket" switch: one pending reminder per person and ticket, saved as soon as it changes."""
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    if not _can_set_reminder(ticket, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só administradores, técnicos e responsáveis pelo ticket podem criar lembretes.")
+    when = _utc_naive(data.remind_at)
+    if when <= datetime.utcnow():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha uma data e hora no futuro para o lembrete.")
+    current = (await db.execute(select(TicketReminder).where(
+        TicketReminder.ticket_id == ticket_id, TicketReminder.user_id == current_user.id, TicketReminder.sent_at.is_(None),
+    ).order_by(TicketReminder.id))).scalars().all()
+    if current:
+        current[0].remind_at = when
+        for extra in current[1:]:
+            await db.delete(extra)
+    else:
+        db.add(TicketReminder(ticket_id=ticket_id, user_id=current_user.id, remind_at=when))
+    await db.commit()
+    return await _my_reminders(db, ticket_id, current_user)
+
+
+@router.delete("/{ticket_id}/reminders/mine")
+async def clear_my_reminder(ticket_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(select(TicketReminder).where(
+        TicketReminder.ticket_id == ticket_id, TicketReminder.user_id == current_user.id, TicketReminder.sent_at.is_(None),
+    ))).scalars().all()
+    for row in rows:
+        await db.delete(row)
+    await db.commit()
+    return await _my_reminders(db, ticket_id, current_user)
+
+
 @router.delete("/{ticket_id}/reminders/{reminder_id}")
 async def cancel_reminder(ticket_id: int, reminder_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     kind, raw = reminder_id[:1], reminder_id[1:]

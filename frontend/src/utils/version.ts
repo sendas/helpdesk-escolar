@@ -1,8 +1,19 @@
-export const APP_VERSION = '2.2.3'
+export const APP_VERSION = '2.2.4'
 export const APP_VERSION_DATE = '2026-09-27'
-export const APP_VERSION_TIME = '14:30'
+export const APP_VERSION_TIME = '15:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.2.4',
+    date: '2026-09-27',
+    time: '15:00',
+    title: 'Lembrete gravado automaticamente',
+    changes: [
+      '"Lembrar-me deste ticket" grava sozinho: ao ligar fica marcado para amanhã às 9h; mudar o dia, a hora ou usar um atalho atualiza-o na hora; desligar cancela-o. Deixa de haver botão "Guardar lembrete".',
+      'Ao voltar ao ticket, o interruptor aparece ligado com a data e a hora marcadas, e a indicação "Guardado — recebe um email e uma notificação a…".',
+      'Enviar uma resposta já não mexe no lembrete.',
+    ],
+  },
   {
     version: '2.2.3',
     date: '2026-09-27',

@@ -258,31 +258,25 @@
                 <span class="material-icons">alarm</span>
                 Lembrar-me deste ticket <span class="reminder-opt">(só para si)</span>
               </div>
-              <div v-if="myReminders.length" class="reminder-saved">
-                <div v-for="r in myReminders" :key="r.id" class="reminder-saved-item">
+              <div v-if="replyReminders.length" class="reminder-saved">
+                <div v-for="r in replyReminders" :key="r.id" class="reminder-saved-item">
                   <span class="material-icons">alarm_on</span>
                   <span>Lembrete marcado para <strong>{{ reminderLabel(r.remind_at) }}</strong><template v-if="r.note"> — {{ r.note }}</template></span>
                   <button type="button" class="reminder-cancel" @click="cancelReminder(r.id)">Cancelar</button>
                 </div>
               </div>
-              <div v-if="reminderSavedMsg" class="reminder-ok"><span class="material-icons">check_circle</span> {{ reminderSavedMsg }}</div>
               <template v-if="reminderOn">
                 <div class="reminder-row">
                   <input class="hd-input reminder-date" type="date" v-model="remindDate" :min="todayIso" />
                   <input class="hd-input reminder-time" type="time" v-model="remindTime" />
                   <button v-for="q in reminderQuick" :key="q.label" type="button" class="reminder-chip" @click="setReminderIn(q.days)">{{ q.label }}</button>
                 </div>
-                <div class="reminder-hint">
-                  <template v-if="remindDate">Recebe um email e uma notificação a {{ reminderPreview }}.</template>
-                  <template v-else>Escolha o dia em que quer ser lembrado.</template>
+                <div class="reminder-status" :class="reminderState">
+                  <template v-if="reminderState === 'saving'"><span class="material-icons spin">sync</span> A guardar…</template>
+                  <template v-else-if="reminderState === 'saved'"><span class="material-icons">check_circle</span> Guardado — recebe um email e uma notificação a {{ reminderPreview }}.</template>
+                  <template v-else-if="reminderState === 'error'"><span class="material-icons">error</span> {{ reminderError }}</template>
+                  <template v-else-if="!remindDate">Escolha o dia em que quer ser lembrado.</template>
                 </div>
-                <div class="reminder-actions">
-                  <span class="reminder-hint" style="margin:0">Não precisa de escrever uma resposta.</span>
-                  <button type="button" class="hd-btn hd-btn-primary reminder-save" :disabled="!remindDate || savingReminder" @click="saveReminder">
-                    <span class="material-icons">alarm_add</span> {{ savingReminder ? 'A guardar…' : 'Guardar lembrete' }}
-                  </button>
-                </div>
-                <div v-if="reminderError" class="reminder-err">{{ reminderError }}</div>
               </template>
             </div>
             <div class="hd-row" style="justify-content:space-between;margin-top:12px">
@@ -543,7 +537,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getTicket, markTicketUnread, getMyReminders, createReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
+import { getTicket, markTicketUnread, getMyReminders, setMyReminder, clearMyReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, getUsers, searchUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -645,13 +639,12 @@ function replyPrivately(userId: number) {
 
 // Reminders saved on their own (without writing a reply)
 const myReminders = ref<{ id: string; remind_at: string; note: string | null; source: string }[]>([])
-const savingReminder = ref(false)
 const reminderError = ref('')
-const reminderSavedMsg = ref('')
 
 async function loadReminders() {
   if (!ticket.value || !canRemind.value) return
   try { myReminders.value = await getMyReminders(ticket.value.id) } catch { myReminders.value = [] }
+  applySavedReminder()
 }
 
 function reminderLabel(iso: string) {
@@ -659,24 +652,53 @@ function reminderLabel(iso: string) {
   return d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' }) + ' às ' + d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
 }
 
-async function saveReminder() {
-  if (!ticket.value || !remindDate.value) return
-  savingReminder.value = true
-  reminderError.value = ''
-  try {
-    const at = new Date(`${remindDate.value}T${remindTime.value || '09:00'}`).toISOString()
-    myReminders.value = await createReminder(ticket.value.id, at)
-    reminderSavedMsg.value = `Lembrete guardado para ${reminderLabel(at)}.`
-    setTimeout(() => { reminderSavedMsg.value = '' }, 5000)
+// "Lembrar-me deste ticket" saves by itself: switching on, changing the day/time, switching off
+const reminderState = ref<'' | 'saving' | 'saved' | 'error'>('')
+const mineReminder = computed(() => myReminders.value.find((r) => r.source === 'lembrete'))
+const replyReminders = computed(() => myReminders.value.filter((r) => r.source !== 'lembrete'))
+let reminderTimer: ReturnType<typeof setTimeout> | null = null
+let applyingSaved = false
+
+function applySavedReminder() {
+  const r = mineReminder.value
+  applyingSaved = true
+  if (r) {
+    const d = new Date(r.remind_at)
+    reminderOn.value = true
+    remindDate.value = toIsoDate(d)
+    remindTime.value = d.toTimeString().slice(0, 5)
+    reminderState.value = 'saved'
+  } else {
     reminderOn.value = false
-    remindDate.value = ''
-    remindTime.value = '09:00'
+    reminderState.value = ''
+  }
+  setTimeout(() => { applyingSaved = false })
+}
+
+async function persistReminder() {
+  if (!ticket.value) return
+  try {
+    if (!reminderOn.value) {
+      if (mineReminder.value) myReminders.value = await clearMyReminder(ticket.value.id)
+      reminderState.value = ''
+      return
+    }
+    if (!remindDate.value) return
+    reminderState.value = 'saving'
+    const at = new Date(`${remindDate.value}T${remindTime.value || '09:00'}`).toISOString()
+    myReminders.value = await setMyReminder(ticket.value.id, at)
+    reminderState.value = 'saved'
   } catch (e: any) {
+    reminderState.value = 'error'
     reminderError.value = e?.response?.data?.detail || 'Não foi possível guardar o lembrete.'
-  } finally {
-    savingReminder.value = false
   }
 }
+
+watch([reminderOn, remindDate, remindTime], () => {
+  if (applyingSaved) return
+  if (reminderTimer) clearTimeout(reminderTimer)
+  reminderTimer = setTimeout(persistReminder, reminderOn.value ? 500 : 0)
+})
 
 async function cancelReminder(id: string) {
   if (!ticket.value) return
@@ -686,6 +708,7 @@ async function cancelReminder(id: string) {
 function toggleReminder() {
   reminderOn.value = !reminderOn.value
   if (reminderOn.value && !remindDate.value) setReminderIn(1)
+  if (!reminderOn.value) remindDate.value = ''
 }
 const reminderQuick = [
   { label: 'Amanhã', days: 1 },
@@ -986,10 +1009,6 @@ async function saveContent() {
 
 async function onAddComment() {
   if (!newComment.value.trim() && !commentFile.value) return
-  if (reminderOn.value && !remindDate.value) {
-    commentError.value = 'Escolha o dia do lembrete, ou desligue "Lembrar-me deste ticket".'
-    return
-  }
   if (privateOn.value && !privateTo.value) {
     commentError.value = 'Escolha a quem enviar a mensagem privada.'
     return
@@ -998,17 +1017,11 @@ async function onAddComment() {
   commentError.value = ''
   const newStatus = auth.isStaff && replyStatus.value && replyStatus.value !== ticket.value.status ? replyStatus.value : ''
   try {
-    const remindAt = reminderOn.value && remindDate.value
-      ? new Date(`${remindDate.value}T${remindTime.value || '09:00'}`).toISOString()
-      : null
     const privateToId = privateOn.value ? privateTo.value : null
-    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value && !privateToId, remindAt, privateToId)
+    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value && !privateToId, null, privateToId)
     newComment.value = ''
     isInternal.value = false
     privateOn.value = false
-    remindDate.value = ''
-    remindTime.value = '09:00'
-    reminderOn.value = false
     if (commentFile.value) {
       await uploadTicketAttachment(ticket.value.id, commentFile.value)
       commentFile.value = null
@@ -1842,6 +1855,12 @@ function formatSize(size: number) {
 .reminder-cancel { border: 0; background: transparent; color: #DC2626; font-weight: 700; font-size: 12px; cursor: pointer; }
 .reminder-ok { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #16A34A; margin: 2px 0 8px; }
 .reminder-ok .material-icons { font-size: 17px; }
+.reminder-status { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--c-muted); margin-top: 8px; min-height: 18px; }
+.reminder-status .material-icons { font-size: 16px; }
+.reminder-status.saved { color: #16A34A; }
+.reminder-status.error { color: #DC2626; }
+.reminder-status .spin { animation: rem-spin 1s linear infinite; }
+@keyframes rem-spin { to { transform: rotate(360deg); } }
 .reminder-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 .reminder-save { font-size: 13px; padding: 7px 14px; }
 .reminder-save .material-icons { font-size: 17px; }

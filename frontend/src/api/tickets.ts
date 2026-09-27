@@ -151,6 +151,16 @@ export async function createReminder(ticketId: number, remind_at: string, note: 
   return data
 }
 
+export async function setMyReminder(ticketId: number, remind_at: string) {
+  const { data } = await api.put<MyReminder[]>(`/api/v1/tickets/${ticketId}/reminders/mine`, { remind_at })
+  return data
+}
+
+export async function clearMyReminder(ticketId: number) {
+  const { data } = await api.delete<MyReminder[]>(`/api/v1/tickets/${ticketId}/reminders/mine`)
+  return data
+}
+
 export async function deleteReminder(ticketId: number, id: string) {
   const { data } = await api.delete<MyReminder[]>(`/api/v1/tickets/${ticketId}/reminders/${id}`)
   return data
