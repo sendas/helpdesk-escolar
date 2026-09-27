@@ -173,7 +173,7 @@ async def get_or_create_direct(db: AsyncSession, me: User, other: User) -> ChatC
 def support_settings() -> dict:
     from app.api.v1.settings import _read_settings
     s = _read_settings()
-    return {"enabled": bool(s.get("support_chat_enabled", True)), "wait_minutes": int(s.get("support_wait_minutes", 5)),
+    return {"enabled": bool(s.get("support_chat_enabled", False)), "wait_minutes": int(s.get("support_wait_minutes", 5)),
             "hours": s.get("support_hours") or {}}
 
 

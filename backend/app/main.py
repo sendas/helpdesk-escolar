@@ -87,6 +87,8 @@ async def lifespan(app: FastAPI):
     from app.services.bootstrap import ensure_defaults
     async with AsyncSessionLocal() as db:
         await ensure_defaults(db)
+    from app.api.v1.settings import apply_settings_migrations
+    apply_settings_migrations()
     from app.services.permissions import ensure_default_roles
     async with AsyncSessionLocal() as db:
         await ensure_default_roles(db)

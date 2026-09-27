@@ -38,6 +38,11 @@
       </template>
 
       <template v-else>
+        <div v-if="supportInfo && !supportInfo.enabled" class="avail-off">
+          <span class="material-icons">info</span>
+          O apoio ao vivo está desligado: os docentes não veem o balão.
+          <router-link v-if="auth.can('settings.manage')" to="/admin/settings?s=apoio">Ligar nas Configurações</router-link>
+        </div>
         <label class="avail" :class="{ on: available }">
           <span class="hd-toggle-wrap" @click.prevent="toggleAvailability">
             <span class="hd-toggle-track" :class="{ on: available }"><span class="hd-toggle-thumb"></span></span>
@@ -456,6 +461,9 @@ watch(() => route.query.c, (c) => { if (c && Number(c) !== current.value?.id) se
 .chat-item-text small { display: block; font-size: 12px; color: var(--c-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-item-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 11px; color: var(--c-muted); }
 .chat-empty-list { padding: 24px 12px; text-align: center; font-size: 13px; color: var(--c-muted); }
+.avail-off { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 10px 10px 0; padding: 10px 12px; border-radius: 12px; background: rgba(245, 158, 11, .1); border: 1px solid rgba(245, 158, 11, .35); font-size: 12.5px; color: var(--c-text); }
+.avail-off .material-icons { font-size: 16px; color: #D97706; }
+.avail-off a { font-weight: 700; color: var(--c-primary); }
 .avail { display: flex; gap: 10px; align-items: center; margin: 10px; padding: 10px 12px; border: 1px solid var(--c-border); border-radius: 12px; cursor: pointer; }
 .avail.on { border-color: #22C55E; background: rgba(34, 197, 94, .08); }
 .avail strong { display: block; font-size: 13px; }

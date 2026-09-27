@@ -38,7 +38,7 @@ DEFAULT_SETTINGS = {
     "demo_profiles": ["teacher"],
     "demo_content_visible": False,
     # Live support chat (balão de apoio); days are ISO weekdays (1 = segunda-feira)
-    "support_chat_enabled": True,
+    "support_chat_enabled": False,
     "support_wait_minutes": 5,
     "support_hours": {
         "1": {"enabled": True, "start": "14:00", "end": "17:00"},
@@ -55,7 +55,7 @@ DEFAULT_SETTINGS = {
 }
 
 # Never sent by /settings/public (the Teams address lets anyone post in the channel)
-PRIVATE_KEYS = {"teams_webhook_url", "teams_overdue_notified", "role_permissions_granted"}
+PRIVATE_KEYS = {"teams_webhook_url", "teams_overdue_notified", "role_permissions_granted", "settings_migrations"}
 
 UI_DESIGNS = {"modern", "classic"}
 DEMO_PROFILES = ("teacher", "technician", "admin")
@@ -283,6 +283,21 @@ async def update_suggestion_emails(payload: SuggestionEmailSettings, _: User = D
     data["suggestion_emails"] = clean
     _write_settings(data)
     return {"suggestion_emails": data["suggestion_emails"]}
+
+
+def apply_settings_migrations() -> None:
+    """One-off changes to saved settings when a new version changes a default."""
+    data = _read_settings()
+    done = set(data.get("settings_migrations") or [])
+    changed = False
+    if "support_chat_off_by_default" not in done:
+        # The live-support bubble starts switched off; an administrator turns it on in Configurações
+        data["support_chat_enabled"] = False
+        done.add("support_chat_off_by_default")
+        changed = True
+    if changed:
+        data["settings_migrations"] = sorted(done)
+        _write_settings(data)
 
 
 def _read_settings() -> dict:

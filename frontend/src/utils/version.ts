@@ -1,8 +1,21 @@
-export const APP_VERSION = '2.1.0'
-export const APP_VERSION_DATE = '2026-09-25'
-export const APP_VERSION_TIME = '18:00'
+export const APP_VERSION = '2.1.1'
+export const APP_VERSION_DATE = '2026-09-27'
+export const APP_VERSION_TIME = '10:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.1.1',
+    date: '2026-09-27',
+    time: '10:00',
+    title: 'Configurações reorganizadas e interruptor do apoio ao vivo',
+    changes: [
+      'Nova página de Configurações com menu lateral por temas: Geral, Tickets, Comunicação, Acesso e Conteúdos. Cada secção tem um título, uma explicação e blocos separados, e o endereço guarda a secção aberta.',
+      'Apoio ao vivo: interruptor "Ligar/Desligar" em destaque, que grava na hora. Vem desligado; enquanto estiver desligado ninguém vê o balão, a faixa nem a entrada no menu.',
+      'O menu das Configurações indica se o apoio ao vivo, o Teams e o modo demo estão ligados.',
+      'Retirados campos que não tinham efeito (URL base, fuso horário, duração da sessão, formulário de Active Directory e servidor SMTP): estas definições estão no ficheiro app.env do servidor, o que agora é explicado na página.',
+      'Na página Chat, quem atende o apoio é avisado quando o apoio ao vivo está desligado.',
+    ],
+  },
   {
     version: '2.1.0',
     date: '2026-09-25',

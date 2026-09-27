@@ -1,408 +1,85 @@
 <template>
-  <div class="hd-page">
-    <!-- Tabs -->
-    <div class="hd-tabs" style="margin-bottom:24px">
-      <button class="hd-tab" :class="{ active: tab === 'general' }" @click="tab = 'general'">
-        <span class="material-icons" style="font-size:15px">tune</span> Geral
-      </button>
-      <button class="hd-tab" :class="{ active: tab === 'ldap' }" @click="tab = 'ldap'">
-        <span class="material-icons" style="font-size:15px">dns</span> Active Directory
-      </button>
-      <button class="hd-tab" :class="{ active: tab === 'email' }" @click="tab = 'email'">
-        <span class="material-icons" style="font-size:15px">email</span> Notificações
-      </button>
-      <button class="hd-tab" :class="{ active: tab === 'categories' }" @click="tab = 'categories'">
-        <span class="material-icons" style="font-size:15px">category</span> Categorias e tempos de resposta
-      </button>
-      <button class="hd-tab" :class="{ active: tab === 'schools' }" @click="tab = 'schools'">
-        <span class="material-icons" style="font-size:15px">account_balance</span> Escolas
-      </button>
-      <button class="hd-tab" :class="{ active: tab === 'routing' }" @click="tab = 'routing'">
-        <span class="material-icons" style="font-size:15px">alt_route</span> Encaminhamento
-      </button>
-      <button class="hd-tab" :class="{ active: tab === 'knowledge' }" @click="tab = 'knowledge'">
-        <span class="material-icons" style="font-size:15px">menu_book</span> Base de conhecimento
-      </button>
-      <button class="hd-tab" :class="{ active: tab === 'chat' }" @click="tab = 'chat'">
-        <span class="material-icons" style="font-size:15px">forum</span> Chat e apoio ao vivo
-      </button>
-      <button class="hd-tab" :class="{ active: tab === 'teams' }" @click="tab = 'teams'">
-        <span class="material-icons" style="font-size:15px">groups</span> Microsoft Teams
-      </button>
-    </div>
-
-    <SupportChatSettings v-if="tab === 'chat'" />
-    <TeamsSettings v-if="tab === 'teams'" />
-
-    <!-- General -->
-    <div v-if="tab === 'general'" class="hd-card" style="padding:28px;max-width:640px">
-      <div style="font-weight:600;font-size:15px;margin-bottom:20px">Configurações gerais</div>
-      <div class="hd-field" style="margin-bottom:18px">
-        <label class="hd-label">Nome do Agrupamento</label>
-        <input class="hd-input" v-model="general.org_name" placeholder="Agrupamento de Escolas Eça de Queirós" />
-      </div>
-      <div class="hd-field" style="margin-bottom:18px">
-        <label class="hd-label">Logotipo do Agrupamento</label>
-        <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp,image/png,image/jpeg,image/svg+xml,image/webp" @change="onLogoPicked" />
-        <div v-if="general.logo_url" style="margin-top:10px">
-          <img :src="general.logo_url" alt="Logotipo" style="max-width:180px;max-height:80px;object-fit:contain" />
-        </div>
-        <p class="hd-hint">PNG, JPG, SVG ou WEBP até 2 MB.</p>
-      </div>
-      <div class="hd-field" style="margin-bottom:18px">
-        <label class="hd-label">URL base da aplicação</label>
-        <input class="hd-input" v-model="general.app_url" placeholder="http://helpdesk.escola.local" />
-      </div>
-      <div class="hd-field" style="margin-bottom:18px">
-        <label class="hd-label">Fuso horário</label>
-        <select class="hd-select" v-model="general.timezone" style="max-width:300px">
-          <option value="Europe/Lisbon">Europe/Lisbon</option>
-          <option value="UTC">UTC</option>
-        </select>
-      </div>
-      <div class="hd-field" style="margin-bottom:24px">
-        <label class="hd-label">Duração da sessão (minutos)</label>
-        <input class="hd-input" type="number" v-model="general.jwt_expire" style="max-width:140px" />
-        <p class="hd-hint">Tempo até o token JWT expirar e o utilizador ter de iniciar sessão novamente.</p>
-      </div>
-      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
-        <div style="font-weight:600;font-size:14px;margin-bottom:12px">Funcionalidades</div>
-        <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
-          <div>
-            <div style="font-size:13px;font-weight:500">Design do Painel inicial e do login</div>
-            <div style="font-size:12px;color:var(--c-muted)">Aplica-se a todos os utilizadores</div>
-          </div>
-          <div class="design-choice" role="radiogroup" aria-label="Design do Painel inicial e do login">
-            <button type="button" :class="{ selected: uiDesign === 'modern' }" @click="changeDesign('modern')">Moderno</button>
-            <button type="button" :class="{ selected: uiDesign === 'classic' }" @click="changeDesign('classic')">Clássico</button>
-          </div>
-        </div>
-        <p v-if="designError" style="font-size:12px;color:#EF4444;margin:0 0 6px">{{ designError }}</p>
-        <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
-          <div>
-            <div style="font-size:13px;font-weight:500">Modo demo</div>
-            <div style="font-size:12px;color:var(--c-muted)">Mostra "Entrar em modo demo" no ecrã de login, para experimentar sem conta</div>
-          </div>
-          <div class="hd-toggle-wrap" @click="toggleDemoMode">
-            <div class="hd-toggle-track" :class="{ on: demoEnabled }">
-              <div class="hd-toggle-thumb"></div>
-            </div>
-          </div>
-        </div>
-        <div v-if="demoEnabled" class="demo-settings">
-          <div style="font-size:12px;font-weight:600;margin-bottom:6px">Perfis disponíveis</div>
-          <div class="hd-row" style="gap:16px;margin-bottom:10px">
-            <label v-for="p in demoProfileOptions" :key="p.role" class="demo-profile-opt">
-              <input type="checkbox" :checked="demoProfiles.includes(p.role)" @change="toggleDemoProfile(p.role)" />
-              {{ p.label }}
-            </label>
-          </div>
-          <p class="demo-warning">
-            <span class="material-icons" style="font-size:16px">warning</span>
-            <span>O modo demo usa a base de dados real. Os pedidos criados em demo são tickets verdadeiros, e os perfis
-            <strong>Técnico</strong> e <strong>Administrador</strong> dão acesso aos tickets e utilizadores reais. Desative quando já não for preciso.</span>
-          </p>
-        </div>
-        <p v-if="demoError" style="font-size:12px;color:#EF4444;margin:0 0 6px">{{ demoError }}</p>
-        <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
-          <div>
-            <div style="font-size:13px;font-weight:500">Mostrar tickets e mensagens do modo demo</div>
-            <div style="font-size:12px;color:var(--c-muted)">Se desligado, ficam escondidos dos utilizadores reais</div>
-          </div>
-          <div class="hd-toggle-wrap" @click="toggleDemoContent">
-            <div class="hd-toggle-track" :class="{ on: demoContentVisible }">
-              <div class="hd-toggle-thumb"></div>
-            </div>
-          </div>
-        </div>
-        <div class="hd-row" style="justify-content:space-between;align-items:center;padding:10px 0">
-          <div>
-            <div style="font-size:13px;font-weight:500">Avisos de categoria</div>
-            <div style="font-size:12px;color:var(--c-muted)">Mostra uma janela de aviso ao selecionar categorias com aviso configurado</div>
-          </div>
-          <div class="hd-toggle-wrap" @click="toggleCategoryWarnings">
-            <div class="hd-toggle-track" :class="{ on: categoryWarningsEnabled }">
-              <div class="hd-toggle-thumb"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
-        <div class="hd-row" style="justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div>
-            <div style="font-weight:600;font-size:14px">Aviso no ecrã de login</div>
-            <div style="font-size:12px;color:var(--c-muted);margin-top:2px">Mostra uma janela de aviso a quem abre a página de login, antes de autenticar</div>
-          </div>
-          <div class="hd-toggle-wrap" @click="toggleLoginNotice">
-            <div class="hd-toggle-track" :class="{ on: loginNoticeEnabled }">
-              <div class="hd-toggle-thumb"></div>
-            </div>
-          </div>
-        </div>
-        <div :style="{ opacity: loginNoticeEnabled ? 1 : 0.5 }">
-          <textarea class="hd-textarea" v-model="loginNoticeText" rows="4" placeholder="Texto do aviso"></textarea>
-          <div class="hd-row" style="justify-content:flex-end;margin-top:10px">
-            <button class="hd-btn hd-btn-outline" style="font-size:12px;padding:6px 14px" @click="saveLoginNotice">
-              <span class="material-icons" style="font-size:14px">save</span> Guardar aviso
-            </button>
-            <span v-if="loginNoticeSaved" style="margin-left:10px;font-size:12px;color:#22C55E;align-self:center">Guardado!</span>
-          </div>
-          <p v-if="loginNoticeError" style="font-size:12px;color:#EF4444;margin-top:6px">{{ loginNoticeError }}</p>
-        </div>
-      </div>
-      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
-        <div style="font-weight:600;font-size:14px;margin-bottom:4px">Contacto "Sem acesso ao mail institucional"</div>
-        <div style="font-size:12px;color:var(--c-muted);margin-bottom:12px">Email que recebe os pedidos de quem clica em "Não tenho acesso ao mail institucional" no ecrã de login</div>
-        <div class="hd-row" style="gap:10px;align-items:center">
-          <input class="hd-input" v-model="noAccessContactEmail" type="email" placeholder="helpdesk_aeeq@queiroz.pt" style="max-width:340px" />
-          <button class="hd-btn hd-btn-outline" style="font-size:12px;padding:6px 14px" @click="saveNoAccessContact">
-            <span class="material-icons" style="font-size:14px">save</span> Guardar
-          </button>
-          <span v-if="noAccessContactSaved" style="font-size:12px;color:#22C55E">Guardado!</span>
-        </div>
-        <p v-if="noAccessContactError" style="font-size:12px;color:#EF4444;margin-top:6px">{{ noAccessContactError }}</p>
-      </div>
-      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:24px">
-        <div style="font-weight:600;font-size:14px;margin-bottom:12px">Empresa de apoio informático</div>
-        <div class="hd-grid-2">
-          <div class="hd-field">
-            <label class="hd-label">Nome da empresa</label>
-            <input class="hd-input" v-model="general.support_provider_name" placeholder="Controlink" />
-          </div>
-          <div class="hd-field">
-            <label class="hd-label">Email de suporte</label>
-            <input class="hd-input" v-model="general.support_provider_email" placeholder="suporte@controlink.com" />
-          </div>
-        </div>
-        <p class="hd-hint">Este email é usado quando um técnico/admin escala um ticket para a empresa de apoio.</p>
-      </div>
-      <button class="hd-btn hd-btn-primary" @click="saveGeneral">
-        <span class="material-icons" style="font-size:16px">save</span> Guardar
-      </button>
-      <span v-if="saved" style="margin-left:12px;font-size:13px;color:#22C55E">Guardado!</span>
-    </div>
-
-    <!-- Schools -->
-    <div v-if="tab === 'schools'" class="hd-card" style="padding:28px;max-width:760px">
-      <div class="hd-row" style="margin-bottom:20px">
-        <div style="font-weight:600;font-size:15px">Escolas</div>
-        <div class="hd-spacer"></div>
-        <button class="hd-btn hd-btn-primary" style="font-size:12px;padding:6px 14px" @click="showNewSchool = true">
-          <span class="material-icons" style="font-size:14px">add</span> Nova escola
+  <div class="hd-page settings-page">
+    <!-- Section navigation -->
+    <nav class="set-nav" aria-label="Secções das configurações">
+      <template v-for="g in navGroups" :key="g.label">
+        <div class="set-nav-group">{{ g.label }}</div>
+        <button
+          v-for="it in g.items"
+          :key="it.key"
+          class="set-nav-item"
+          :class="{ active: section === it.key }"
+          @click="go(it.key)"
+        >
+          <span class="material-icons">{{ it.icon }}</span>
+          <span>{{ it.label }}</span>
+          <span v-if="it.badge" class="set-nav-badge" :class="it.badge.cls">{{ it.badge.text }}</span>
         </button>
-      </div>
-      <div v-if="loadingSchools" style="color:var(--c-muted)">A carregar...</div>
-      <table v-else class="hd-table">
-        <thead><tr><th>NOME</th><th>NOME CURTO</th><th>MORADA</th><th></th></tr></thead>
-        <tbody>
-          <tr v-for="school in schools" :key="school.id">
-            <td style="font-weight:500">{{ school.name }}</td>
-            <td style="font-size:12px;color:var(--c-muted)">{{ school.short_name }}</td>
-            <td style="font-size:12px;color:var(--c-muted)">{{ school.address || '—' }}</td>
-            <td>
-              <button class="hd-icon-btn" @click="deleteSchool(school.id)" title="Eliminar">
-                <span class="material-icons" style="font-size:15px;color:#EF4444">delete</span>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      </template>
+    </nav>
+    <select class="hd-select set-nav-mobile" :value="section" @change="go(($event.target as HTMLSelectElement).value)">
+      <optgroup v-for="g in navGroups" :key="g.label" :label="g.label">
+        <option v-for="it in g.items" :key="it.key" :value="it.key">{{ it.label }}</option>
+      </optgroup>
+    </select>
 
-      <div v-if="showNewSchool" style="margin-top:20px;border:1px solid var(--c-border);border-radius:10px;padding:20px">
-        <div style="font-weight:600;font-size:14px;margin-bottom:16px">Nova escola</div>
-        <div class="hd-grid-2" style="margin-bottom:12px">
+    <div class="set-content">
+      <header class="set-head">
+        <h2>{{ current.label }}</h2>
+        <p>{{ current.desc }}</p>
+      </header>
+
+      <!-- ───────── Geral ───────── -->
+      <template v-if="section === 'organizacao'">
+        <section class="set-card">
+          <div class="set-card-title">Identidade</div>
           <div class="hd-field">
-            <label class="hd-label">Nome</label>
-            <input class="hd-input" v-model="newSchool.name" placeholder="Escola Eça de Queirós" />
+            <label class="hd-label">Nome do Agrupamento</label>
+            <input class="hd-input" v-model="general.org_name" placeholder="Agrupamento de Escolas Eça de Queirós" />
           </div>
           <div class="hd-field">
-            <label class="hd-label">Nome curto</label>
-            <input class="hd-input" v-model="newSchool.short_name" placeholder="Eça" />
+            <label class="hd-label">Logotipo</label>
+            <div class="logo-row">
+              <div class="logo-preview">
+                <img v-if="general.logo_url" :src="general.logo_url" alt="Logotipo" />
+                <span v-else class="material-icons">image</span>
+              </div>
+              <div>
+                <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp,image/png,image/jpeg,image/svg+xml,image/webp" @change="onLogoPicked" />
+                <p class="hd-hint">PNG, JPG, SVG ou WEBP até 2 MB. Também é usado como ícone do separador do browser.</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="hd-field" style="margin-bottom:16px">
-          <label class="hd-label">Morada</label>
-          <input class="hd-input" v-model="newSchool.address" placeholder="Morada da escola" />
-        </div>
-        <div class="hd-row" style="gap:8px;justify-content:flex-end">
-          <button class="hd-btn hd-btn-outline" @click="showNewSchool = false">Cancelar</button>
-          <button class="hd-btn hd-btn-primary" @click="createSchool" :disabled="!newSchool.name || !newSchool.short_name">
-            Criar escola
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- LDAP -->
-    <div v-if="tab === 'ldap'" class="hd-card" style="padding:28px;max-width:640px">
-      <div class="hd-row" style="margin-bottom:20px">
-        <div style="font-weight:600;font-size:15px">Configuração LDAP / Active Directory</div>
-        <div class="hd-spacer"></div>
-        <label class="hd-row" style="gap:8px;cursor:pointer;font-size:13px">
-          <div class="hd-toggle-wrap" @click="ldap.enabled = !ldap.enabled">
-            <div class="hd-toggle" :class="{ active: ldap.enabled }"></div>
+          <div class="set-actions">
+            <span v-if="saved" class="set-ok">Guardado!</span>
+            <button class="hd-btn hd-btn-primary" @click="saveGeneral"><span class="material-icons">save</span> Guardar</button>
           </div>
-          {{ ldap.enabled ? 'Ativo' : 'Inativo' }}
-        </label>
-      </div>
-
-      <div :style="{ opacity: ldap.enabled ? 1 : 0.5, pointerEvents: ldap.enabled ? 'auto' : 'none' }">
-        <div class="hd-field" style="margin-bottom:16px">
-          <label class="hd-label">Servidor LDAP</label>
-          <input class="hd-input" v-model="ldap.server" placeholder="ldaps://dc.escola.local" />
-        </div>
-        <div class="hd-grid-2" style="margin-bottom:16px">
-          <div class="hd-field">
-            <label class="hd-label">Porta</label>
-            <input class="hd-input" type="number" v-model="ldap.port" placeholder="636" />
-          </div>
-          <div class="hd-field">
-            <label class="hd-label">Protocolo</label>
-            <select class="hd-select" v-model="ldap.tls">
-              <option value="ldaps">LDAPS (recomendado)</option>
-              <option value="ldap">LDAP + STARTTLS</option>
-              <option value="plain">LDAP simples</option>
-            </select>
-          </div>
-        </div>
-        <div class="hd-field" style="margin-bottom:16px">
-          <label class="hd-label">Bind DN (conta de serviço)</label>
-          <input class="hd-input" v-model="ldap.bind_dn" placeholder="cn=svc_tickets,ou=ServiceAccounts,dc=escola,dc=local" />
-        </div>
-        <div class="hd-field" style="margin-bottom:16px">
-          <label class="hd-label">Palavra-passe</label>
-          <input class="hd-input" type="password" v-model="ldap.bind_password" placeholder="••••••••" />
-        </div>
-        <div class="hd-field" style="margin-bottom:16px">
-          <label class="hd-label">Base DN</label>
-          <input class="hd-input" v-model="ldap.base_dn" placeholder="ou=Staff,dc=escola,dc=local" />
-        </div>
-        <div class="hd-field" style="margin-bottom:24px">
-          <label class="hd-label">Grupo de administradores (DN)</label>
-          <input class="hd-input" v-model="ldap.admin_group" placeholder="CN=TI-Suporte,ou=Groups,dc=escola,dc=local" />
-          <p class="hd-hint">Membros deste grupo recebem automaticamente o papel de Administrador.</p>
-        </div>
-        <div class="hd-row" style="gap:10px">
-          <button class="hd-btn hd-btn-outline" @click="testLdap" :disabled="testing">
-            <span class="material-icons" style="font-size:16px">cable</span>
-            {{ testing ? 'A testar...' : 'Testar ligação' }}
-          </button>
-          <span v-if="ldapTestResult" :style="{ color: ldapTestOk ? '#22C55E' : '#EF4444', fontSize: '13px' }">
-            {{ ldapTestResult }}
-          </span>
-          <div class="hd-spacer"></div>
-          <button class="hd-btn hd-btn-primary" @click="saved = true">
-            <span class="material-icons" style="font-size:16px">save</span> Guardar
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Email / notifications -->
-    <div v-if="tab === 'email'" class="hd-card" style="padding:28px;max-width:640px">
-      <div style="font-weight:600;font-size:15px;margin-bottom:20px">Configuração de email</div>
-      <div class="hd-grid-2" style="margin-bottom:16px">
-        <div class="hd-field">
-          <label class="hd-label">Servidor SMTP</label>
-          <input class="hd-input" v-model="email.server" placeholder="smtp.escola.local" />
-        </div>
-        <div class="hd-field">
-          <label class="hd-label">Porta</label>
-          <input class="hd-input" type="number" v-model="email.port" placeholder="587" />
-        </div>
-      </div>
-      <div class="hd-field" style="margin-bottom:16px">
-        <label class="hd-label">Endereço remetente</label>
-        <input class="hd-input" v-model="email.from" placeholder="tickets@escola.local" />
-      </div>
-      <div class="hd-field" style="margin-bottom:16px">
-        <label class="hd-label">Utilizador SMTP</label>
-        <input class="hd-input" v-model="email.username" />
-      </div>
-      <div class="hd-field" style="margin-bottom:24px">
-        <label class="hd-label">Palavra-passe SMTP</label>
-        <input class="hd-input" type="password" v-model="email.password" placeholder="••••••••" />
-      </div>
-
-      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-bottom:20px">
-        <div style="font-weight:600;font-size:14px;margin-bottom:12px">Notificações automáticas</div>
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <div v-for="n in notifications" :key="n.key" class="hd-row" style="justify-content:space-between">
+        </section>
+        <section class="set-card">
+          <div class="set-row">
             <div>
-              <div style="font-size:13px;font-weight:500">{{ n.label }}</div>
-              <div style="font-size:12px;color:var(--c-muted)">{{ n.desc }}</div>
+              <div class="set-card-title">Design do Painel inicial e do login</div>
+              <div class="set-desc">Aplica-se a todos os utilizadores. Muda na hora.</div>
             </div>
-            <div class="hd-toggle-wrap" @click="n.enabled = !n.enabled">
-              <div class="hd-toggle" :class="{ active: n.enabled }"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-top:4px">
-        <div style="font-weight:600;font-size:14px;margin-bottom:10px">Teste de email</div>
-        <p class="hd-hint" style="margin-bottom:12px">Envia um email de teste para o endereço do utilizador atual, para verificar se as notificações estão a funcionar.</p>
-        <div class="hd-row" style="gap:10px;align-items:center">
-          <button class="hd-btn hd-btn-outline" :disabled="testingSmtp" @click="testSmtpNow">
-            <span class="material-icons" style="font-size:16px">send</span>
-            {{ testingSmtp ? 'A enviar...' : 'Enviar email de teste' }}
-          </button>
-          <span v-if="smtpTestResult" :style="{ color: smtpTestOk ? '#22C55E' : '#EF4444', fontSize: '13px' }">
-            {{ smtpTestResult }}
-          </span>
-        </div>
-      </div>
-      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-top:4px">
-        <div style="font-weight:600;font-size:14px;margin-bottom:10px">Teste de notificação push</div>
-        <p class="hd-hint" style="margin-bottom:12px">
-          Envia uma notificação push de teste para este dispositivo.
-          Clique primeiro na campainha (canto superior direito) → <strong>Ativar</strong> para registar este browser.
-        </p>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div class="hd-row" style="gap:10px;align-items:center">
-            <button class="hd-btn hd-btn-outline" :disabled="testingPush" @click="testPushNow">
-              <span class="material-icons" style="font-size:16px">notifications_active</span>
-              {{ testingPush ? 'A enviar...' : 'Enviar notificação de teste' }}
-            </button>
-            <span v-if="pushTestResult && pushTestOk" style="color:#22C55E;font-size:13px">{{ pushTestResult }}</span>
-          </div>
-          <div v-if="pushTestResult && !pushTestOk" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px 14px">
-            <div style="font-size:13px;color:#EF4444;font-weight:600;margin-bottom:4px">{{ pushTestResult }}</div>
-            <div style="font-size:12px;color:var(--c-muted);line-height:1.5">
-              Clique na <strong>campainha</strong> no topo da página → <strong>Ativar</strong> para registar este dispositivo.<br>
-              Se já ativou antes e continua a falhar, clique em <strong>Desativar</strong> e depois <strong>Ativar</strong> novamente para re-sincronizar.
+            <div class="design-choice" role="radiogroup" aria-label="Design do Painel inicial e do login">
+              <button type="button" :class="{ selected: uiDesign === 'modern' }" @click="changeDesign('modern')">Moderno</button>
+              <button type="button" :class="{ selected: uiDesign === 'classic' }" @click="changeDesign('classic')">Clássico</button>
             </div>
           </div>
-        </div>
-      </div>
-      <div style="border-top:1px solid var(--c-border);padding-top:20px;margin-top:4px">
-        <div style="font-weight:600;font-size:14px;margin-bottom:6px">Destinatários das sugestões</div>
-        <p class="hd-hint" style="margin-bottom:12px">
-          Quando um utilizador envia uma sugestão, é enviado um email de notificação para os endereços abaixo.
-          Separe vários endereços com vírgula.
-        </p>
-        <input
-          class="hd-input"
-          v-model="suggestionEmailsRaw"
-          placeholder="admin@escola.pt, diretor@escola.pt"
-        />
-      </div>
-      <div style="margin-top:20px">
-        <button class="hd-btn hd-btn-primary" @click="saveEmailSettings">
-          <span class="material-icons" style="font-size:16px">save</span> Guardar
-        </button>
-        <span v-if="savedEmail" style="margin-left:12px;font-size:13px;color:#22C55E">Guardado!</span>
-      </div>
-    </div>
+          <p v-if="designError" class="set-err">{{ designError }}</p>
+        </section>
+      </template>
 
-    <!-- Categories -->
-    <div v-if="tab === 'categories'" class="hd-card" style="padding:28px;max-width:980px">
-      <div class="hd-row" style="margin-bottom:20px">
-        <div style="font-weight:600;font-size:15px">Categorias e tempos de resposta</div>
-        <div class="hd-spacer"></div>
-        <button class="hd-btn hd-btn-primary" style="font-size:12px;padding:6px 14px" @click="showNewCat = true">
-          <span class="material-icons" style="font-size:14px">add</span> Nova categoria
-        </button>
-      </div>
+      <!-- ───────── Tickets ───────── -->
+      <template v-if="section === 'categorias'">
+        <section class="set-card">
+          <div class="set-row" style="margin-bottom:14px">
+            <div>
+              <div class="set-card-title">Categorias</div>
+              <div class="set-desc">O email de cada categoria recebe um aviso quando é criado um ticket nela.</div>
+            </div>
+            <button class="hd-btn hd-btn-primary" @click="showNewCat = true"><span class="material-icons">add</span> Nova categoria</button>
+          </div>
       <div v-if="loadingCats" style="color:var(--c-muted)">A carregar...</div>
       <table v-else class="hd-table">
         <thead><tr><th>ÍCONE</th><th>NOME</th><th>DESCRIÇÃO</th><th>EMAIL</th><th>TEMPO DE RESPOSTA</th><th></th></tr></thead>
@@ -479,11 +156,71 @@
           </button>
         </div>
       </div>
-    </div>
+        </section>
+        <section class="set-card">
+          <div class="set-row">
+            <div>
+              <div class="set-card-title">Avisos de categoria</div>
+              <div class="set-desc">Mostra uma janela de aviso ao escolher uma categoria que tenha aviso configurado.</div>
+            </div>
+            <div class="hd-toggle-wrap" @click="toggleCategoryWarnings"><div class="hd-toggle-track" :class="{ on: categoryWarningsEnabled }"><div class="hd-toggle-thumb"></div></div></div>
+          </div>
+        </section>
+      </template>
 
-    <div v-if="tab === 'routing'" class="hd-card" style="padding:28px;max-width:1100px">
-      <div style="font-weight:600;font-size:15px;margin-bottom:4px">Encaminhamento automático</div>
-      <p class="hd-hint" style="margin-bottom:18px">Quando um ticket é criado, a primeira regra compatível atribui automaticamente grupo e/ou responsável.</p>
+      <template v-if="section === 'escolas'">
+        <section class="set-card">
+          <div class="set-row" style="margin-bottom:14px">
+            <div class="set-card-title">Escolas do Agrupamento</div>
+            <button class="hd-btn hd-btn-primary" @click="showNewSchool = true"><span class="material-icons">add</span> Nova escola</button>
+          </div>
+      <div v-if="loadingSchools" style="color:var(--c-muted)">A carregar...</div>
+      <table v-else class="hd-table">
+        <thead><tr><th>NOME</th><th>NOME CURTO</th><th>MORADA</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="school in schools" :key="school.id">
+            <td style="font-weight:500">{{ school.name }}</td>
+            <td style="font-size:12px;color:var(--c-muted)">{{ school.short_name }}</td>
+            <td style="font-size:12px;color:var(--c-muted)">{{ school.address || '—' }}</td>
+            <td>
+              <button class="hd-icon-btn" @click="deleteSchool(school.id)" title="Eliminar">
+                <span class="material-icons" style="font-size:15px;color:#EF4444">delete</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div v-if="showNewSchool" style="margin-top:20px;border:1px solid var(--c-border);border-radius:10px;padding:20px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:16px">Nova escola</div>
+        <div class="hd-grid-2" style="margin-bottom:12px">
+          <div class="hd-field">
+            <label class="hd-label">Nome</label>
+            <input class="hd-input" v-model="newSchool.name" placeholder="Escola Eça de Queirós" />
+          </div>
+          <div class="hd-field">
+            <label class="hd-label">Nome curto</label>
+            <input class="hd-input" v-model="newSchool.short_name" placeholder="Eça" />
+          </div>
+        </div>
+        <div class="hd-field" style="margin-bottom:16px">
+          <label class="hd-label">Morada</label>
+          <input class="hd-input" v-model="newSchool.address" placeholder="Morada da escola" />
+        </div>
+        <div class="hd-row" style="gap:8px;justify-content:flex-end">
+          <button class="hd-btn hd-btn-outline" @click="showNewSchool = false">Cancelar</button>
+          <button class="hd-btn hd-btn-primary" @click="createSchool" :disabled="!newSchool.name || !newSchool.short_name">
+            Criar escola
+          </button>
+        </div>
+      </div>
+        </section>
+      </template>
+
+      <template v-if="section === 'encaminhamento'">
+        <section class="set-card">
+          <div class="set-card-title">Regras</div>
+          <p class="set-desc" style="margin-bottom:14px">Quando um ticket é criado, a primeira regra compatível (menor número de ordem) atribui automaticamente o grupo e/ou o responsável.</p>
       <div class="routing-form">
         <select class="hd-select" v-model="newRoute.category_id">
           <option :value="''">Qualquer categoria</option>
@@ -524,21 +261,163 @@
           </tr>
         </tbody>
       </table>
-    </div>
+        </section>
+      </template>
 
-    <div v-if="tab === 'knowledge'" class="hd-card" style="padding:28px;max-width:1100px">
-      <div class="hd-row" style="align-items:flex-start;gap:16px;margin-bottom:18px">
-        <div>
-          <div style="font-weight:600;font-size:15px;margin-bottom:4px">Base de conhecimento</div>
-          <p class="hd-hint">Artigos visíveis aos utilizadores para respostas rápidas e redução de tickets repetidos.</p>
+      <template v-if="section === 'empresa'">
+        <section class="set-card">
+          <div class="set-card-title">Empresa de apoio informático</div>
+          <p class="set-desc" style="margin-bottom:14px">Usada quando um técnico reporta um ticket à empresa ("Enviar para empresa de apoio").</p>
+          <div class="hd-grid-2">
+            <div class="hd-field">
+              <label class="hd-label">Nome da empresa</label>
+              <input class="hd-input" v-model="general.support_provider_name" placeholder="Controlink" />
+            </div>
+            <div class="hd-field">
+              <label class="hd-label">Email de suporte</label>
+              <input class="hd-input" v-model="general.support_provider_email" placeholder="suporte@controlink.com" />
+            </div>
+          </div>
+          <div class="set-actions">
+            <span v-if="saved" class="set-ok">Guardado!</span>
+            <button class="hd-btn hd-btn-primary" @click="saveGeneral"><span class="material-icons">save</span> Guardar</button>
+          </div>
+        </section>
+      </template>
+
+      <!-- ───────── Comunicação ───────── -->
+      <SupportChatSettings v-if="section === 'apoio'" @changed="loadSupportFlag" />
+      <TeamsSettings v-if="section === 'teams'" />
+
+      <template v-if="section === 'email'">
+        <section class="set-card">
+          <div class="set-card-title">Envio de email</div>
+          <p class="set-desc">O servidor de email (SMTP) e a caixa de correio que recebe as respostas são configurados no ficheiro <code>app.env</code> do servidor. Use o teste para confirmar que está a funcionar.</p>
+          <div class="set-actions" style="justify-content:flex-start">
+            <button class="hd-btn hd-btn-outline" :disabled="testingSmtp" @click="testSmtpNow">
+              <span class="material-icons">send</span> {{ testingSmtp ? 'A enviar...' : 'Enviar email de teste para mim' }}
+            </button>
+            <span v-if="smtpTestResult" :class="smtpTestOk ? 'set-ok' : 'set-err'">{{ smtpTestResult }}</span>
+          </div>
+        </section>
+        <section class="set-card">
+          <div class="set-card-title">Notificações no telemóvel e no computador</div>
+          <p class="set-desc">Envia uma notificação de teste para este dispositivo. Primeiro ative as notificações na campainha, no topo da página.</p>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+          <div class="hd-row" style="gap:10px;align-items:center">
+            <button class="hd-btn hd-btn-outline" :disabled="testingPush" @click="testPushNow">
+              <span class="material-icons" style="font-size:16px">notifications_active</span>
+              {{ testingPush ? 'A enviar...' : 'Enviar notificação de teste' }}
+            </button>
+            <span v-if="pushTestResult && pushTestOk" style="color:#22C55E;font-size:13px">{{ pushTestResult }}</span>
+          </div>
+          <div v-if="pushTestResult && !pushTestOk" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px 14px">
+            <div style="font-size:13px;color:#EF4444;font-weight:600;margin-bottom:4px">{{ pushTestResult }}</div>
+            <div style="font-size:12px;color:var(--c-muted);line-height:1.5">
+              Clique na <strong>campainha</strong> no topo da página → <strong>Ativar</strong> para registar este dispositivo.<br>
+              Se já ativou antes e continua a falhar, clique em <strong>Desativar</strong> e depois <strong>Ativar</strong> novamente para re-sincronizar.
+            </div>
+          </div>
         </div>
-        <div class="hd-spacer"></div>
-        <button class="hd-btn" :class="knowledgeEnabled ? 'hd-btn-primary' : 'hd-btn-outline'" @click="toggleKnowledge">
-          <span class="material-icons" style="font-size:16px">{{ knowledgeEnabled ? 'visibility' : 'visibility_off' }}</span>
-          {{ knowledgeEnabled ? 'Base ativa' : 'Base escondida' }}
-        </button>
-      </div>
+        </section>
+        <section class="set-card">
+          <div class="set-card-title">Quem recebe as sugestões</div>
+          <p class="set-desc" style="margin-bottom:10px">Quando alguém envia uma sugestão, é enviado um email para estes endereços (separe vários com vírgula).</p>
+          <input class="hd-input" v-model="suggestionEmailsRaw" placeholder="admin@escola.pt, diretor@escola.pt" />
+          <div class="set-actions">
+            <span v-if="savedEmail" class="set-ok">Guardado!</span>
+            <button class="hd-btn hd-btn-primary" @click="saveEmailSettings"><span class="material-icons">save</span> Guardar</button>
+          </div>
+        </section>
+      </template>
 
+      <!-- ───────── Acesso e login ───────── -->
+      <template v-if="section === 'login'">
+        <section class="set-card">
+          <div class="set-row">
+            <div>
+              <div class="set-card-title">Aviso no ecrã de login</div>
+              <div class="set-desc">Janela mostrada a quem abre a página de login, antes de entrar.</div>
+            </div>
+            <div class="hd-toggle-wrap" @click="toggleLoginNotice"><div class="hd-toggle-track" :class="{ on: loginNoticeEnabled }"><div class="hd-toggle-thumb"></div></div></div>
+          </div>
+          <div :style="{ opacity: loginNoticeEnabled ? 1 : 0.5 }" style="margin-top:12px">
+            <textarea class="hd-textarea" v-model="loginNoticeText" rows="4" placeholder="Texto do aviso"></textarea>
+            <div class="set-actions">
+              <span v-if="loginNoticeSaved" class="set-ok">Guardado!</span>
+              <button class="hd-btn hd-btn-outline" @click="saveLoginNotice"><span class="material-icons">save</span> Guardar texto</button>
+            </div>
+          </div>
+          <p v-if="loginNoticeError" class="set-err">{{ loginNoticeError }}</p>
+        </section>
+        <section class="set-card">
+          <div class="set-card-title">"Não tenho acesso ao mail institucional"</div>
+          <p class="set-desc" style="margin-bottom:10px">Endereço que recebe os pedidos feitos neste botão do ecrã de login.</p>
+          <div class="hd-row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <input class="hd-input" v-model="noAccessContactEmail" type="email" placeholder="helpdesk_aeeq@queiroz.pt" style="max-width:340px" />
+            <button class="hd-btn hd-btn-outline" @click="saveNoAccessContact"><span class="material-icons">save</span> Guardar</button>
+            <span v-if="noAccessContactSaved" class="set-ok">Guardado!</span>
+          </div>
+          <p v-if="noAccessContactError" class="set-err">{{ noAccessContactError }}</p>
+        </section>
+        <section class="set-card set-info">
+          <span class="material-icons">info</span>
+          <div>
+            <div class="set-card-title">Contas e autenticação</div>
+            <p class="set-desc">A entrada com a conta da escola (Microsoft Entra ID) e o Active Directory são configurados no ficheiro <code>app.env</code> do servidor. As unidades organizativas sincronizadas e os papéis gerem-se em <router-link to="/admin/users">Utilizadores</router-link>.</p>
+          </div>
+        </section>
+      </template>
+
+      <template v-if="section === 'demo'">
+        <section class="set-card">
+          <div class="set-row">
+            <div>
+              <div class="set-card-title">Modo demonstração</div>
+              <div class="set-desc">Mostra "Entrar em modo demo" no ecrã de login, para experimentar sem conta.</div>
+            </div>
+            <div class="hd-toggle-wrap" @click="toggleDemoMode"><div class="hd-toggle-track" :class="{ on: demoEnabled }"><div class="hd-toggle-thumb"></div></div></div>
+          </div>
+          <div v-if="demoEnabled" class="demo-settings" style="margin-top:12px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px">Perfis disponíveis</div>
+          <div class="hd-row" style="gap:16px;margin-bottom:10px">
+            <label v-for="p in demoProfileOptions" :key="p.role" class="demo-profile-opt">
+              <input type="checkbox" :checked="demoProfiles.includes(p.role)" @change="toggleDemoProfile(p.role)" />
+              {{ p.label }}
+            </label>
+          </div>
+          <p class="demo-warning">
+            <span class="material-icons" style="font-size:16px">warning</span>
+            <span>O modo demo usa a base de dados real. Os pedidos criados em demo são tickets verdadeiros, e os perfis
+            <strong>Técnico</strong> e <strong>Administrador</strong> dão acesso aos tickets e utilizadores reais. Desative quando já não for preciso.</span>
+          </p>
+        </div>
+          <p v-if="demoError" class="set-err">{{ demoError }}</p>
+        </section>
+        <section class="set-card">
+          <div class="set-row">
+            <div>
+              <div class="set-card-title">Mostrar tickets e mensagens do modo demo</div>
+              <div class="set-desc">Desligado: o que for criado em modo demo fica escondido dos utilizadores reais.</div>
+            </div>
+            <div class="hd-toggle-wrap" @click="toggleDemoContent"><div class="hd-toggle-track" :class="{ on: demoContentVisible }"><div class="hd-toggle-thumb"></div></div></div>
+          </div>
+        </section>
+      </template>
+
+      <!-- ───────── Conteúdos ───────── -->
+      <template v-if="section === 'conhecimento'">
+        <section class="set-card">
+          <div class="set-row">
+            <div>
+              <div class="set-card-title">Mostrar a Base de conhecimento</div>
+              <div class="set-desc">Artigos visíveis a todos para resolver sozinhos os problemas mais comuns.</div>
+            </div>
+            <div class="hd-toggle-wrap" @click="toggleKnowledge"><div class="hd-toggle-track" :class="{ on: knowledgeEnabled }"><div class="hd-toggle-thumb"></div></div></div>
+          </div>
+        </section>
+        <section class="set-card">
+          <div class="set-card-title">Artigos</div>
       <div v-if="!knowledgeEnabled" class="feature-disabled-note">
         A Base de conhecimento está escondida no menu dos utilizadores e a página pública está bloqueada.
       </div>
@@ -583,12 +462,15 @@
           </tr>
         </tbody>
       </table>
+        </section>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, updateKnowledgeArticle, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
 import { getPublicSettings, updateDemoModeSettings, updateDesignSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
 import { setUiDesign, type UiDesign } from '../../composables/useUiDesign'
@@ -597,11 +479,55 @@ import SupportChatSettings from '../../components/SupportChatSettings.vue'
 import TeamsSettings from '../../components/TeamsSettings.vue'
 import { getGroups, getUsers } from '../../api/users'
 
-const tab = ref<'general' | 'ldap' | 'email' | 'categories' | 'schools' | 'routing' | 'knowledge' | 'chat' | 'teams'>('general')
+const route = useRoute()
+const router = useRouter()
+
+// Grouped sections of the settings page (the key is kept in the URL: /admin/settings?s=apoio)
+const supportEnabled = ref(false)
+const teamsConfigured = ref(false)
+const navGroups = computed(() => [
+  { label: 'Geral', items: [
+    { key: 'organizacao', label: 'Organização e aspeto', icon: 'apartment', desc: 'Nome, logotipo e design do Agrupamento.' },
+  ] },
+  { label: 'Tickets', items: [
+    { key: 'categorias', label: 'Categorias e prazos', icon: 'category', desc: 'Categorias dos pedidos, tempos de resposta e emails de aviso.' },
+    { key: 'escolas', label: 'Escolas', icon: 'account_balance', desc: 'Escolas que os utilizadores escolhem ao abrir um ticket.' },
+    { key: 'encaminhamento', label: 'Encaminhamento', icon: 'alt_route', desc: 'Quem fica responsável por cada tipo de pedido.' },
+    { key: 'empresa', label: 'Empresa de apoio', icon: 'handshake', desc: 'Empresa externa para onde se reportam os tickets.' },
+  ] },
+  { label: 'Comunicação', items: [
+    { key: 'apoio', label: 'Apoio ao vivo', icon: 'support_agent', desc: 'Balão de chat para os docentes falarem com a equipa TIC em tempo real.',
+      badge: { text: supportEnabled.value ? 'Ligado' : 'Desligado', cls: supportEnabled.value ? 'on' : '' } },
+    { key: 'teams', label: 'Microsoft Teams', icon: 'groups', desc: 'Avisos do helpdesk num canal do Teams.',
+      badge: teamsConfigured.value ? { text: 'Ligado', cls: 'on' } : null },
+    { key: 'email', label: 'Email e notificações', icon: 'mail', desc: 'Testes de email e de notificações, e quem recebe as sugestões.' },
+  ] },
+  { label: 'Acesso', items: [
+    { key: 'login', label: 'Ecrã de login', icon: 'login', desc: 'Aviso inicial e contacto para quem não tem acesso ao mail institucional.' },
+    { key: 'demo', label: 'Modo demonstração', icon: 'science', desc: 'Entrada sem conta para experimentar a aplicação.',
+      badge: demoEnabled.value ? { text: 'Ligado', cls: 'warn' } : null },
+  ] },
+  { label: 'Conteúdos', items: [
+    { key: 'conhecimento', label: 'Base de conhecimento', icon: 'menu_book', desc: 'Artigos de ajuda visíveis a todos.' },
+  ] },
+])
+const allSections = computed(() => navGroups.value.flatMap((g) => g.items))
+const section = ref(String(route.query.s || 'organizacao'))
+const current = computed(() => allSections.value.find((it) => it.key === section.value) ?? allSections.value[0])
+function go(key: string) {
+  section.value = key
+  saved.value = false
+  router.replace({ query: { s: key } })
+}
+async function loadSupportFlag() {
+  try {
+    const s: any = await getPublicSettings()
+    supportEnabled.value = s.support_chat_enabled === true
+    const t = await api.get('/api/v1/settings/teams')
+    teamsConfigured.value = !!t.data.configured
+  } catch { /* ignore */ }
+}
 const saved = ref(false)
-const testing = ref(false)
-const ldapTestResult = ref('')
-const ldapTestOk = ref(false)
 const testingSmtp = ref(false)
 const smtpTestResult = ref('')
 const smtpTestOk = ref(false)
@@ -640,18 +566,10 @@ const noAccessContactEmail = ref('')
 const noAccessContactSaved = ref(false)
 const noAccessContactError = ref('')
 
-const general = ref({ org_name: '', logo_url: '', app_url: '', timezone: 'Europe/Lisbon', jwt_expire: 480, support_provider_name: 'Empresa de apoio informático', support_provider_email: '' })
-const ldap = ref({ enabled: true, server: '', port: 636, tls: 'ldaps', bind_dn: '', bind_password: '', base_dn: '', admin_group: '' })
-const email = ref({ server: '', port: 587, from: '', username: '', password: '' })
+const general = ref({ org_name: '', logo_url: '', support_provider_name: 'Empresa de apoio informático', support_provider_email: '' })
 const suggestionEmailsRaw = ref('')
 const savedEmail = ref(false)
 
-const notifications = ref([
-  { key: 'ticket_created', label: 'Ticket criado', desc: 'Notifica o solicitante quando o ticket é aberto', enabled: true },
-  { key: 'ticket_assigned', label: 'Ticket atribuído', desc: 'Notifica o técnico quando lhe é atribuído um ticket', enabled: true },
-  { key: 'ticket_updated', label: 'Ticket atualizado', desc: 'Notifica quando o estado muda', enabled: true },
-  { key: 'ticket_resolved', label: 'Ticket resolvido', desc: 'Notifica o solicitante quando o ticket é resolvido', enabled: true },
-])
 
 const newCat = ref({ name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 48 })
 const newSchool = ref({ name: '', short_name: '', address: '' })
@@ -659,6 +577,7 @@ const newRoute = ref({ category_id: '', school_id: '', group_id: '', assignee_id
 const newArticle = ref({ title: '', body: '', category_id: '', is_published: true })
 
 onMounted(async () => {
+  loadSupportFlag()
   loadingCats.value = true
   loadingSchools.value = true
   try {
@@ -677,6 +596,7 @@ onMounted(async () => {
     demoContentVisible.value = settings.demo_content_visible === true
     demoProfiles.value = settings.demo_profiles?.length ? settings.demo_profiles : ['teacher']
     suggestionEmailsRaw.value = (settings.suggestion_emails || []).join(', ')
+    supportEnabled.value = (settings as any).support_chat_enabled === true
     categories.value = cats
     schools.value = schs
     groups.value = grps
@@ -708,6 +628,7 @@ async function saveGeneral() {
     general.value.support_provider_email = settings.support_provider_email || ''
     logoFile.value = null
     saved.value = true
+    setTimeout(() => { saved.value = false }, 3000)
   } catch { /* ignore */ }
 }
 
@@ -848,14 +769,6 @@ async function saveEmailSettings() {
   } catch { /* ignore */ }
 }
 
-async function testLdap() {
-  testing.value = true
-  ldapTestResult.value = ''
-  await new Promise(r => setTimeout(r, 1200))
-  ldapTestOk.value = false
-  ldapTestResult.value = 'Configure o servidor no .env e reinicie o backend para testar.'
-  testing.value = false
-}
 
 async function createCat() {
   try {
@@ -961,6 +874,51 @@ async function removeArticle(id: number) {
 </script>
 
 <style scoped>
+/* Layout: grouped navigation on the left, section cards on the right */
+.settings-page { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 28px; align-items: start; }
+.set-nav { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 2px; padding: 10px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; }
+.set-nav-group { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--c-muted); padding: 12px 10px 4px; }
+.set-nav-group:first-child { padding-top: 4px; }
+.set-nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--c-text); font-size: 13.5px; font-weight: 600; text-align: left; cursor: pointer; }
+.set-nav-item .material-icons { font-size: 18px; color: var(--c-muted); }
+.set-nav-item:hover { background: var(--c-bg); }
+.set-nav-item.active { background: var(--c-primary-soft); color: var(--c-primary); }
+.set-nav-item.active .material-icons { color: var(--c-primary); }
+.set-nav-badge { margin-left: auto; font-size: 10px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--c-bg); color: var(--c-muted); border: 1px solid var(--c-border); }
+.set-nav-badge.on { background: rgba(34, 197, 94, .12); color: #15803D; border-color: rgba(34, 197, 94, .35); }
+.set-nav-badge.warn { background: rgba(245, 158, 11, .14); color: #B45309; border-color: rgba(245, 158, 11, .4); }
+.dark .set-nav-badge.on { color: #4ADE80; }
+.set-nav-mobile { display: none; }
+.set-content { min-width: 0; max-width: 980px; display: flex; flex-direction: column; gap: 16px; }
+.set-head h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.set-head p { margin: 4px 0 0; color: var(--c-muted); font-size: 13.5px; }
+.set-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; padding: 22px 24px; }
+.set-card .hd-field { margin-bottom: 16px; }
+.set-card-title { font-weight: 700; font-size: 14.5px; }
+.set-card > .set-card-title:first-child { margin-bottom: 12px; }
+.set-card > .set-card-title:first-child + .set-desc { margin-top: -8px; }
+.set-nav-item > span:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.set-desc { font-size: 12.5px; color: var(--c-muted); margin: 3px 0 0; line-height: 1.5; }
+.set-desc code { font-size: 12px; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 5px; padding: 0 4px; }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.set-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.set-actions .material-icons, .set-row .hd-btn .material-icons { font-size: 16px; }
+.set-ok { font-size: 13px; color: #16A34A; }
+.set-err { font-size: 12.5px; color: #DC2626; margin: 8px 0 0; }
+.set-info { display: flex; gap: 12px; background: var(--c-bg); }
+.set-info > .material-icons { color: var(--c-primary); }
+.logo-row { display: flex; gap: 16px; align-items: center; }
+.logo-preview { width: 120px; height: 64px; border: 1px dashed var(--c-border); border-radius: 12px; display: grid; place-items: center; background: var(--c-bg); flex-shrink: 0; }
+.logo-preview img { max-width: 108px; max-height: 52px; object-fit: contain; }
+.logo-preview .material-icons { color: var(--c-muted); }
+@media (max-width: 900px) {
+  .settings-page { grid-template-columns: 1fr; gap: 14px; }
+  .set-nav { display: none; }
+  .set-nav-mobile { display: block; }
+  .set-card { padding: 18px; }
+  .set-row { align-items: flex-start; }
+}
+
 .demo-settings {
   padding: 12px 14px;
   margin-bottom: 8px;

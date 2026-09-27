@@ -281,7 +281,7 @@ const versionLabelText = versionLabel()
 const chatUnread = ref(0)
 const supportWaiting = ref(0)
 // Docentes and other staff get the live-support bubble; those who answer it use the Chat page instead
-const showSupportWidget = computed(() => (settings.value as any).support_chat_enabled !== false && !auth.can('chat.support') && !auth.isDemo)
+const showSupportWidget = computed(() => (settings.value as any).support_chat_enabled === true && !auth.can('chat.support') && !auth.isDemo)
 
 const roleLabel = computed(() => {
   const map: Record<string, string> = {
