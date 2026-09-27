@@ -48,7 +48,7 @@
               <td class="cell-id">
                 <span class="unread-dot" :class="{ on: t.is_unread }" :title="t.is_unread ? 'Tem novidades que ainda não leu' : ''"></span>
                 T-{{ t.id }}
-                <ReminderChip :at="t.reminder_at" />
+                <ReminderChip :at="t.reminder_at" compact />
               </td>
               <td class="cell-title">{{ t.title }}</td>
               <td style="white-space:nowrap">
@@ -90,7 +90,7 @@
               <td class="cell-id">
                 <span class="unread-dot" :class="{ on: t.is_unread }" :title="t.is_unread ? 'Tem novidades que ainda não leu' : ''"></span>
                 T-{{ t.id }}
-                <ReminderChip :at="t.reminder_at" />
+                <ReminderChip :at="t.reminder_at" compact />
               </td>
               <td class="cell-title">{{ t.title }}</td>
               <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
@@ -234,6 +234,8 @@ function statusLabel(s: string) {
 </script>
 
 <style scoped>
+.list-table { width: 100%; }
+.list-table :deep(th), .list-table :deep(td) { padding-left: 12px; padding-right: 12px; }
 .list-toolbar { display: flex; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--c-border); flex-wrap: wrap; align-items: center; }
 .list-search { width: 220px; }
 .list-filter { width: auto; }
@@ -264,9 +266,9 @@ function statusLabel(s: string) {
 .dark .unread-filter.on { color: #93C5FD; }
 .mark-all { font-size: 12.5px; padding: 6px 12px; }
 .mark-all .material-icons { font-size: 16px; }
-.cell-title { font-weight: 500; min-width: 220px; color: var(--c-muted-strong, var(--c-text)); }
+.cell-title { font-weight: 500; min-width: 200px; color: var(--c-muted-strong, var(--c-text)); }
 .cell-person { white-space: nowrap; }
-.person-box { max-width: clamp(170px, 26vw, 520px); min-width: 0; }
+.person-box { max-width: clamp(150px, 15vw, 280px); min-width: 0; }
 .cell-school { white-space: nowrap; }
 .school-initials { display: inline-block; min-width: 34px; text-align: center; font-size: 12px; font-weight: 800; letter-spacing: .04em; color: #0E7490; background: #CFFAFE; border: 1px solid #A5F3FC; border-radius: 8px; padding: 2px 7px; }
 .dark .school-initials { color: #A5F3FC; background: rgba(8, 145, 178, .2); border-color: rgba(34, 211, 238, .35); }
@@ -277,7 +279,7 @@ function statusLabel(s: string) {
 .cat-chip {
   display: inline-block; font-size: 12px; font-weight: 600; color: var(--c-primary);
   background: rgba(64, 87, 216, .08); border-radius: 999px; padding: 3px 10px; white-space: nowrap;
-  max-width: 150px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle;
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle;
 }
 .dark .cat-chip { background: rgba(99, 125, 255, .16); color: #A5B4FC; }
 .badge-fornecedor {

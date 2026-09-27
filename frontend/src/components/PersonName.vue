@@ -20,14 +20,29 @@ let observer: ResizeObserver | null = null
 let frame = 0
 let lastWidth = -1
 
+let canvas: HTMLCanvasElement | null = null
+
+// Width the full name needs, from the element's own font (scrollWidth is not reliable when the text is clipped)
+function naturalWidth(node: HTMLElement, text: string) {
+  canvas = canvas ?? document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return node.scrollWidth
+  const cs = getComputedStyle(node)
+  ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+  const spacing = parseFloat(cs.letterSpacing) || 0
+  return ctx.measureText(text).width + spacing * text.length
+}
+
 async function measure() {
   const node = el.value
   if (!node) return
+  const full = (props.name ?? '').trim()
   // Nothing to shorten
-  if (short.value === (props.name ?? '').trim()) { compact.value = false; return }
+  if (short.value === full) { compact.value = false; return }
   compact.value = false
   await nextTick()
-  compact.value = node.scrollWidth > node.clientWidth + 1
+  // Keep 1-2px of room: fonts render slightly wider on high-resolution screens
+  compact.value = node.scrollWidth > node.clientWidth + 1 || naturalWidth(node, full) > node.clientWidth - 2
 }
 
 function schedule() {
@@ -42,6 +57,9 @@ function schedule() {
 
 onMounted(() => {
   measure()
+  // Text width changes once the web font has loaded, without the container changing size
+  document.fonts?.ready.then(() => measure()).catch(() => {})
+  setTimeout(measure, 400)
   const parent = el.value?.parentElement
   if (parent && 'ResizeObserver' in window) {
     observer = new ResizeObserver(schedule)

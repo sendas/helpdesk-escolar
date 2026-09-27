@@ -101,30 +101,28 @@
                 <th v-if="!readOnly"><input type="checkbox" :checked="allVisibleSelected" @change="toggleAllVisible" /></th>
                 <th>Ticket</th>
                 <th>Assunto</th>
-                <th>Categoria</th>
                 <th>Solicitante</th>
                 <th>Prioridade</th>
                 <th>Tempo de resposta</th>
                 <th>Estado</th>
                 <th>Responsável</th>
                 <th>Grupo</th>
-                <th v-if="auth.isAdmin">Emails</th>
-                <th>Atualizado</th>
-                <th></th>
+                <th v-if="auth.isAdmin" title="Emails para quem fez o pedido">Emails</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="t in tickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t), 'row-unread': t.is_unread }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined">
                 <td v-if="!readOnly"><input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" /></td>
-                <td class="ticket-id"><span class="unread-dot" :class="{ on: t.is_unread }" :title="t.is_unread ? 'Tem novidades que ainda não leu' : ''"></span>T-{{ t.id }}<ReminderChip :at="t.reminder_at" /></td>
+                <td class="ticket-id"><span class="unread-dot" :class="{ on: t.is_unread }" :title="t.is_unread ? 'Tem novidades que ainda não leu' : ''"></span>T-{{ t.id }}<ReminderChip :at="t.reminder_at" compact /></td>
                 <td class="subject-cell">
-                  <router-link :to="`/tickets/${t.id}`">{{ t.title }}</router-link>
-                  <small>{{ t.school?.short_name || t.school?.name || 'Sem escola' }}</small>
+                  <router-link :to="`/tickets/${t.id}`" :title="t.title">{{ t.title }}</router-link>
+                  <small>
+                    <span v-if="t.school" class="school-mini" :title="t.school.name">{{ schoolInitials(t.school.name) }}</span>
+                    <span :title="t.category?.name">{{ t.category?.name }}</span> · {{ timeAgo(t.updated_at) }}
+                  </small>
                 </td>
-                <td><CategoryPill :category="t.category" /></td>
                 <td>
                   <div class="user-cell">
-                    <AvatarCircle :name="shortName(t.creator.display_name)" size="24" />
                     <PersonName :name="t.creator.display_name" />
                   </div>
                 </td>
@@ -141,23 +139,15 @@
                   <small v-if="assigneeSummary(t)" class="assignee-summary">{{ assigneeSummary(t) }}</small>
                 </td>
                 <td><GroupSelect :value="t.group?.id ?? ''" :groups="groups" @change="changeGroup(t, $event)" /></td>
-                <td>
+                <td v-if="auth.isAdmin">
                   <button
-                    class="email-pill"
+                    class="email-pill icon-only"
                     :class="{ active: t.creator_email_notifications }"
+                    :title="t.creator_email_notifications ? 'Emails ativos para quem fez o pedido (clique para desativar)' : 'Emails desativados para quem fez o pedido (clique para ativar)'"
                     @click="toggleEmailNotifications(t)"
                   >
                     <span class="material-icons">{{ t.creator_email_notifications ? 'notifications_active' : 'notifications_off' }}</span>
-                    {{ t.creator_email_notifications ? 'Ativos' : 'Desativados' }}
                   </button>
-                </td>
-                <td class="muted-cell">{{ timeAgo(t.updated_at) }}</td>
-                <td>
-                  <router-link :to="`/tickets/${t.id}`">
-                    <button class="hd-icon-btn" title="Ver detalhes">
-                      <span class="material-icons">open_in_new</span>
-                    </button>
-                  </router-link>
                 </td>
               </tr>
             </tbody>
@@ -227,8 +217,9 @@ import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
 import SlaBadge from '../../components/SlaBadge.vue'
 import { timeAgo as formatTimeAgo } from '../../utils/dates'
-import { shortName } from '../../utils/names'
+import { personLabel, shortName } from '../../utils/names'
 import PersonName from '../../components/PersonName.vue'
+import { schoolInitials } from '../../utils/names'
 import ReminderChip from '../../components/ReminderChip.vue'
 
 const CategoryPill = defineComponent({
@@ -266,7 +257,7 @@ const AssigneeSelect = defineComponent({
       onChange: (e: Event) => emit('change', (e.target as HTMLSelectElement).value),
     }, [
       h('option', { value: '' }, '— Nenhum'),
-      ...(props.users as any[]).map(u => h('option', { value: u.id }, u.display_name)),
+      ...(props.users as any[]).map(u => h('option', { value: u.id, title: u.display_name }, personLabel(u.display_name))),
     ])
   },
 })
@@ -421,8 +412,9 @@ function primaryAssigneeId(ticket: any) {
 function assigneeSummary(ticket: any) {
   const assignees = ticket.assignees?.length ? ticket.assignees : (ticket.assignee ? [ticket.assignee] : [])
   if (!assignees.length) return ''
-  if (assignees.length === 1) return assignees[0].display_name
-  return `${assignees[0].display_name} +${assignees.length - 1}`
+  // A single responsible person is already shown in the list above
+  if (assignees.length === 1) return ''
+  return `${shortName(assignees[0].display_name)} +${assignees.length - 1}`
 }
 
 function isAssignableTechnician(u: any) {
@@ -545,7 +537,7 @@ async function runInactivity() {
 .row-unread td { background: rgba(37, 99, 235, .045); }
 .row-unread .subject-cell a { font-weight: 800; }
 .dark .row-unread td { background: rgba(96, 165, 250, .08); }
-.user-cell { max-width: clamp(170px, 20vw, 420px); min-width: 0; }
+.user-cell { max-width: clamp(130px, 10vw, 200px); min-width: 0; }
 .badge-fornecedor {
   display: inline-flex;
   align-items: center;
@@ -604,10 +596,16 @@ async function runInactivity() {
 .desktop-table-wrap { overflow-x: auto; }
 .read-only select { pointer-events: none; appearance: none; background-image: none; border-color: transparent; }
 .read-only .ticket-card-controls button { pointer-events: none; }
-.tickets-table { min-width: 1420px; }
+.tickets-table { width: 100%; }
+.tickets-table th, .tickets-table td { padding-left: 8px; padding-right: 8px; }
+.tickets-table th { white-space: normal; line-height: 1.2; }
+.school-mini { display: inline-block; font-size: 10.5px; font-weight: 800; color: #0E7490; background: #CFFAFE; border-radius: 5px; padding: 0 5px; margin-right: 4px; }
+.dark .school-mini { color: #A5F3FC; background: rgba(8, 145, 178, .2); }
+.email-pill.icon-only { min-width: 0; padding: 5px 7px; }
 .tickets-table th, .tickets-table td { vertical-align: middle; }
 .ticket-id, .muted-cell { color: var(--c-muted); font-size: 12px; white-space: nowrap; }
-.subject-cell { max-width: 260px; }
+.subject-cell { max-width: 260px; min-width: 180px; }
+.subject-cell small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .subject-cell a {
   display: block;
   color: var(--c-text);
@@ -626,7 +624,7 @@ async function runInactivity() {
   display: flex;
   align-items: center;
   gap: 7px;
-  min-width: 180px;
+  min-width: 120px;
 }
 :deep(.category-pill) {
   display: inline-flex;
@@ -640,8 +638,9 @@ async function runInactivity() {
 }
 :deep(.category-pill .material-icons) { font-size: 13px; }
 :deep(.compact-select) {
-  width: auto;
-  min-width: 132px;
+  width: 128px;
+  max-width: 128px;
+  text-overflow: ellipsis;
   padding: 5px 8px;
   font-size: 12px;
 }
@@ -709,7 +708,7 @@ async function runInactivity() {
   .pagination-row { justify-content: center; }
 }
 /* Tablets and phones: the wide table becomes cards */
-@media (max-width: 1280px) {
+@media (max-width: 1500px) {
   .desktop-table-wrap { display: none; }
   .mobile-ticket-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; padding: 12px; }
   .tickets-heading { flex-direction: column; align-items: stretch; gap: 12px; text-align: left; }

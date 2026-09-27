@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.2.5'
+export const APP_VERSION = '2.2.6'
 export const APP_VERSION_DATE = '2026-09-27'
-export const APP_VERSION_TIME = '16:00'
+export const APP_VERSION_TIME = '17:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.2.6',
+    date: '2026-09-27',
+    time: '17:00',
+    title: 'Tabelas de tickets arrumadas no computador',
+    changes: [
+      'Nas tabelas, o lembrete passa a ser só o ícone ⏰ junto ao número (a data aparece ao passar o rato); nos cartões do iPad e telemóvel continua a etiqueta com a data.',
+      '"Os meus tickets" e a Gestão de tickets cabem na largura do ecrã, sem colunas cortadas nem deslizar para o lado.',
+      'Gestão de tickets: a escola, a categoria e a última atualização aparecem por baixo do assunto; listas de estado, responsável e grupo mais compactas (com nomes curtos); Emails passa a um ícone de sino. Abaixo de 1500 px de largura aparecem os cartões.',
+      'Corrigido: nomes cortados com "…" em ecrãs de alta resolução em vez de passarem à forma curta; coluna Emails desalinhada para técnicos.',
+    ],
+  },
   {
     version: '2.2.5',
     date: '2026-09-27',
