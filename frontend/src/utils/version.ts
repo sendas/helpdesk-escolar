@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.2.2'
+export const APP_VERSION = '2.2.3'
 export const APP_VERSION_DATE = '2026-09-27'
-export const APP_VERSION_TIME = '13:30'
+export const APP_VERSION_TIME = '14:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.2.3',
+    date: '2026-09-27',
+    time: '14:30',
+    title: 'Lembretes guardados sem ser preciso responder',
+    changes: [
+      'Corrigido: o lembrete só ficava gravado ao enviar uma resposta; sem texto, o botão Enviar estava desativado e o lembrete perdia-se.',
+      'Novo botão "Guardar lembrete" dentro de "Lembrar-me deste ticket": grava logo, sem escrever resposta.',
+      'Os lembretes marcados aparecem no ticket ("Lembrete marcado para segunda-feira, 28 de setembro às 09:00") com a opção Cancelar, e a etiqueta ⏰ aparece em todas as listas.',
+      'Continua a ser possível ligar o lembrete ao enviar uma resposta.',
+    ],
+  },
   {
     version: '2.2.2',
     date: '2026-09-27',

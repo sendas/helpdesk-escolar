@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.ticket import Comment, TicketView
+from app.models.ticket import Comment, TicketReminder, TicketView
 from app.models.user import User
 from app.services.permissions import has_perm
 
@@ -82,4 +82,13 @@ async def pending_reminders(db: AsyncSession, user: User, ticket_ids: list[int])
             Comment.reminder_sent_at.is_(None), Comment.deleted_at.is_(None),
         ).group_by(Comment.ticket_id)
     )
-    return dict(rows.all())
+    earliest = dict(rows.all())
+    standalone = await db.execute(
+        select(TicketReminder.ticket_id, func.min(TicketReminder.remind_at)).where(
+            TicketReminder.ticket_id.in_(ticket_ids), TicketReminder.user_id == user.id, TicketReminder.sent_at.is_(None),
+        ).group_by(TicketReminder.ticket_id)
+    )
+    for tid, at in standalone.all():
+        if tid not in earliest or at < earliest[tid]:
+            earliest[tid] = at
+    return earliest

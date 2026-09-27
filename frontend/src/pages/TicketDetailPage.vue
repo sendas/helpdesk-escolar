@@ -258,6 +258,14 @@
                 <span class="material-icons">alarm</span>
                 Lembrar-me deste ticket <span class="reminder-opt">(só para si)</span>
               </div>
+              <div v-if="myReminders.length" class="reminder-saved">
+                <div v-for="r in myReminders" :key="r.id" class="reminder-saved-item">
+                  <span class="material-icons">alarm_on</span>
+                  <span>Lembrete marcado para <strong>{{ reminderLabel(r.remind_at) }}</strong><template v-if="r.note"> — {{ r.note }}</template></span>
+                  <button type="button" class="reminder-cancel" @click="cancelReminder(r.id)">Cancelar</button>
+                </div>
+              </div>
+              <div v-if="reminderSavedMsg" class="reminder-ok"><span class="material-icons">check_circle</span> {{ reminderSavedMsg }}</div>
               <template v-if="reminderOn">
                 <div class="reminder-row">
                   <input class="hd-input reminder-date" type="date" v-model="remindDate" :min="todayIso" />
@@ -268,6 +276,13 @@
                   <template v-if="remindDate">Recebe um email e uma notificação a {{ reminderPreview }}.</template>
                   <template v-else>Escolha o dia em que quer ser lembrado.</template>
                 </div>
+                <div class="reminder-actions">
+                  <span class="reminder-hint" style="margin:0">Não precisa de escrever uma resposta.</span>
+                  <button type="button" class="hd-btn hd-btn-primary reminder-save" :disabled="!remindDate || savingReminder" @click="saveReminder">
+                    <span class="material-icons">alarm_add</span> {{ savingReminder ? 'A guardar…' : 'Guardar lembrete' }}
+                  </button>
+                </div>
+                <div v-if="reminderError" class="reminder-err">{{ reminderError }}</div>
               </template>
             </div>
             <div class="hd-row" style="justify-content:space-between;margin-top:12px">
@@ -528,7 +543,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getTicket, markTicketUnread, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
+import { getTicket, markTicketUnread, getMyReminders, createReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, getUsers, searchUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -626,6 +641,46 @@ function replyPrivately(userId: number) {
   isInternal.value = false
   commentFile.value = null
   privateTo.value = userId
+}
+
+// Reminders saved on their own (without writing a reply)
+const myReminders = ref<{ id: string; remind_at: string; note: string | null; source: string }[]>([])
+const savingReminder = ref(false)
+const reminderError = ref('')
+const reminderSavedMsg = ref('')
+
+async function loadReminders() {
+  if (!ticket.value || !canRemind.value) return
+  try { myReminders.value = await getMyReminders(ticket.value.id) } catch { myReminders.value = [] }
+}
+
+function reminderLabel(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' }) + ' às ' + d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+}
+
+async function saveReminder() {
+  if (!ticket.value || !remindDate.value) return
+  savingReminder.value = true
+  reminderError.value = ''
+  try {
+    const at = new Date(`${remindDate.value}T${remindTime.value || '09:00'}`).toISOString()
+    myReminders.value = await createReminder(ticket.value.id, at)
+    reminderSavedMsg.value = `Lembrete guardado para ${reminderLabel(at)}.`
+    setTimeout(() => { reminderSavedMsg.value = '' }, 5000)
+    reminderOn.value = false
+    remindDate.value = ''
+    remindTime.value = '09:00'
+  } catch (e: any) {
+    reminderError.value = e?.response?.data?.detail || 'Não foi possível guardar o lembrete.'
+  } finally {
+    savingReminder.value = false
+  }
+}
+
+async function cancelReminder(id: string) {
+  if (!ticket.value) return
+  myReminders.value = await deleteReminder(ticket.value.id, id)
 }
 
 function toggleReminder() {
@@ -827,6 +882,7 @@ realtimeOffs.push(
 
 onMounted(async () => {
   await load()
+  loadReminders()
   if (ticket.value) startLive(ticket.value.id)
   loadImageBlobs()
   if (auth.isStaff) {
@@ -963,6 +1019,7 @@ async function onAddComment() {
     }
     replyStatus.value = ''
     await load()
+    loadReminders()
   } catch (e: any) {
     commentError.value = e?.response?.data?.detail || 'Erro ao enviar resposta'
   } finally {
@@ -1778,5 +1835,17 @@ function formatSize(size: number) {
 }
 .reminder-chip:hover { border-color: #F59E0B; color: #B45309; }
 .reminder-chip.clear { color: var(--c-muted); }
+.reminder-saved { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px; }
+.reminder-saved-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 7px 10px; border-radius: 10px; background: rgba(245, 158, 11, .1); border: 1px solid rgba(245, 158, 11, .3); }
+.reminder-saved-item .material-icons { font-size: 17px; color: #D97706; }
+.reminder-saved-item > span:nth-child(2) { flex: 1; min-width: 0; }
+.reminder-cancel { border: 0; background: transparent; color: #DC2626; font-weight: 700; font-size: 12px; cursor: pointer; }
+.reminder-ok { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #16A34A; margin: 2px 0 8px; }
+.reminder-ok .material-icons { font-size: 17px; }
+.reminder-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.reminder-save { font-size: 13px; padding: 7px 14px; }
+.reminder-save .material-icons { font-size: 17px; }
+.reminder-err { color: #DC2626; font-size: 12.5px; margin-top: 6px; }
+.dark .reminder-saved-item { background: rgba(245, 158, 11, .12); }
 .reminder-hint { font-size: 12px; color: var(--c-muted); margin-top: 8px; }
 </style>

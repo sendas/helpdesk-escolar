@@ -12,10 +12,12 @@
       <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Título</td><td style="padding:8px">{{ title }}</td></tr>
       <tr><td style="padding:8px; font-weight:bold">Estado atual</td><td style="padding:8px">{{ status }}</td></tr>
     </table>
+    {% if note or not note_is_reminder %}
     <div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:6px;margin:18px 0 0;padding:14px">
-      <div style="font-weight:bold;margin-bottom:8px;color:#1f2937">{% if note_is_private %}A sua mensagem privada{% elif note_is_internal %}A sua nota interna{% else %}A sua resposta{% endif %}{% if note_created_at %} ({{ note_created_at }}){% endif %}</div>
+      <div style="font-weight:bold;margin-bottom:8px;color:#1f2937">{% if note_is_reminder %}A sua nota{% elif note_is_private %}A sua mensagem privada{% elif note_is_internal %}A sua nota interna{% else %}A sua resposta{% endif %}{% if note_created_at %} ({{ note_created_at }}){% endif %}</div>
       <div style="white-space:pre-wrap;line-height:1.45;color:#334155">{{ note }}</div>
     </div>
+    {% endif %}
     {% if ticket_url %}
     <p style="margin:24px 0 10px">
       <a href="{{ ticket_url }}" style="background:#4057D8;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;display:inline-block;font-weight:bold">Abrir ticket</a>

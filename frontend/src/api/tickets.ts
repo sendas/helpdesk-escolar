@@ -139,6 +139,23 @@ export async function forceSyncMailReplies() {
   return data
 }
 
+export interface MyReminder { id: string; remind_at: string; note: string | null; source: 'lembrete' | 'resposta' }
+
+export async function getMyReminders(ticketId: number) {
+  const { data } = await api.get<MyReminder[]>(`/api/v1/tickets/${ticketId}/reminders`)
+  return data
+}
+
+export async function createReminder(ticketId: number, remind_at: string, note: string | null = null) {
+  const { data } = await api.post<MyReminder[]>(`/api/v1/tickets/${ticketId}/reminders`, { remind_at, note })
+  return data
+}
+
+export async function deleteReminder(ticketId: number, id: string) {
+  const { data } = await api.delete<MyReminder[]>(`/api/v1/tickets/${ticketId}/reminders/${id}`)
+  return data
+}
+
 export async function markTicketsRead(ids: number[]) {
   if (!ids.length) return
   await api.post('/api/v1/tickets/mark-read', { ids })

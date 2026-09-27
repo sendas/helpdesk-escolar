@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, get_current_user
 from app.models.user import User, UserRole
-from app.models.ticket import Attachment, Comment, TicketEvent, TicketStatus
+from app.models.ticket import Attachment, Comment, TicketEvent, TicketReminder, TicketStatus
 from app.models.category import Category
 from app.models.school import School
 from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, TicketListItem, CommentCreate, CommentRead, CommentUpdate, WatcherAdd
@@ -110,6 +110,68 @@ async def list_tickets(
     items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id, search, exclude_category_ids, status_in, overdue, expiring)
     data = await inbox_items(db, current_user, items)
     return {"items": data, "total": total, "page": page, "size": size}
+
+
+class ReminderCreate(BaseModel):
+    remind_at: datetime
+    note: str | None = None
+
+
+def _utc_naive(dt: datetime) -> datetime:
+    return dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
+
+
+async def _my_reminders(db: AsyncSession, ticket_id: int, user: User) -> list[dict]:
+    """The viewer's pending reminders on a ticket: set on their own, or attached to one of their replies."""
+    own = (await db.execute(select(TicketReminder).where(
+        TicketReminder.ticket_id == ticket_id, TicketReminder.user_id == user.id, TicketReminder.sent_at.is_(None),
+    ))).scalars().all()
+    on_replies = (await db.execute(select(Comment).where(
+        Comment.ticket_id == ticket_id, Comment.author_id == user.id, Comment.remind_at.is_not(None),
+        Comment.reminder_sent_at.is_(None), Comment.deleted_at.is_(None),
+    ))).scalars().all()
+    items = [{"id": f"r{r.id}", "remind_at": r.remind_at.isoformat() + "Z", "note": r.note, "source": "lembrete"} for r in own]
+    items += [{"id": f"c{c.id}", "remind_at": c.remind_at.isoformat() + "Z", "note": c.body[:140], "source": "resposta"} for c in on_replies]
+    return sorted(items, key=lambda i: i["remind_at"])
+
+
+@router.get("/{ticket_id}/reminders")
+async def list_my_reminders(ticket_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _my_reminders(db, ticket_id, current_user)
+
+
+@router.post("/{ticket_id}/reminders", status_code=status.HTTP_201_CREATED)
+async def create_reminder(ticket_id: int, data: ReminderCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    if not _can_set_reminder(ticket, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só administradores, técnicos e responsáveis pelo ticket podem criar lembretes.")
+    when = _utc_naive(data.remind_at)
+    if when <= datetime.utcnow():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha uma data e hora no futuro para o lembrete.")
+    db.add(TicketReminder(ticket_id=ticket_id, user_id=current_user.id, remind_at=when, note=(data.note or "").strip()[:2000] or None))
+    await db.commit()
+    return await _my_reminders(db, ticket_id, current_user)
+
+
+@router.delete("/{ticket_id}/reminders/{reminder_id}")
+async def cancel_reminder(ticket_id: int, reminder_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    kind, raw = reminder_id[:1], reminder_id[1:]
+    if not raw.isdigit():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado.")
+    if kind == "r":
+        row = await db.get(TicketReminder, int(raw))
+        if not row or row.user_id != current_user.id or row.ticket_id != ticket_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado.")
+        await db.delete(row)
+    else:
+        row = await db.get(Comment, int(raw))
+        if not row or row.author_id != current_user.id or row.ticket_id != ticket_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lembrete não encontrado.")
+        row.remind_at = None
+    await db.commit()
+    return await _my_reminders(db, ticket_id, current_user)
 
 
 class ReadMarks(BaseModel):

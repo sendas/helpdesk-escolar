@@ -151,6 +151,22 @@ class Attachment(Base):
     uploaded_by: Mapped["User"] = relationship("User")
 
 
+class TicketReminder(Base):
+    """Private reminder set by a user on a ticket ("Lembrar-me deste ticket"), independent of any reply."""
+    __tablename__ = "ticket_reminders"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    remind_at: Mapped[datetime] = mapped_column(DateTime, index=True)  # UTC
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    ticket: Mapped["Ticket"] = relationship("Ticket")
+    user: Mapped["User"] = relationship("User")
+
+
 class TicketView(Base):
     """When a user last opened a ticket ("lido/não lido" in Os meus tickets)."""
     __tablename__ = "ticket_views"
