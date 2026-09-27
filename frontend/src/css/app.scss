@@ -772,3 +772,11 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 500; margin: 0; }
 .q-layout__section--marginal { display: none !important; }
 .hd-nav-badge + .hd-nav-badge { margin-left: 4px; }
 .hd-nav-badge.warn { background: #F59E0B; }
+
+/* Names that shorten themselves when there is no room (components/PersonName.vue) */
+.hd-msg-body { min-width: 0; }
+.hd-msg-header { min-width: 0; }
+.hd-sidebar-user-text { min-width: 0; flex: 1; }
+.pn-block { display: block; min-width: 0; }
+.hd-detail-row > * { min-width: 0; }
+.ticket-side-panel, .ticket-side-panel .hd-card { min-width: 0; }

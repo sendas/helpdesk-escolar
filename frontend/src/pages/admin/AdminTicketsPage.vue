@@ -125,7 +125,7 @@
                 <td>
                   <div class="user-cell">
                     <AvatarCircle :name="shortName(t.creator.display_name)" size="24" />
-                    <span :title="t.creator.display_name">{{ personLabel(t.creator.display_name) }}</span>
+                    <PersonName :name="t.creator.display_name" />
                   </div>
                 </td>
                 <td><PriorityBadge :priority="t.priority" /></td>
@@ -180,7 +180,7 @@
             </div>
             <div class="ticket-card-user">
               <AvatarCircle :name="shortName(t.creator.display_name)" size="26" />
-              <span :title="t.creator.display_name">{{ personLabel(t.creator.display_name) }}</span>
+              <PersonName :name="t.creator.display_name" />
             </div>
             <div class="ticket-card-controls">
               <label>Estado<StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></label>
@@ -226,7 +226,8 @@ import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
 import SlaBadge from '../../components/SlaBadge.vue'
 import { timeAgo as formatTimeAgo } from '../../utils/dates'
-import { personLabel, shortName } from '../../utils/names'
+import { shortName } from '../../utils/names'
+import PersonName from '../../components/PersonName.vue'
 
 const CategoryPill = defineComponent({
   props: { category: { type: Object, required: true } },
@@ -536,6 +537,7 @@ async function runInactivity() {
 </script>
 
 <style scoped>
+.user-cell { max-width: clamp(170px, 20vw, 420px); min-width: 0; }
 .badge-fornecedor {
   display: inline-flex;
   align-items: center;

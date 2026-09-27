@@ -93,8 +93,8 @@
 
       <div class="hd-sidebar-user" @click="auth.logout()">
         <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="32" />
-        <div>
-          <div class="hd-sidebar-user-name" :title="auth.user?.display_name">{{ personLabel(auth.user?.display_name) }}</div>
+        <div class="hd-sidebar-user-text">
+          <div class="hd-sidebar-user-name"><PersonName :name="auth.user?.display_name" /></div>
           <div class="hd-sidebar-user-role">{{ roleLabel }}</div>
         </div>
         <span class="material-icons" style="font-size:16px;color:var(--c-muted);margin-left:auto">logout</span>
@@ -262,7 +262,8 @@ import { versionLabel } from '../utils/version'
 import AvatarCircle from '../components/AvatarCircle.vue'
 import { usePushNotifications } from '../composables/usePushNotifications'
 import SupportWidget from '../components/SupportWidget.vue'
-import { personLabel, shortName } from '../utils/names'
+import PersonName from '../components/PersonName.vue'
+import { shortName } from '../utils/names'
 import { onRealtime, startRealtime } from '../services/realtime'
 import { getChatUnread, getSupportQueue } from '../api/chat'
 import { loadSupportStatus, openSupportChat, supportStatus } from '../utils/supportChat'

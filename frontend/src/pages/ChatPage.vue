@@ -25,7 +25,7 @@
               <i v-if="c.kind === 'direct' && isOnline(c)" class="chat-online"></i>
             </span>
             <span class="chat-item-text">
-              <strong>{{ c.kind === 'direct' ? shortName(c.title) : c.title }}</strong>
+              <strong><PersonName v-if="c.kind === 'direct'" :name="c.title" :with-tag="false" /><template v-else>{{ c.title }}</template></strong>
               <small>{{ preview(c) }}</small>
             </span>
             <span class="chat-item-meta">
@@ -57,7 +57,7 @@
           <button v-for="c in waiting" :key="c.id" class="chat-item waiting" :class="{ active: current?.id === c.id }" @click="select(c.id)">
             <span class="chat-avatar support">{{ initials(c.title) }}</span>
             <span class="chat-item-text">
-              <strong>{{ shortName(c.title) }}</strong>
+              <strong><PersonName :name="c.title" :with-tag="false" /></strong>
               <small>{{ c.last_message?.is_system ? firstMessage(c) : preview(c) }}</small>
             </span>
             <span class="chat-item-meta"><time>há {{ minutesAgo(c.created_at) }} min</time></span>
@@ -66,7 +66,7 @@
           <button v-for="c in active" :key="c.id" class="chat-item" :class="{ active: current?.id === c.id }" @click="select(c.id)">
             <span class="chat-avatar support">{{ initials(c.title) }}</span>
             <span class="chat-item-text">
-              <strong>{{ shortName(c.title) }}</strong>
+              <strong><PersonName :name="c.title" :with-tag="false" /></strong>
               <small>{{ agentName(c) }}</small>
             </span>
             <span class="chat-item-meta"><span v-if="c.unread" class="chat-badge">{{ c.unread }}</span></span>
@@ -75,7 +75,7 @@
           <button v-for="c in recentSupport" :key="c.id" class="chat-item done" :class="{ active: current?.id === c.id }" @click="select(c.id)">
             <span class="chat-avatar support">{{ initials(c.title) }}</span>
             <span class="chat-item-text">
-              <strong>{{ shortName(c.title) }}</strong>
+              <strong><PersonName :name="c.title" :with-tag="false" /></strong>
               <small>{{ c.support_status === 'converted' ? `Ticket T-${c.ticket_id}` : 'Terminada' }}</small>
             </span>
           </button>
@@ -89,7 +89,7 @@
         <header class="chat-head">
           <button class="hd-icon-btn chat-back" @click="mobileShowConversation = false"><span class="material-icons">arrow_back</span></button>
           <div class="chat-head-text">
-            <strong>{{ current.kind === 'direct' || current.kind === 'support' ? shortName(current.title) : current.title }}</strong>
+            <strong><PersonName v-if="current.kind === 'direct' || current.kind === 'support'" :name="current.title" /><template v-else>{{ current.title }}</template></strong>
             <small v-if="current.kind === 'group'">{{ current.members.length }} membros · {{ current.members.map(m => shortName(m.display_name)).join(', ') }}</small>
             <small v-else-if="current.kind === 'support'">{{ supportLabel(current) }}</small>
             <small v-else>{{ current.members.find(m => m.id !== auth.user?.id)?.role_label }}</small>
@@ -110,7 +110,7 @@
             <div v-if="dayChanged(i)" class="chat-day">{{ dayLabel(m.created_at) }}</div>
             <div v-if="m.is_system" class="chat-system">{{ m.body }}</div>
             <div v-else class="chat-msg" :class="{ me: m.author?.id === auth.user?.id, cont: sameAuthor(i) }">
-              <span v-if="m.author?.id !== auth.user?.id && !sameAuthor(i)" class="chat-msg-author">{{ shortName(m.author?.display_name) }}</span>
+              <span v-if="m.author?.id !== auth.user?.id && !sameAuthor(i)" class="chat-msg-author"><PersonName :name="m.author?.display_name" :with-tag="false" /></span>
               <div class="chat-bubble" v-html="renderBody(m.body)"></div>
               <time>{{ timeOf(m.created_at) }}<template v-if="m.author?.id === auth.user?.id && m.id === lastMineId && seenByOthers"> · visto</template></time>
             </div>
@@ -166,6 +166,7 @@ import {
 } from '../api/chat'
 import { onRealtime, sendRealtime } from '../services/realtime'
 import { shortName } from '../utils/names'
+import PersonName from '../components/PersonName.vue'
 
 const auth = useAuthStore()
 const route = useRoute()

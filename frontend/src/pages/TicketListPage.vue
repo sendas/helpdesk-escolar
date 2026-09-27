@@ -47,8 +47,7 @@
               </td>
               <td><PriorityBadge :priority="t.priority" /></td>
               <td class="cell-person" :title="t.creator?.display_name">
-                {{ shortName(t.creator?.display_name) }}
-                <span v-if="groupTag(t.creator?.display_name)" class="group-tag">{{ groupTag(t.creator?.display_name) }}</span>
+                <div class="person-box"><PersonName :name="t.creator?.display_name" /></div>
               </td>
               <td class="cell-school" :title="t.school?.name">{{ t.school?.short_name || t.school?.name || '—' }}</td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
@@ -81,8 +80,7 @@
               <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
               <td><PriorityBadge :priority="t.priority" /></td>
               <td class="cell-person" :title="t.creator?.display_name">
-                {{ shortName(t.creator?.display_name) }}
-                <span v-if="groupTag(t.creator?.display_name)" class="group-tag">{{ groupTag(t.creator?.display_name) }}</span>
+                <div class="person-box"><PersonName :name="t.creator?.display_name" /></div>
               </td>
               <td class="cell-school" :title="t.school?.name">{{ t.school?.short_name || t.school?.name || '—' }}</td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
@@ -101,7 +99,7 @@ import PriorityBadge from '../components/PriorityBadge.vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
-import { shortName, groupTag } from '../utils/names'
+import PersonName from '../components/PersonName.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -192,6 +190,7 @@ function statusLabel(s: string) {
 .dark .reminder-flag { color: #FCD34D; }
 .cell-title { font-weight: 500; min-width: 220px; }
 .cell-person { white-space: nowrap; }
+.person-box { max-width: clamp(170px, 26vw, 520px); min-width: 0; }
 .cell-school { white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; color: var(--c-muted); font-size: 13px; }
 .group-tag {
   display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 700; color: var(--c-muted);

@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.1.1'
+export const APP_VERSION = '2.1.2'
 export const APP_VERSION_DATE = '2026-09-27'
-export const APP_VERSION_TIME = '10:00'
+export const APP_VERSION_TIME = '11:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.1.2',
+    date: '2026-09-27',
+    time: '11:00',
+    title: 'Nome completo quando cabe, nome curto quando não cabe',
+    changes: [
+      'Os nomes das pessoas aparecem completos (ex.: "Maria Leonor Marinho Nunes Serra Docente-510 - Física e Química") sempre que há espaço, e passam automaticamente à forma curta ("Maria Serra · 510 FQ") só quando não cabem — por exemplo em ecrãs pequenos, no telemóvel, na barra lateral ou nas colunas das listas.',
+      'O ajuste acontece sozinho ao redimensionar a janela; o nome completo aparece sempre ao passar o rato.',
+      'Aplicado na conversa dos tickets, em "Aberto por", nos detalhes (solicitante, responsáveis, em conhecimento), em "Os meus tickets", na Gestão de tickets, na barra lateral e no chat.',
+      'Corrigido: no telemóvel, o painel de detalhes do ticket saía para fora do ecrã.',
+    ],
+  },
   {
     version: '2.1.1',
     date: '2026-09-27',

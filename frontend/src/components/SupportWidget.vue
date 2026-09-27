@@ -34,7 +34,7 @@
                 <router-link v-if="conversation?.ticket_id && m.body.includes('T-' + conversation.ticket_id)" :to="`/tickets/${conversation.ticket_id}`" @click="open = false">Abrir ticket</router-link>
               </template>
               <template v-else>
-                <small v-if="m.author?.id !== auth.user?.id">{{ shortName(m.author?.display_name) }}</small>
+                <small v-if="m.author?.id !== auth.user?.id"><PersonName :name="m.author?.display_name" :with-tag="false" /></small>
                 <div class="sw-bubble">{{ m.body }}</div>
                 <time>{{ timeOf(m.created_at) }}</time>
               </template>
@@ -99,6 +99,7 @@ import { closeSupport, getMySupport, getSupportStatus, markRead, startSupport, s
 import { getSchools } from '../api/tickets'
 import { onRealtime, sendRealtime } from '../services/realtime'
 import { shortName } from '../utils/names'
+import PersonName from './PersonName.vue'
 import { onOpenSupportChat } from '../utils/supportChat'
 
 const auth = useAuthStore()
