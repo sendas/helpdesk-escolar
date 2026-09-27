@@ -151,6 +151,17 @@ class Attachment(Base):
     uploaded_by: Mapped["User"] = relationship("User")
 
 
+class TicketView(Base):
+    """When a user last opened a ticket ("lido/não lido" in Os meus tickets)."""
+    __tablename__ = "ticket_views"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), primary_key=True)
+    last_read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # "Marcar como não lido"
+    marked_unread: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
 class ProcessedEmail(Base):
     __tablename__ = "processed_emails"
 

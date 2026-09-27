@@ -1,8 +1,21 @@
-export const APP_VERSION = '2.1.2'
+export const APP_VERSION = '2.2.0'
 export const APP_VERSION_DATE = '2026-09-27'
-export const APP_VERSION_TIME = '11:00'
+export const APP_VERSION_TIME = '12:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.2.0',
+    date: '2026-09-27',
+    time: '12:00',
+    title: 'Tickets lidos e não lidos, como no email',
+    changes: [
+      'Em "Os meus tickets", os tickets com novidades que ainda não abriu aparecem a negrito, com um ponto azul e fundo destacado; deixam de estar destacados quando os abre.',
+      'Conta como novidade uma resposta de outra pessoa que possa ver (as notas internas só contam para técnicos e as mensagens privadas só para quem as recebe) e um ticket novo de outra pessoa. As suas próprias respostas nunca contam.',
+      'Botão "N não lidos" para mostrar só os tickets por ler, "Marcar todos como lidos" e, dentro de cada ticket, "Marcar como não lido".',
+      'Lembretes mais visíveis: a seguir ao ID aparece uma etiqueta com a data e a hora do lembrete (ex.: "⏰ 02/03 09:00"), só para quem o criou.',
+      'A lista atualiza-se sozinha quando chega uma nova resposta.',
+    ],
+  },
   {
     version: '2.1.2',
     date: '2026-09-27',

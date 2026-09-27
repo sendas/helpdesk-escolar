@@ -162,6 +162,8 @@ class TicketListItem(BaseModel):
     category: CategoryRead
     school: SchoolRead | None = None
     has_reminder: bool = False
+    reminder_at: datetime | None = None
+    is_unread: bool = False
 
 
 class TicketRoutingRuleRead(BaseModel):

@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Query
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, get_current_user
@@ -12,7 +13,7 @@ from app.models.ticket import Attachment, Comment, TicketEvent, TicketStatus
 from app.models.category import Category
 from app.models.school import School
 from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, TicketListItem, CommentCreate, CommentRead, CommentUpdate, WatcherAdd
-from app.services import ticket_service, email_service, push_service
+from app.services import ticket_service, email_service, push_service, read_service
 from app.api.v1.settings import _read_settings
 from app.config import settings
 from app.services.permissions import has_perm
@@ -95,23 +96,32 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
 ):
     items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id, search, exclude_category_ids, status_in, overdue, expiring)
-    # Reminders are private, so the list only flags the viewer's own pending ones
-    reminded: set[int] = set()
-    if items:
-        rows = await db.execute(
-            select(Comment.ticket_id).where(
-                Comment.ticket_id.in_([t.id for t in items]),
-                Comment.author_id == current_user.id,
-                Comment.remind_at.is_not(None),
-                Comment.reminder_sent_at.is_(None),
-                Comment.deleted_at.is_(None),
-            )
-        )
-        reminded = {row[0] for row in rows}
+    # Inbox-like state for this viewer: unread tickets and their own pending reminders (reminders are private)
+    unread = await read_service.unread_ids(db, current_user, items)
+    reminders = await read_service.pending_reminders(db, current_user, [t.id for t in items])
     data = [TicketListItem.model_validate(t) for t in items]
     for item in data:
-        item.has_reminder = item.id in reminded
+        item.is_unread = item.id in unread
+        item.reminder_at = reminders.get(item.id)
+        item.has_reminder = item.reminder_at is not None
     return {"items": data, "total": total, "page": page, "size": size}
+
+
+class ReadMarks(BaseModel):
+    ids: list[int]
+
+
+@router.post("/mark-read", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_tickets_read(data: ReadMarks, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await read_service.mark_read(db, current_user.id, list(dict.fromkeys(data.ids))[:500])
+
+
+@router.post("/{ticket_id}/unread", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_ticket_unread(ticket_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket or not (_can_access_ticket(ticket, current_user) or has_perm(current_user, "tickets.view_all")):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    await read_service.mark_unread(db, current_user.id, ticket_id)
 
 
 @router.post("", response_model=TicketRead, status_code=status.HTTP_201_CREATED)
@@ -322,6 +332,7 @@ async def get_ticket(
     if hide_demo and ticket.creator and ticket.creator.auth_provider == "demo":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     data = TicketRead.model_validate(ticket)
+    await read_service.mark_read(db, current_user.id, [ticket.id])
     if hide_demo:
         data.comments = [c for c in data.comments if c.author is None or c.author.auth_provider != "demo"]
     return data

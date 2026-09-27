@@ -139,6 +139,15 @@ export async function forceSyncMailReplies() {
   return data
 }
 
+export async function markTicketsRead(ids: number[]) {
+  if (!ids.length) return
+  await api.post('/api/v1/tickets/mark-read', { ids })
+}
+
+export async function markTicketUnread(id: number) {
+  await api.post(`/api/v1/tickets/${id}/unread`)
+}
+
 export async function addComment(ticketId: number, body: string, is_internal = false, remind_at: string | null = null, private_to_id: number | null = null) {
   const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal, remind_at, private_to_id })
   return data

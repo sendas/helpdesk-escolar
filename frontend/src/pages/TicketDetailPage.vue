@@ -1,8 +1,13 @@
 <template>
   <div class="hd-page">
-    <div style="font-size:12px;color:var(--c-muted);margin-bottom:6px">
-      <router-link to="/tickets" style="color:var(--c-muted);text-decoration:none">Tickets</router-link>
-      / <span>T-{{ ticket?.id }}</span>
+    <div class="crumbs">
+      <span>
+        <router-link to="/tickets" style="color:var(--c-muted);text-decoration:none">Tickets</router-link>
+        / <span>T-{{ ticket?.id }}</span>
+      </span>
+      <button v-if="ticket" class="mark-unread" type="button" title="Volta a aparecer a negrito em Os meus tickets" @click="markUnread">
+        <span class="material-icons">mark_email_unread</span> Marcar como não lido
+      </button>
     </div>
 
     <div v-if="!ticket" style="padding:80px;text-align:center;color:var(--c-muted)">A carregar...</div>
@@ -522,8 +527,8 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { getTicket, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
+import { useRoute, useRouter } from 'vue-router'
+import { getTicket, markTicketUnread, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, getUsers, searchUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -535,6 +540,7 @@ import PersonName from '../components/PersonName.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
+const router = useRouter()
 const ticket = ref<any>(null)
 const newComment = ref('')
 const isInternal = ref(false)
@@ -788,6 +794,12 @@ function stopLive() {
   forgetSticky('ticket-view')
   liveTicketId = 0
   viewers.value = []
+}
+
+async function markUnread() {
+  if (!ticket.value) return
+  await markTicketUnread(ticket.value.id)
+  router.push('/tickets')
 }
 
 function onReplyTyping() {
@@ -1674,6 +1686,10 @@ function formatSize(size: number) {
   display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--c-muted);
   border: 1px solid var(--c-border); border-radius: 6px; padding: 0 6px; line-height: 17px;
 }
+.crumbs { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--c-muted); margin-bottom: 6px; }
+.mark-unread { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: var(--c-muted); font-size: 12px; font-weight: 600; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.mark-unread:hover { color: var(--c-primary); background: var(--c-primary-soft); }
+.mark-unread .material-icons { font-size: 15px; }
 .live-viewers { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--c-muted); margin: 2px 0 6px; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 0 3px rgba(34, 197, 94, .2); }
 .live-avatars { display: inline-flex; }

@@ -21,6 +21,13 @@
           <option value="">Todas as categorias</option>
           <option v-for="c in visibleCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
+        <button class="unread-filter" :class="{ on: onlyUnread }" type="button" @click="onlyUnread = !onlyUnread" title="Mostrar só os tickets com novidades">
+          <span class="unread-dot on"></span>
+          {{ unreadCount ? `${unreadCount} não lido${unreadCount === 1 ? '' : 's'}` : 'Tudo lido' }}
+        </button>
+        <button v-if="unreadCount" class="hd-btn hd-btn-outline mark-all" type="button" @click="markAllRead">
+          <span class="material-icons">done_all</span> Marcar todos como lidos
+        </button>
         <div style="margin-left:auto">
           <CategoryFilterButton :categories="categories" @changed="onHiddenChanged" />
         </div>
@@ -33,10 +40,13 @@
             <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th></tr>
           </thead>
           <tbody>
-            <tr v-for="t in activeTickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
-              <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">
+            <tr v-for="t in activeTickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t), 'row-unread': t.is_unread }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
+              <td class="cell-id">
+                <span class="unread-dot" :class="{ on: t.is_unread }" :title="t.is_unread ? 'Tem novidades que ainda não leu' : ''"></span>
                 T-{{ t.id }}
-                <span v-if="t.has_reminder" class="material-icons reminder-flag" title="Tem um lembrete seu por enviar">alarm</span>
+                <span v-if="t.reminder_at" class="reminder-chip" :title="'Lembrete seu: ' + reminderLong(t.reminder_at)">
+                  <span class="material-icons">alarm</span>{{ reminderShort(t.reminder_at) }}
+                </span>
               </td>
               <td class="cell-title">{{ t.title }}</td>
               <td style="white-space:nowrap">
@@ -53,7 +63,7 @@
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
             </tr>
             <tr v-if="!activeTickets.length">
-              <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">Sem tickets em aberto.</td>
+              <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">{{ onlyUnread ? 'Não há tickets por ler.' : 'Sem tickets em aberto.' }}</td>
             </tr>
           </tbody>
         </table>
@@ -71,10 +81,13 @@
             <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th></tr>
           </thead>
           <tbody>
-            <tr v-for="t in completedTickets" :key="t.id" class="completed-row" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
-              <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">
+            <tr v-for="t in completedTickets" :key="t.id" class="completed-row" :class="{ 'row-auto-closed': isAutoClosed(t), 'row-unread': t.is_unread }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
+              <td class="cell-id">
+                <span class="unread-dot" :class="{ on: t.is_unread }" :title="t.is_unread ? 'Tem novidades que ainda não leu' : ''"></span>
                 T-{{ t.id }}
-                <span v-if="t.has_reminder" class="material-icons reminder-flag" title="Tem um lembrete seu por enviar">alarm</span>
+                <span v-if="t.reminder_at" class="reminder-chip" :title="'Lembrete seu: ' + reminderLong(t.reminder_at)">
+                  <span class="material-icons">alarm</span>{{ reminderShort(t.reminder_at) }}
+                </span>
               </td>
               <td class="cell-title">{{ t.title }}</td>
               <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
@@ -93,8 +106,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { getTickets, getCategories } from '../api/tickets'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { getTickets, getCategories, markTicketsRead } from '../api/tickets'
+import { onRealtime } from '../services/realtime'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -114,12 +128,37 @@ const showCompleted = ref(false)
 let _searchTimer: ReturnType<typeof setTimeout> | null = null
 
 const DONE = ['resolved', 'closed']
+const onlyUnread = ref(false)
+const shown = computed(() => onlyUnread.value ? tickets.value.filter(t => t.is_unread) : tickets.value)
+const unreadCount = computed(() => tickets.value.filter(t => t.is_unread).length)
 const activeTickets = computed(() =>
-  filterStatus.value ? tickets.value : tickets.value.filter(t => !DONE.includes(t.status))
+  filterStatus.value ? shown.value : shown.value.filter(t => !DONE.includes(t.status))
 )
 const completedTickets = computed(() =>
-  filterStatus.value ? [] : tickets.value.filter(t => DONE.includes(t.status))
+  filterStatus.value ? [] : shown.value.filter(t => DONE.includes(t.status))
 )
+
+async function markAllRead() {
+  const ids = tickets.value.filter(t => t.is_unread).map(t => t.id)
+  tickets.value = tickets.value.map(t => ({ ...t, is_unread: false }))
+  onlyUnread.value = false
+  await markTicketsRead(ids).catch(() => load(true))
+}
+
+// Reminder dates come from the server in UTC without a time zone
+function reminderDate(iso: string) {
+  return new Date(/Z|[+-]\d\d:\d\d$/.test(iso) ? iso : iso + 'Z')
+}
+function reminderShort(iso: string) {
+  const d = reminderDate(iso)
+  const today = new Date()
+  const time = d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+  if (d.toDateString() === today.toDateString()) return `hoje ${time}`
+  return `${d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })} ${time}`
+}
+function reminderLong(iso: string) {
+  return reminderDate(iso).toLocaleString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+}
 
 const STATUS_GROUPS: Record<string, string[]> = {
   em_curso: ['assigned', 'in_progress', 'waiting_user'],
@@ -137,6 +176,15 @@ const statusOpts = [
 
 const hiddenIds = computed(() => auth.user?.hidden_category_ids ?? [])
 const visibleCategories = computed(() => categories.value.filter(c => !hiddenIds.value.includes(c.id)))
+
+// New replies arrive in real time: refresh the list quietly (at most once per second)
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+function refreshSoon() {
+  if (refreshTimer) clearTimeout(refreshTimer)
+  refreshTimer = setTimeout(() => load(true), 1000)
+}
+const realtimeOffs = [onRealtime('ticket.changed', refreshSoon), onRealtime('tickets.changed', refreshSoon)]
+onBeforeUnmount(() => { realtimeOffs.forEach((off) => off()); if (refreshTimer) clearTimeout(refreshTimer) })
 
 onMounted(async () => {
   const q = String(route.query.estado ?? '')
@@ -159,8 +207,8 @@ function debouncedLoad() {
   _searchTimer = setTimeout(load, 350)
 }
 
-async function load() {
-  loading.value = true
+async function load(quiet = false) {
+  if (!quiet) loading.value = true
   try {
     const p: any = { page: 1, size: 50 }
     if (filterStatus.value === 'fora_prazo') p.overdue = true
@@ -186,9 +234,22 @@ function statusLabel(s: string) {
 </script>
 
 <style scoped>
-.reminder-flag { font-size: 15px; color: #D97706; vertical-align: -3px; margin-left: 4px; }
-.dark .reminder-flag { color: #FCD34D; }
-.cell-title { font-weight: 500; min-width: 220px; }
+.cell-id { color: var(--c-muted); font-size: 12px; white-space: nowrap; }
+.unread-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: transparent; }
+.unread-dot.on { background: #2563EB; box-shadow: 0 0 0 3px rgba(37, 99, 235, .18); }
+.row-unread td { background: rgba(37, 99, 235, .045); }
+.row-unread .cell-title { font-weight: 800; color: var(--c-text); }
+.row-unread .cell-id { color: var(--c-text); font-weight: 700; }
+.dark .row-unread td { background: rgba(96, 165, 250, .08); }
+.reminder-chip { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px 1px 5px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #B45309; background: #FEF3C7; border: 1px solid #FDE68A; vertical-align: 1px; }
+.reminder-chip .material-icons { font-size: 13px; }
+.dark .reminder-chip { color: #FCD34D; background: rgba(245, 158, 11, .15); border-color: rgba(245, 158, 11, .35); }
+.unread-filter { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.unread-filter.on { border-color: #2563EB; background: rgba(37, 99, 235, .1); color: #1D4ED8; }
+.dark .unread-filter.on { color: #93C5FD; }
+.mark-all { font-size: 12.5px; padding: 6px 12px; }
+.mark-all .material-icons { font-size: 16px; }
+.cell-title { font-weight: 500; min-width: 220px; color: var(--c-muted-strong, var(--c-text)); }
 .cell-person { white-space: nowrap; }
 .person-box { max-width: clamp(170px, 26vw, 520px); min-width: 0; }
 .cell-school { white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; color: var(--c-muted); font-size: 13px; }

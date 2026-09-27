@@ -55,7 +55,7 @@ DEFAULT_SETTINGS = {
 }
 
 # Never sent by /settings/public (the Teams address lets anyone post in the channel)
-PRIVATE_KEYS = {"teams_webhook_url", "teams_overdue_notified", "role_permissions_granted", "settings_migrations"}
+PRIVATE_KEYS = {"teams_webhook_url", "teams_overdue_notified", "role_permissions_granted", "settings_migrations", "unread_tracking_since"}
 
 UI_DESIGNS = {"modern", "classic"}
 DEMO_PROFILES = ("teacher", "technician", "admin")
@@ -294,6 +294,11 @@ def apply_settings_migrations() -> None:
         # The live-support bubble starts switched off; an administrator turns it on in Configurações
         data["support_chat_enabled"] = False
         done.add("support_chat_off_by_default")
+        changed = True
+    if not data.get("unread_tracking_since"):
+        # "Não lido" only counts activity from the moment this feature was installed
+        from datetime import datetime
+        data["unread_tracking_since"] = datetime.utcnow().isoformat()
         changed = True
     if changed:
         data["settings_migrations"] = sorted(done)
