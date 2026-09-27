@@ -120,7 +120,7 @@
         <div class="hd-header-title">{{ pageTitle }}</div>
         <div class="hd-search">
           <span class="material-icons" style="font-size:16px">search</span>
-          <input placeholder="Pesquisar tickets, utilizadores..." v-model="search" @keydown.enter="doSearch" />
+          <input placeholder="Pesquisar tickets (n.º, assunto, pessoa, escola…)" v-model="search" @keydown.enter="doSearch" />
         </div>
         <div class="hd-header-actions">
           <button
@@ -323,7 +323,11 @@ const pageTitle = computed(() => {
 })
 
 function doSearch() {
-  if (search.value.trim()) router.push({ path: '/tickets', query: { q: search.value } })
+  const q = search.value.trim()
+  if (!q) return
+  // The list has its own search box, filled in with this text
+  router.push({ path: '/tickets', query: { q } })
+  search.value = ''
 }
 
 function togglePreview() {

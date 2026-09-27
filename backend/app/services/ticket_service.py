@@ -7,6 +7,8 @@ from sqlalchemy.orm import selectinload
 from app.models.group import HelpdeskGroup
 from app.models.ticket import Ticket, Comment, TicketEvent, TicketRoutingRule, TicketStatus
 from app.models.user import User, UserRole
+from app.models.school import School
+from app.models.category import Category
 from app.schemas.ticket import TicketCreate, TicketUpdate, CommentCreate
 
 
@@ -162,6 +164,35 @@ async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
     return result.scalar_one_or_none()
 
 
+def search_condition(search: str, user: User):
+    """Search by ticket number (12, T-12, #12), subject, description, requester, school, category and the
+    replies the user may see — ignoring accents and capitals."""
+    import re
+    from sqlalchemy import and_
+    from app.database import fold_text
+    text = search.strip()
+    term = f"%{fold_text(text)}%"
+    fold = func.hd_fold
+    visible_comment = and_(
+        fold(Comment.body).like(term), Comment.deleted_at.is_(None),
+        or_(Comment.private_to_id.is_(None), Comment.private_to_id == user.id, Comment.author_id == user.id),
+    )
+    if not is_staff_user(user):
+        visible_comment = and_(visible_comment, Comment.is_internal.is_(False))
+    conditions = [
+        fold(Ticket.title).like(term),
+        fold(Ticket.description).like(term),
+        Ticket.creator.has(or_(fold(User.display_name).like(term), fold(User.email).like(term))),
+        Ticket.school.has(or_(fold(School.name).like(term), fold(School.short_name).like(term))),
+        Ticket.category.has(fold(Category.name).like(term)),
+        Ticket.comments.any(visible_comment),
+    ]
+    number = re.fullmatch(r"(?:t-?|#)?\s*(\d+)", text, flags=re.IGNORECASE)
+    if number:
+        conditions.append(Ticket.id == int(number.group(1)))
+    return or_(*conditions)
+
+
 async def list_tickets(
     db: AsyncSession,
     user: User,
@@ -196,9 +227,8 @@ async def list_tickets(
         query = query.where(Ticket.status.in_(status_in))
     if category_id:
         query = query.where(Ticket.category_id == category_id)
-    if search:
-        term = f"%{search}%"
-        query = query.where(or_(Ticket.title.ilike(term), Ticket.description.ilike(term)))
+    if search and search.strip():
+        query = query.where(search_condition(search, user))
 
     if overdue or expiring:
         query = query.where(Ticket.status.not_in(_DONE_STATUSES))

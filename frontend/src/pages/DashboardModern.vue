@@ -73,6 +73,7 @@
               <div class="recent-title">{{ t.title }}</div>
               <div class="recent-meta">
                 <span>T-{{ t.id }}</span>
+                <ReminderChip :at="t.reminder_at" />
                 <span>·</span>
                 <span>{{ t.category?.name || 'Sem categoria' }}</span>
                 <span>·</span>
@@ -124,6 +125,7 @@ import { useAuthStore } from '../stores/auth'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
 import SupportBanner from '../components/SupportBanner.vue'
+import ReminderChip from '../components/ReminderChip.vue'
 import { timeAgo } from '../utils/dates'
 
 const auth = useAuthStore()

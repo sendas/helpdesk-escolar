@@ -44,9 +44,7 @@
               <td class="cell-id">
                 <span class="unread-dot" :class="{ on: t.is_unread }" :title="t.is_unread ? 'Tem novidades que ainda não leu' : ''"></span>
                 T-{{ t.id }}
-                <span v-if="t.reminder_at" class="reminder-chip" :title="'Lembrete seu: ' + reminderLong(t.reminder_at)">
-                  <span class="material-icons">alarm</span>{{ reminderShort(t.reminder_at) }}
-                </span>
+                <ReminderChip :at="t.reminder_at" />
               </td>
               <td class="cell-title">{{ t.title }}</td>
               <td style="white-space:nowrap">
@@ -63,7 +61,7 @@
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
             </tr>
             <tr v-if="!activeTickets.length">
-              <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">{{ onlyUnread ? 'Não há tickets por ler.' : 'Sem tickets em aberto.' }}</td>
+              <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">{{ onlyUnread ? 'Não há tickets por ler.' : searchQuery.trim() ? `Nenhum ticket encontrado para "${searchQuery.trim()}".` : 'Sem tickets em aberto.' }}</td>
             </tr>
           </tbody>
         </table>
@@ -85,9 +83,7 @@
               <td class="cell-id">
                 <span class="unread-dot" :class="{ on: t.is_unread }" :title="t.is_unread ? 'Tem novidades que ainda não leu' : ''"></span>
                 T-{{ t.id }}
-                <span v-if="t.reminder_at" class="reminder-chip" :title="'Lembrete seu: ' + reminderLong(t.reminder_at)">
-                  <span class="material-icons">alarm</span>{{ reminderShort(t.reminder_at) }}
-                </span>
+                <ReminderChip :at="t.reminder_at" />
               </td>
               <td class="cell-title">{{ t.title }}</td>
               <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
@@ -106,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { getTickets, getCategories, markTicketsRead } from '../api/tickets'
 import { onRealtime } from '../services/realtime'
 import PriorityBadge from '../components/PriorityBadge.vue'
@@ -114,6 +110,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
 import PersonName from '../components/PersonName.vue'
+import ReminderChip from '../components/ReminderChip.vue'
 import { schoolInitials } from '../utils/names'
 
 const route = useRoute()
@@ -146,20 +143,6 @@ async function markAllRead() {
   await markTicketsRead(ids).catch(() => load(true))
 }
 
-// Reminder dates come from the server in UTC without a time zone
-function reminderDate(iso: string) {
-  return new Date(/Z|[+-]\d\d:\d\d$/.test(iso) ? iso : iso + 'Z')
-}
-function reminderShort(iso: string) {
-  const d = reminderDate(iso)
-  const today = new Date()
-  const time = d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-  if (d.toDateString() === today.toDateString()) return `hoje ${time}`
-  return `${d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })} ${time}`
-}
-function reminderLong(iso: string) {
-  return reminderDate(iso).toLocaleString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
-}
 
 const STATUS_GROUPS: Record<string, string[]> = {
   em_curso: ['assigned', 'in_progress', 'waiting_user'],
@@ -187,7 +170,15 @@ function refreshSoon() {
 const realtimeOffs = [onRealtime('ticket.changed', refreshSoon), onRealtime('tickets.changed', refreshSoon)]
 onBeforeUnmount(() => { realtimeOffs.forEach((off) => off()); if (refreshTimer) clearTimeout(refreshTimer) })
 
+// The search box at the top of every page opens this list with ?q=...
+watch(() => route.query.q, (q) => {
+  if (q === undefined) return
+  searchQuery.value = String(q)
+  load()
+})
+
 onMounted(async () => {
+  if (route.query.q) searchQuery.value = String(route.query.q)
   const q = String(route.query.estado ?? '')
   if (q === 'abertos') filterStatus.value = 'open'
   else if (q === 'em_curso') filterStatus.value = 'em_curso'
@@ -242,9 +233,6 @@ function statusLabel(s: string) {
 .row-unread .cell-title { font-weight: 800; color: var(--c-text); }
 .row-unread .cell-id { color: var(--c-text); font-weight: 700; }
 .dark .row-unread td { background: rgba(96, 165, 250, .08); }
-.reminder-chip { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px 1px 5px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #B45309; background: #FEF3C7; border: 1px solid #FDE68A; vertical-align: 1px; }
-.reminder-chip .material-icons { font-size: 13px; }
-.dark .reminder-chip { color: #FCD34D; background: rgba(245, 158, 11, .15); border-color: rgba(245, 158, 11, .35); }
 .unread-filter { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .unread-filter.on { border-color: #2563EB; background: rgba(37, 99, 235, .1); color: #1D4ED8; }
 .dark .unread-filter.on { color: #93C5FD; }

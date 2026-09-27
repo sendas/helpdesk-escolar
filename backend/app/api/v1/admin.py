@@ -113,16 +113,16 @@ async def admin_list_tickets(
         query = query.where(Ticket.priority == priority)
     if is_escalated is not None:
         query = query.where(Ticket.is_escalated == is_escalated)
-    if search:
-        term = f"%{search}%"
-        query = query.where(or_(Ticket.title.ilike(term), Ticket.description.ilike(term)))
+    if search and search.strip():
+        query = query.where(ticket_service.search_condition(search, current_user))
 
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar_one()
 
     query = query.order_by(Ticket.created_at.desc()).offset((page - 1) * size).limit(size)
     items = (await db.execute(query)).scalars().all()
-    return {"items": items, "total": total, "page": page, "size": size}
+    from app.api.v1.tickets import inbox_items
+    return {"items": await inbox_items(db, current_user, items), "total": total, "page": page, "size": size}
 
 
 @router.patch("/tickets/bulk", response_model=list[TicketRead])

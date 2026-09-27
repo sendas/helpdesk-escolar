@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.2.1'
+export const APP_VERSION = '2.2.2'
 export const APP_VERSION_DATE = '2026-09-27'
-export const APP_VERSION_TIME = '12:30'
+export const APP_VERSION_TIME = '13:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.2.2',
+    date: '2026-09-27',
+    time: '13:30',
+    title: 'Pesquisa corrigida e lembretes visíveis em todo o lado',
+    changes: [
+      'Corrigido: a caixa de pesquisa no topo do ecrã abria "Os meus tickets" mas ignorava o texto pesquisado.',
+      'A pesquisa passa a ignorar acentos e maiúsculas ("configuracao" encontra "Configuração") e procura também pelo número do ticket (12, T-12, #12), pela pessoa que fez o pedido, pela escola, pela categoria e pelo texto das respostas (as notas internas só para técnicos).',
+      'Corrigido: a etiqueta de lembrete ("⏰ amanhã 09:00") não aparecia na Gestão de tickets nem no Painel inicial; agora aparece em todas as listas. A Gestão de tickets mostra também os tickets não lidos.',
+      'Corrigido: "Próxima segunda" saltava uma semana quando usado ao domingo.',
+    ],
+  },
   {
     version: '2.2.1',
     date: '2026-09-27',

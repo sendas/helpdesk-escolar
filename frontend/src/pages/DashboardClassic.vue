@@ -39,6 +39,7 @@
           >
             <div class="ticket-row-main">
               <span class="ticket-row-id">T-{{ t.id }}</span>
+              <ReminderChip :at="t.reminder_at" />
               <span class="ticket-row-title">{{ t.title }}</span>
             </div>
             <div class="ticket-row-meta">
@@ -57,7 +58,7 @@
           </thead>
           <tbody>
             <tr v-for="t in recent" :key="t.id" @click="$router.push(`/tickets/${t.id}`)">
-              <td style="color:var(--c-muted);font-size:12px">T-{{ t.id }}</td>
+              <td style="color:var(--c-muted);font-size:12px;white-space:nowrap">T-{{ t.id }}<ReminderChip :at="t.reminder_at" /></td>
               <td style="font-weight:500">{{ t.title }}</td>
               <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
               <td><PriorityBadge :priority="t.priority" /></td>
@@ -106,6 +107,7 @@ import { useAuthStore } from '../stores/auth'
 import PriorityBadge from '../components/PriorityBadge.vue'
 import CategoryFilterButton from '../components/CategoryFilterButton.vue'
 import SupportBanner from '../components/SupportBanner.vue'
+import ReminderChip from '../components/ReminderChip.vue'
 import { timeAgo } from '../utils/dates'
 
 const auth = useAuthStore()

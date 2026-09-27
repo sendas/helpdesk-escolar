@@ -81,6 +81,18 @@ def _can_access_ticket(ticket, user: User, *, allow_watcher: bool = True) -> boo
     return allow_watcher and any(watcher.id == user.id for watcher in ticket.watchers)
 
 
+async def inbox_items(db: AsyncSession, user: User, items) -> list[TicketListItem]:
+    """List rows with this viewer's inbox state: unread flag and their own pending reminder (reminders are private)."""
+    unread = await read_service.unread_ids(db, user, items)
+    reminders = await read_service.pending_reminders(db, user, [t.id for t in items])
+    data = [TicketListItem.model_validate(t) for t in items]
+    for item in data:
+        item.is_unread = item.id in unread
+        item.reminder_at = reminders.get(item.id)
+        item.has_reminder = item.reminder_at is not None
+    return data
+
+
 @router.get("", response_model=PaginatedTickets)
 async def list_tickets(
     page: int = Query(1, ge=1),
@@ -96,14 +108,7 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
 ):
     items, total = await ticket_service.list_tickets(db, current_user, page, size, status, category_id, search, exclude_category_ids, status_in, overdue, expiring)
-    # Inbox-like state for this viewer: unread tickets and their own pending reminders (reminders are private)
-    unread = await read_service.unread_ids(db, current_user, items)
-    reminders = await read_service.pending_reminders(db, current_user, [t.id for t in items])
-    data = [TicketListItem.model_validate(t) for t in items]
-    for item in data:
-        item.is_unread = item.id in unread
-        item.reminder_at = reminders.get(item.id)
-        item.has_reminder = item.reminder_at is not None
+    data = await inbox_items(db, current_user, items)
     return {"items": data, "total": total, "page": page, "size": size}
 
 

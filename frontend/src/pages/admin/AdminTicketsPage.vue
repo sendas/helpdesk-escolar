@@ -114,9 +114,9 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in tickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t) }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined">
+              <tr v-for="t in tickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t), 'row-unread': t.is_unread }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined">
                 <td v-if="!readOnly"><input type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" /></td>
-                <td class="ticket-id">T-{{ t.id }}</td>
+                <td class="ticket-id"><span class="unread-dot" :class="{ on: t.is_unread }" :title="t.is_unread ? 'Tem novidades que ainda não leu' : ''"></span>T-{{ t.id }}<ReminderChip :at="t.reminder_at" /></td>
                 <td class="subject-cell">
                   <router-link :to="`/tickets/${t.id}`">{{ t.title }}</router-link>
                   <small>{{ t.school?.short_name || t.school?.name || 'Sem escola' }}</small>
@@ -170,6 +170,7 @@
               <input v-if="!readOnly" type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" />
               <div class="ticket-card-title">
                 <router-link :to="`/tickets/${t.id}`">T-{{ t.id }} · {{ t.title }}</router-link>
+                <ReminderChip :at="t.reminder_at" />
                 <small>{{ t.school?.name || 'Sem escola' }} · {{ timeAgo(t.updated_at) }}</small>
               </div>
             </div>
@@ -228,6 +229,7 @@ import SlaBadge from '../../components/SlaBadge.vue'
 import { timeAgo as formatTimeAgo } from '../../utils/dates'
 import { shortName } from '../../utils/names'
 import PersonName from '../../components/PersonName.vue'
+import ReminderChip from '../../components/ReminderChip.vue'
 
 const CategoryPill = defineComponent({
   props: { category: { type: Object, required: true } },
@@ -537,6 +539,12 @@ async function runInactivity() {
 </script>
 
 <style scoped>
+.ticket-id { white-space: nowrap; }
+.unread-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: transparent; }
+.unread-dot.on { background: #2563EB; box-shadow: 0 0 0 3px rgba(37, 99, 235, .18); }
+.row-unread td { background: rgba(37, 99, 235, .045); }
+.row-unread .subject-cell a { font-weight: 800; }
+.dark .row-unread td { background: rgba(96, 165, 250, .08); }
 .user-cell { max-width: clamp(170px, 20vw, 420px); min-width: 0; }
 .badge-fornecedor {
   display: inline-flex;

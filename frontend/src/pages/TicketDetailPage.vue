@@ -976,9 +976,13 @@ function toIsoDate(d: Date) {
 
 function setReminderIn(days: number) {
   const d = new Date()
-  d.setDate(d.getDate() + days)
-  if (days === 7) { while (d.getDay() !== 1) d.setDate(d.getDate() + 1) }
-  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1)
+  if (days === 7) {
+    // "Próxima segunda": the first Monday after today (tomorrow, if today is Sunday)
+    d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7))
+  } else {
+    d.setDate(d.getDate() + days)
+    while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1)
+  }
   remindDate.value = toIsoDate(d)
   if (!remindTime.value) remindTime.value = '09:00'
 }
