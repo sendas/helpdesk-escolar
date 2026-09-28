@@ -534,9 +534,9 @@ async function runInactivity() {
 .ticket-id { white-space: nowrap; }
 .unread-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: transparent; }
 .unread-dot.on { background: #2563EB; box-shadow: 0 0 0 3px rgba(37, 99, 235, .18); }
-.row-unread td { background: rgba(37, 99, 235, .045); }
+.row-unread { background: #F2F6FE; }
 .row-unread .subject-cell a { font-weight: 800; }
-.dark .row-unread td { background: rgba(96, 165, 250, .08); }
+.dark .row-unread { background: #16213A; }
 .user-cell { max-width: clamp(130px, 10vw, 200px); min-width: 0; }
 .badge-fornecedor {
   display: inline-flex;

@@ -5,6 +5,7 @@
       <span class="tcard-id">T-{{ ticket.id }}</span>
       <ReminderChip :at="ticket.reminder_at" />
       <span class="tcard-time">{{ timeAgo(ticket.updated_at) }}</span>
+      <TicketActions :ticket="ticket" @read-changed="(u) => emit('read-changed', u)" @deleted="emit('deleted')" />
     </div>
     <div class="tcard-title">{{ ticket.title }}</div>
     <div class="tcard-meta">
@@ -23,10 +24,12 @@ import { computed } from 'vue'
 import PriorityBadge from './PriorityBadge.vue'
 import ReminderChip from './ReminderChip.vue'
 import PersonName from './PersonName.vue'
+import TicketActions from './TicketActions.vue'
 import { timeAgo } from '../utils/dates'
 import { schoolInitials } from '../utils/names'
 
 const props = defineProps<{ ticket: any; done?: boolean }>()
+const emit = defineEmits<{ (e: 'read-changed', unread: boolean): void; (e: 'deleted'): void }>()
 const LABELS: Record<string, string> = { open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', waiting_user: 'A aguardar utilizador', resolved: 'Resolvido', closed: 'Fechado' }
 const statusLabel = computed(() => LABELS[props.ticket.status] ?? props.ticket.status)
 </script>

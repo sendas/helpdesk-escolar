@@ -36,12 +36,16 @@
       <div v-if="loading" style="padding:48px;text-align:center;color:var(--c-muted)">A carregar...</div>
       <template v-else>
         <div class="tcards">
-          <TicketCard v-for="t in activeTickets" :key="'c' + t.id" :ticket="t" />
+          <TicketCard v-for="t in activeTickets" :key="'c' + t.id" :ticket="t" @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" />
           <div v-if="!activeTickets.length" class="tcards-empty">{{ onlyUnread ? 'Não há tickets por ler.' : searchQuery.trim() ? `Nenhum ticket encontrado para "${searchQuery.trim()}".` : 'Sem tickets em aberto.' }}</div>
         </div>
         <table class="hd-table list-table">
+          <colgroup>
+            <col style="width:88px" /><col /><col style="width:13%" /><col style="width:10%" />
+            <col style="width:17%" /><col style="width:64px" /><col style="width:13%" /><col style="width:84px" />
+          </colgroup>
           <thead>
-            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th></tr>
+            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th><th class="th-actions"></th></tr>
           </thead>
           <tbody>
             <tr v-for="t in activeTickets" :key="t.id" :class="{ 'row-auto-closed': isAutoClosed(t), 'row-unread': t.is_unread }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
@@ -51,8 +55,8 @@
                 <ReminderChip :at="t.reminder_at" compact />
               </td>
               <td class="cell-title">{{ t.title }}</td>
-              <td style="white-space:nowrap">
-                <div style="display:flex;align-items:center;gap:6px">
+              <td>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                   <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
                   <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
                 </div>
@@ -63,9 +67,10 @@
               </td>
               <td class="cell-school" :title="t.school?.name"><span v-if="t.school" class="school-initials">{{ schoolInitials(t.school.name) }}</span><template v-else>—</template></td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
+              <td class="cell-actions"><TicketActions :ticket="t" @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" /></td>
             </tr>
             <tr v-if="!activeTickets.length">
-              <td colspan="7" style="text-align:center;color:var(--c-muted);padding:40px">{{ onlyUnread ? 'Não há tickets por ler.' : searchQuery.trim() ? `Nenhum ticket encontrado para "${searchQuery.trim()}".` : 'Sem tickets em aberto.' }}</td>
+              <td colspan="8" style="text-align:center;color:var(--c-muted);padding:40px">{{ onlyUnread ? 'Não há tickets por ler.' : searchQuery.trim() ? `Nenhum ticket encontrado para "${searchQuery.trim()}".` : 'Sem tickets em aberto.' }}</td>
             </tr>
           </tbody>
         </table>
@@ -79,11 +84,15 @@
         </div>
 
         <div v-if="showCompleted && completedTickets.length" class="tcards">
-          <TicketCard v-for="t in completedTickets" :key="'d' + t.id" :ticket="t" done />
+          <TicketCard v-for="t in completedTickets" :key="'d' + t.id" :ticket="t" done @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" />
         </div>
         <table v-if="showCompleted && completedTickets.length" class="hd-table completed-table list-table">
+          <colgroup>
+            <col style="width:88px" /><col /><col style="width:13%" /><col style="width:10%" />
+            <col style="width:17%" /><col style="width:64px" /><col style="width:13%" /><col style="width:84px" />
+          </colgroup>
           <thead>
-            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th></tr>
+            <tr><th>ID</th><th>ASSUNTO</th><th>ESTADO</th><th>PRIORIDADE</th><th>SOLICITANTE</th><th>ESCOLA</th><th>CATEGORIA</th><th class="th-actions"></th></tr>
           </thead>
           <tbody>
             <tr v-for="t in completedTickets" :key="t.id" class="completed-row" :class="{ 'row-auto-closed': isAutoClosed(t), 'row-unread': t.is_unread }" :title="isAutoClosed(t) ? 'Fechado automaticamente via email' : undefined" @click="$router.push(`/tickets/${t.id}`)">
@@ -100,6 +109,7 @@
               </td>
               <td class="cell-school" :title="t.school?.name"><span v-if="t.school" class="school-initials">{{ schoolInitials(t.school.name) }}</span><template v-else>—</template></td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
+              <td class="cell-actions"><TicketActions :ticket="t" @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" /></td>
             </tr>
           </tbody>
         </table>
@@ -119,6 +129,7 @@ import CategoryFilterButton from '../components/CategoryFilterButton.vue'
 import PersonName from '../components/PersonName.vue'
 import ReminderChip from '../components/ReminderChip.vue'
 import TicketCard from '../components/TicketCard.vue'
+import TicketActions from '../components/TicketActions.vue'
 import { schoolInitials } from '../utils/names'
 
 const route = useRoute()
@@ -143,6 +154,10 @@ const activeTickets = computed(() =>
 const completedTickets = computed(() =>
   filterStatus.value ? [] : shown.value.filter(t => DONE.includes(t.status))
 )
+
+function removeTicket(id: number) {
+  tickets.value = tickets.value.filter(t => t.id !== id)
+}
 
 async function markAllRead() {
   const ids = tickets.value.filter(t => t.is_unread).map(t => t.id)
@@ -234,7 +249,13 @@ function statusLabel(s: string) {
 </script>
 
 <style scoped>
-.list-table { width: 100%; }
+/* Fixed column widths (colgroup): the table can never be wider than the page */
+.list-table { width: 100%; table-layout: fixed; }
+.cell-title { overflow-wrap: anywhere; }
+.cat-chip { max-width: 100% !important; }
+.person-box { max-width: 100% !important; }
+.cell-actions { text-align: right; padding-left: 0 !important; }
+.list-table tbody tr:not(:hover) .cell-actions :deep(.tact) { opacity: .35; }
 .list-table :deep(th), .list-table :deep(td) { padding-left: 12px; padding-right: 12px; }
 .list-toolbar { display: flex; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--c-border); flex-wrap: wrap; align-items: center; }
 .list-search { width: 220px; }
@@ -257,10 +278,10 @@ function statusLabel(s: string) {
 .cell-id { color: var(--c-muted); font-size: 12px; white-space: nowrap; }
 .unread-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: transparent; }
 .unread-dot.on { background: #2563EB; box-shadow: 0 0 0 3px rgba(37, 99, 235, .18); }
-.row-unread td { background: rgba(37, 99, 235, .045); }
+.row-unread { background: #F2F6FE; }
 .row-unread .cell-title { font-weight: 800; color: var(--c-text); }
 .row-unread .cell-id { color: var(--c-text); font-weight: 700; }
-.dark .row-unread td { background: rgba(96, 165, 250, .08); }
+.dark .row-unread { background: #16213A; }
 .unread-filter { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .unread-filter.on { border-color: #2563EB; background: rgba(37, 99, 235, .1); color: #1D4ED8; }
 .dark .unread-filter.on { color: #93C5FD; }

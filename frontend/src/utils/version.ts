@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.2.6'
-export const APP_VERSION_DATE = '2026-09-27'
-export const APP_VERSION_TIME = '17:00'
+export const APP_VERSION = '2.2.7'
+export const APP_VERSION_DATE = '2026-09-28'
+export const APP_VERSION_TIME = '10:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.2.7',
+    date: '2026-09-28',
+    time: '10:00',
+    title: '"Os meus tickets": colunas fixas, lido/não lido e apagar',
+    changes: [
+      'A tabela de "Os meus tickets" passa a ter larguras fixas por coluna: nunca sai do ecrã, o assunto tem mais espaço e as categorias compridas (ex.: "Apoio Técnico") ficam dentro da coluna.',
+      'Em cada ticket (tabela, cartões e página do ticket): botão para marcar como lido ou não lido manualmente.',
+      'Administradores: botão para apagar um ticket (na lista e na página do ticket), com confirmação. Apaga também as respostas e os anexos.',
+      'Corrigida a faixa mais escura que aparecia na coluna Estado nos tickets não lidos.',
+    ],
+  },
   {
     version: '2.2.6',
     date: '2026-09-27',

@@ -5,9 +5,14 @@
         <router-link to="/tickets" style="color:var(--c-muted);text-decoration:none">Tickets</router-link>
         / <span>T-{{ ticket?.id }}</span>
       </span>
-      <button v-if="ticket" class="mark-unread" type="button" title="Volta a aparecer a negrito em Os meus tickets" @click="markUnread">
-        <span class="material-icons">mark_email_unread</span> Marcar como não lido
-      </button>
+      <span v-if="ticket" class="crumb-actions">
+        <button class="mark-unread" type="button" title="Volta a aparecer a negrito em Os meus tickets" @click="markUnread">
+          <span class="material-icons">mark_email_unread</span> Marcar como não lido
+        </button>
+        <button v-if="auth.isAdmin" class="mark-unread danger" type="button" title="Apagar definitivamente este ticket" @click="deleteTicket">
+          <span class="material-icons">delete</span> Apagar ticket
+        </button>
+      </span>
     </div>
 
     <div v-if="!ticket" style="padding:80px;text-align:center;color:var(--c-muted)">A carregar...</div>
@@ -537,7 +542,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getTicket, markTicketUnread, getMyReminders, setMyReminder, clearMyReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
+import { getTicket, markTicketUnread, adminBulkActionTickets, getMyReminders, setMyReminder, clearMyReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, getUsers, searchUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -872,6 +877,17 @@ function stopLive() {
   forgetSticky('ticket-view')
   liveTicketId = 0
   viewers.value = []
+}
+
+async function deleteTicket() {
+  if (!ticket.value) return
+  if (!confirm(`Apagar definitivamente o ticket T-${ticket.value.id} ("${ticket.value.title}")?\n\nApaga também as respostas e os anexos. Não é possível desfazer.`)) return
+  try {
+    await adminBulkActionTickets({ ids: [ticket.value.id], action: 'delete' })
+    router.push('/tickets')
+  } catch (e: any) {
+    alert(e?.response?.data?.detail || 'Não foi possível apagar o ticket.')
+  }
 }
 
 async function markUnread() {
@@ -1764,6 +1780,8 @@ function formatSize(size: number) {
 .mark-unread { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: var(--c-muted); font-size: 12px; font-weight: 600; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
 .mark-unread:hover { color: var(--c-primary); background: var(--c-primary-soft); }
 .mark-unread .material-icons { font-size: 15px; }
+.mark-unread.danger:hover { color: #DC2626; background: rgba(220, 38, 38, .1); }
+.crumb-actions { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .live-viewers { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--c-muted); margin: 2px 0 6px; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 0 3px rgba(34, 197, 94, .2); }
 .live-avatars { display: inline-flex; }
