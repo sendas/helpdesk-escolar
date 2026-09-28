@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.2.7'
+export const APP_VERSION = '2.3.0'
 export const APP_VERSION_DATE = '2026-09-28'
-export const APP_VERSION_TIME = '10:00'
+export const APP_VERSION_TIME = '11:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.3.0',
+    date: '2026-09-28',
+    time: '11:30',
+    title: 'Reações com emojis',
+    changes: [
+      'É possível reagir com emojis às respostas dos tickets e às mensagens do chat: 👍 ❤️ 😂 😮 🙏 ✅ 👀 🎉.',
+      'As reações aparecem por baixo da mensagem com o número de pessoas; ao passar o rato vê-se quem reagiu. Clicar de novo retira a reação.',
+      'Aparecem em tempo real para quem está a ver o ticket ou a conversa.',
+      'Seguem as regras de privacidade: numa nota interna só técnicos reagem e veem; numa mensagem privada só as duas pessoas.',
+    ],
+  },
   {
     version: '2.2.7',
     date: '2026-09-28',

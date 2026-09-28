@@ -187,6 +187,7 @@
                 </div>
               </div>
               <div v-else class="hd-msg-bubble" v-html="renderText(c.body)"></div>
+              <ReactionBar v-if="editingCommentId !== c.id" target-type="comment" :target-id="c.id" :reactions="reactions[c.id] ?? []" @update="(r) => (reactions[c.id] = r)" />
             </div>
           </div>
           </div>
@@ -550,6 +551,8 @@ import PriorityBadge from '../components/PriorityBadge.vue'
 import { formatDateTime } from '../utils/dates'
 import { shortName } from '../utils/names'
 import { forgetSticky, onRealtime, sendRealtime } from '../services/realtime'
+import ReactionBar from '../components/ReactionBar.vue'
+import { getReactions, type ReactionSummary } from '../api/reactions'
 import PersonName from '../components/PersonName.vue'
 
 const auth = useAuthStore()
@@ -890,6 +893,16 @@ async function deleteTicket() {
   }
 }
 
+// Emoji reactions on the replies
+const reactions = ref<Record<number, ReactionSummary[]>>({})
+async function loadReactions() {
+  const ids = ((ticket.value?.comments ?? []) as any[]).map((c) => c.id)
+  try {
+    const data = await getReactions('comment', ids)
+    reactions.value = Object.fromEntries(Object.entries(data).map(([k, v]) => [Number(k), v]))
+  } catch { /* ignore */ }
+}
+
 async function markUnread() {
   if (!ticket.value) return
   await markTicketUnread(ticket.value.id)
@@ -909,6 +922,10 @@ realtimeOffs.push(
     if (e.ticket_id !== liveTicketId) return
     await load()
     loadImageBlobs()
+    loadReactions()
+  }),
+  onRealtime('reaction.changed', (e) => {
+    if (e.target_type === 'comment' && e.ticket_id === liveTicketId) loadReactions()
   }),
   onRealtime('ticket.viewers', (e) => { if (e.ticket_id === liveTicketId) viewers.value = e.viewers }),
   onRealtime('ticket.typing', (e) => {
@@ -921,6 +938,7 @@ realtimeOffs.push(
 
 onMounted(async () => {
   await load()
+  loadReactions()
   loadReminders()
   if (ticket.value) startLive(ticket.value.id)
   loadImageBlobs()

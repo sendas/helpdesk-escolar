@@ -8,6 +8,7 @@ from app.models.push_subscription import PushSubscription
 from app.models.access_log import AccessLog
 from app.models.suggestion import Suggestion
 from app.models.role import Role
+from app.models.reaction import Reaction
 from app.models.chat import ChatConversation, ChatMember, ChatMessage, SupportAgentStatus
 
-__all__ = ["School", "User", "UserRole", "Category", "Ticket", "Comment", "TicketEvent", "TicketView", "TicketReminder", "TicketRoutingRule", "Attachment", "ProcessedEmail", "TicketStatus", "TicketPriority", "ticket_watchers", "ticket_assignees", "HelpdeskGroup", "helpdesk_group_members", "KnowledgeArticle", "PushSubscription", "AccessLog", "Suggestion", "Role", "ChatConversation", "ChatMember", "ChatMessage", "SupportAgentStatus"]
+__all__ = ["School", "User", "UserRole", "Category", "Ticket", "Comment", "TicketEvent", "TicketView", "TicketReminder", "TicketRoutingRule", "Attachment", "ProcessedEmail", "TicketStatus", "TicketPriority", "ticket_watchers", "ticket_assignees", "HelpdeskGroup", "helpdesk_group_members", "KnowledgeArticle", "PushSubscription", "AccessLog", "Suggestion", "Role", "Reaction", "ChatConversation", "ChatMember", "ChatMessage", "SupportAgentStatus"]

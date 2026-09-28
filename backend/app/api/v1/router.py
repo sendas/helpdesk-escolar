@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, tickets, categories, users, admin, schools, settings, knowledge, notifications, suggestions, roles, realtime, chat
+from app.api.v1 import auth, tickets, categories, users, admin, schools, settings, knowledge, notifications, suggestions, roles, realtime, chat, reactions
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth.router)
@@ -15,3 +15,4 @@ router.include_router(suggestions.router)
 router.include_router(roles.router)
 router.include_router(realtime.router)
 router.include_router(chat.router)
+router.include_router(reactions.router)

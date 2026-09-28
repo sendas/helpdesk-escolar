@@ -112,6 +112,7 @@
             <div v-else class="chat-msg" :class="{ me: m.author?.id === auth.user?.id, cont: sameAuthor(i) }">
               <span v-if="m.author?.id !== auth.user?.id && !sameAuthor(i)" class="chat-msg-author"><PersonName :name="m.author?.display_name" :with-tag="false" /></span>
               <div class="chat-bubble" v-html="renderBody(m.body)"></div>
+              <ReactionBar target-type="chat" :target-id="m.id" :reactions="chatReactions[m.id] ?? []" :align-right="m.author?.id === auth.user?.id" @update="(r) => (chatReactions[m.id] = r)" />
               <time>{{ timeOf(m.created_at) }}<template v-if="m.author?.id === auth.user?.id && m.id === lastMineId && seenByOthers"> · visto</template></time>
             </div>
           </template>
@@ -166,6 +167,8 @@ import {
 } from '../api/chat'
 import { onRealtime, sendRealtime } from '../services/realtime'
 import { shortName } from '../utils/names'
+import ReactionBar from '../components/ReactionBar.vue'
+import { getReactions, type ReactionSummary } from '../api/reactions'
 import PersonName from '../components/PersonName.vue'
 
 const auth = useAuthStore()
@@ -305,9 +308,20 @@ async function select(id: number) {
   mobileShowConversation.value = true
   router.replace({ query: { ...route.query, c: String(id) } })
   markRead(id).catch(() => {})
+  loadChatReactions()
   const inList = conversations.value.find((c) => c.id === id)
   if (inList) inList.unread = 0
   scrollDown()
+}
+
+// Emoji reactions on the messages
+const chatReactions = ref<Record<number, ReactionSummary[]>>({})
+async function loadChatReactions() {
+  const ids = messages.value.filter((m) => !m.is_system).map((m) => m.id)
+  try {
+    const data = await getReactions('chat', ids)
+    chatReactions.value = Object.fromEntries(Object.entries(data).map(([k, v]) => [Number(k), v]))
+  } catch { /* ignore */ }
 }
 
 async function loadOlder() {
@@ -315,6 +329,7 @@ async function loadOlder() {
   const data = await getMessages(current.value.id, messages.value[0].id)
   messages.value = [...data.messages, ...messages.value]
   hasMore.value = data.messages.length >= 50
+  loadChatReactions()
 }
 
 async function send() {
@@ -421,6 +436,9 @@ onMounted(async () => {
     const prev = typing.value[e.user.id]
     if (prev) clearTimeout(prev.timer)
     typing.value[e.user.id] = { name: shortName(e.user.name), timer: setTimeout(() => { delete typing.value[e.user.id] }, 5000) }
+  }))
+  offs.push(onRealtime('reaction.changed', (e) => {
+    if (e.target_type === 'chat' && current.value && e.conversation_id === current.value.id) loadChatReactions()
   }))
   offs.push(onRealtime('chat.read', (e) => {
     if (current.value && e.conversation_id === current.value.id) readBy.value[e.user_id] = e.at
