@@ -1,7 +1,7 @@
 import { api } from '../boot/axios'
 
 export interface ReactionSummary { emoji: string; count: number; mine: boolean; names: string[] }
-export type ReactionTarget = 'comment' | 'chat'
+export type ReactionTarget = 'comment' | 'chat' | 'ticket'
 export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🙏', '✅', '👀', '🎉']
 
 export async function getReactions(target_type: ReactionTarget, ids: number[]) {

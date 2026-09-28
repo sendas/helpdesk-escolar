@@ -39,6 +39,16 @@ async def _visible_comment(db: AsyncSession, comment_id: int, user: User) -> Com
     return comment
 
 
+async def _visible_ticket(db: AsyncSession, ticket_id: int, user: User):
+    """The ticket itself (its description, the first message of the conversation)."""
+    from app.api.v1.tickets import _can_access_ticket
+    from app.services import ticket_service
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket or not (_can_access_ticket(ticket, user) or has_perm(user, "tickets.view_all")):
+        return None
+    return ticket
+
+
 async def _visible_chat_message(db: AsyncSession, message_id: int, user: User) -> ChatMessage | None:
     msg = await db.get(ChatMessage, message_id)
     if not msg:
@@ -53,7 +63,7 @@ async def _visible_chat_message(db: AsyncSession, message_id: int, user: User) -
 
 
 async def _visible_ids(db: AsyncSession, target_type: str, ids: list[int], user: User) -> list[int]:
-    check = _visible_comment if target_type == "comment" else _visible_chat_message
+    check = {"comment": _visible_comment, "ticket": _visible_ticket}.get(target_type, _visible_chat_message)
     return [i for i in ids if await check(db, i, user)]
 
 
@@ -78,7 +88,7 @@ async def summaries(db: AsyncSession, target_type: str, ids: list[int], user: Us
 @router.get("")
 async def list_reactions(target_type: str = Query(...), ids: str = Query(""), db: AsyncSession = Depends(get_db),
                          current_user: User = Depends(get_current_user)):
-    if target_type not in ("comment", "chat"):
+    if target_type not in ("comment", "chat", "ticket"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tipo inválido.")
     wanted = [int(x) for x in ids.split(",") if x.strip().isdigit()][:300]
     allowed = await _visible_ids(db, target_type, wanted, current_user)
@@ -88,10 +98,12 @@ async def list_reactions(target_type: str = Query(...), ids: str = Query(""), db
 
 @router.post("/toggle")
 async def toggle_reaction(data: ReactionToggle, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if data.target_type not in ("comment", "chat") or data.emoji not in EMOJIS:
+    if data.target_type not in ("comment", "chat", "ticket") or data.emoji not in EMOJIS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reação inválida.")
     if data.target_type == "comment":
         target = await _visible_comment(db, data.target_id, current_user)
+    elif data.target_type == "ticket":
+        target = await _visible_ticket(db, data.target_id, current_user)
     else:
         target = await _visible_chat_message(db, data.target_id, current_user)
     if not target:
@@ -108,9 +120,10 @@ async def toggle_reaction(data: ReactionToggle, db: AsyncSession = Depends(get_d
 
     # Tell the others to reload the reactions of this message (they fetch them through the permission checks above)
     event = {"type": "reaction.changed", "target_type": data.target_type, "target_id": data.target_id}
-    if data.target_type == "comment":
-        event["ticket_id"] = target.ticket_id
-        realtime.publish(realtime.ticket_viewers(target.ticket_id) - {current_user.id}, event)
+    if data.target_type in ("comment", "ticket"):
+        ticket_id = target.ticket_id if data.target_type == "comment" else target.id
+        event["ticket_id"] = ticket_id
+        realtime.publish(realtime.ticket_viewers(ticket_id) - {current_user.id}, event)
     else:
         from app.services.chat_service import member_ids
         event["conversation_id"] = target.conversation_id

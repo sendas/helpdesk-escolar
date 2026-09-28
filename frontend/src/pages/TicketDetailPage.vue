@@ -109,6 +109,7 @@
                 <span class="hd-msg-time">{{ formatDate(ticket.created_at) }}</span>
               </div>
               <div v-if="!editingContent" class="hd-msg-bubble" v-html="renderText(ticket.description)"></div>
+              <ReactionBar v-if="!editingContent" target-type="ticket" :target-id="ticket.id" :reactions="ticketReactions" @update="(r) => (ticketReactions = r)" />
               <textarea v-else class="hd-textarea" v-model="editDescription" rows="6" style="margin-top:4px"></textarea>
               <div v-if="contentError" style="color:#DC2626;font-size:12px;margin-top:6px">{{ contentError }}</div>
               <div v-if="ticket.attachments?.length" style="margin-top:10px">
@@ -895,11 +896,14 @@ async function deleteTicket() {
 
 // Emoji reactions on the replies
 const reactions = ref<Record<number, ReactionSummary[]>>({})
+const ticketReactions = ref<ReactionSummary[]>([])
 async function loadReactions() {
-  const ids = ((ticket.value?.comments ?? []) as any[]).map((c) => c.id)
+  if (!ticket.value) return
+  const ids = ((ticket.value.comments ?? []) as any[]).map((c) => c.id)
   try {
-    const data = await getReactions('comment', ids)
+    const [data, own] = await Promise.all([getReactions('comment', ids), getReactions('ticket', [ticket.value.id])])
     reactions.value = Object.fromEntries(Object.entries(data).map(([k, v]) => [Number(k), v]))
+    ticketReactions.value = own[String(ticket.value.id)] ?? []
   } catch { /* ignore */ }
 }
 
@@ -925,7 +929,7 @@ realtimeOffs.push(
     loadReactions()
   }),
   onRealtime('reaction.changed', (e) => {
-    if (e.target_type === 'comment' && e.ticket_id === liveTicketId) loadReactions()
+    if ((e.target_type === 'comment' || e.target_type === 'ticket') && e.ticket_id === liveTicketId) loadReactions()
   }),
   onRealtime('ticket.viewers', (e) => { if (e.ticket_id === liveTicketId) viewers.value = e.viewers }),
   onRealtime('ticket.typing', (e) => {

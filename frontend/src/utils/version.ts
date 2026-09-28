@@ -1,8 +1,18 @@
-export const APP_VERSION = '2.3.0'
+export const APP_VERSION = '2.3.1'
 export const APP_VERSION_DATE = '2026-09-28'
-export const APP_VERSION_TIME = '11:30'
+export const APP_VERSION_TIME = '12:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.3.1',
+    date: '2026-09-28',
+    time: '12:00',
+    title: 'Reações sempre visíveis',
+    changes: [
+      'Corrigido: o botão para reagir só aparecia ao passar o rato e, por um erro, ficava invisível. Agora cada mensagem mostra sempre o botão "Reagir" (ou só o ícone, quando já há reações).',
+      'A descrição do pedido (a primeira mensagem do ticket) também aceita reações.',
+    ],
+  },
   {
     version: '2.3.0',
     date: '2026-09-28',

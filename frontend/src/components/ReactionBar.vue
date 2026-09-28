@@ -13,7 +13,7 @@
     </button>
     <span class="radd-wrap">
       <button type="button" class="radd" title="Reagir" @click="open = !open">
-        <span class="material-icons">add_reaction</span>
+        <span class="material-icons">add_reaction</span><span v-if="!reactions.length">Reagir</span>
       </button>
       <span v-if="open" class="rpicker" :class="{ right: alignRight }">
         <button v-for="e in REACTION_EMOJIS" :key="e" type="button" class="rpick" :class="{ mine: reactions.some(r => r.emoji === e && r.mine) }" @click="toggle(e); open = false">{{ e }}</button>
@@ -50,15 +50,12 @@ onBeforeUnmount(() => document.removeEventListener('click', closeOnOutside))
 .rchip.mine { border-color: var(--c-primary); background: var(--c-primary-soft); color: var(--c-primary); }
 .remoji { font-size: 14px; line-height: 1; }
 .radd-wrap { position: relative; display: inline-flex; }
-.radd { width: 26px; height: 26px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: var(--c-muted); display: grid; place-items: center; cursor: pointer; opacity: .55; }
-.radd .material-icons { font-size: 17px; }
-.radd:hover { opacity: 1; border-color: var(--c-border); background: var(--c-surface); color: var(--c-primary); }
-.rbar.empty .radd { opacity: 0; }
-:global(.hd-msg:hover) .rbar.empty .radd, :global(.chat-msg:hover) .rbar.empty .radd, .rbar.empty .radd:focus { opacity: .7; }
+.radd { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 6px; border-radius: 999px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-muted); cursor: pointer; font-size: 12px; font-weight: 600; }
+.radd .material-icons { font-size: 16px; }
+.radd:hover { border-color: var(--c-primary); color: var(--c-primary); }
 .rpicker { position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 50; display: flex; gap: 2px; padding: 5px; border-radius: 14px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: 0 10px 30px rgba(15, 23, 42, .18); }
 .rpicker.right { left: auto; right: 0; }
 .rpick { width: 34px; height: 34px; border: 0; border-radius: 10px; background: transparent; font-size: 19px; cursor: pointer; transition: transform .1s; }
 .rpick:hover { background: var(--c-bg); transform: scale(1.15); }
 .rpick.mine { background: var(--c-primary-soft); }
-@media (hover: none) { .rbar.empty .radd { opacity: .55; } }
 </style>
