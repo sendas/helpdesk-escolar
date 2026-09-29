@@ -37,7 +37,8 @@ async def get_current_user(
         from app.api.v1.settings import _read_settings
         demo_role = user.username.removeprefix("demo_")
         app_settings = _read_settings()
-        if not app_settings.get("demo_mode_enabled") or demo_role not in (app_settings.get("demo_profiles") or []):
+        from app.api.v1.settings import DEMO_PROFILES
+        if not app_settings.get("demo_mode_enabled") or demo_role not in DEMO_PROFILES or demo_role not in (app_settings.get("demo_profiles") or []):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="O modo demo foi desativado")
         acting_as_demo.set(True)
     return user

@@ -3,13 +3,14 @@ import os
 import logging
 from collections import defaultdict
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from app.config import settings
 
 _templates_dir = os.path.join(os.path.dirname(__file__), "..", "templates", "email")
 logger = logging.getLogger(__name__)
 
-jinja_env = Environment(loader=FileSystemLoader(_templates_dir))
+# autoescape: ticket titles, comments and form text are user input and must never become HTML in our emails
+jinja_env = Environment(loader=FileSystemLoader(_templates_dir), autoescape=select_autoescape(["html"]))
 
 # Notification digest: several updates to the same ticket, addressed to the same
 # recipient, within a short window get merged into a single email instead of one

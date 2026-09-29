@@ -1,8 +1,24 @@
-export const APP_VERSION = '2.3.1'
-export const APP_VERSION_DATE = '2026-09-28'
-export const APP_VERSION_TIME = '12:00'
+export const APP_VERSION = '2.4.0'
+export const APP_VERSION_DATE = '2026-09-29'
+export const APP_VERSION_TIME = '11:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.4.0',
+    date: '2026-09-29',
+    time: '11:00',
+    title: 'Reforço de segurança',
+    changes: [
+      'Respostas por email: só são aceites de quem faz parte do ticket (requerente, técnicos atribuídos, observadores ou equipa de apoio). Fechar ou resolver por email só é possível ao requerente, à equipa de apoio ou à empresa de apoio. Frases como "não está resolvido" já não fecham o ticket.',
+      'Modo demo: passa a existir só o perfil de docente (os perfis de técnico e administrador davam acesso a dados reais).',
+      'Anexos: só são aceites imagens, PDF, Office, OpenDocument, texto e ZIP, com verificação do conteúdo real do ficheiro. Os anexos deixam de estar acessíveis por link público; só se abrem a partir do ticket.',
+      'Os docentes deixam de poder alterar o estado, a prioridade ou a atribuição de um ticket através da API.',
+      'Os emails enviados passam a proteger o texto introduzido pelos utilizadores (sem HTML injetado).',
+      'Proteção contra tentativas repetidas de entrada: após 10 falhas em 15 minutos é preciso aguardar.',
+      'Chave de sessão: se não estiver definida uma chave forte, é gerada automaticamente e guardada no servidor.',
+      'Bibliotecas do servidor atualizadas (FastAPI, Starlette, Uvicorn, Jinja2, JWT, python-multipart, requests) com correções de segurança.',
+    ],
+  },
   {
     version: '2.3.1',
     date: '2026-09-28',

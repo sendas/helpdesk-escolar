@@ -4,12 +4,12 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db
 from app.models.user import User, UserRole
 from app.schemas.auth import LdapLoginRequest, TokenResponse
-from app.services import ldap_auth, azure_auth, jwt_service, passwords, email_service
+from app.services import ldap_auth, azure_auth, jwt_service, passwords, email_service, rate_limit
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -75,16 +75,29 @@ async def get_or_create_user(db: AsyncSession, info: dict) -> User:
     return user
 
 
+_TOO_MANY_LOGINS = "Demasiadas tentativas de entrada. Aguarde 15 minutos e tente novamente."
+
+
 @router.post("/ldap-login", response_model=TokenResponse)
-async def ldap_login(data: LdapLoginRequest, db: AsyncSession = Depends(get_db)):
+async def ldap_login(data: LdapLoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    # Brute-force protection: failed attempts are counted per address and per account
+    ip_key = f"login-ip:{rate_limit.client_ip(request)}"
+    user_key = f"login-user:{data.username.strip().lower()}"
+    rate_limit.check(ip_key, 10, 900, _TOO_MANY_LOGINS)
+    rate_limit.check(user_key, 20, 900, _TOO_MANY_LOGINS)
+
     local_user = await authenticate_manual_user(db, data.username, data.password)
     if local_user:
+        rate_limit.reset(user_key)
         token = jwt_service.create_access_token({"sub": str(local_user.id), "role": local_user.role})
         return {"access_token": token, "token_type": "bearer"}
 
     user_info = ldap_auth.authenticate_ldap(data.username, data.password)
     if not user_info:
+        rate_limit.hit(ip_key)
+        rate_limit.hit(user_key)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
+    rate_limit.reset(user_key)
     user = await get_or_create_user(db, user_info)
     token = jwt_service.create_access_token({"sub": str(user.id), "role": user.role})
     return {"access_token": token, "token_type": "bearer"}
@@ -98,7 +111,8 @@ async def authenticate_manual_user(db: AsyncSession, username_or_email: str, pas
         select(User).where(
             User.auth_provider == "manual",
             User.is_active.is_(True),
-            or_(User.email.ilike(identifier), User.username == identifier),
+            # exact match: ilike would treat "%" and "_" typed by the user as wildcards
+            or_(func.lower(User.email) == identifier, User.username == identifier),
         )
     )
     user = result.scalar_one_or_none()
@@ -137,13 +151,17 @@ async def azure_callback(
 
 
 @router.post("/demo-login", response_model=TokenResponse)
-async def demo_login(data: DemoLoginRequest, db: AsyncSession = Depends(get_db)):
+async def demo_login(data: DemoLoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     from app.api.v1.settings import _read_settings
 
+    demo_key = f"demo:{rate_limit.client_ip(request)}"
+    rate_limit.check(demo_key, 30, 3600, "Demasiadas entradas em modo demo. Tente mais tarde.")
+    rate_limit.hit(demo_key)
     app_settings = _read_settings()
     if not app_settings.get("demo_mode_enabled"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="O modo demo está desativado.")
-    if data.role not in (app_settings.get("demo_profiles") or []):
+    from app.api.v1.settings import DEMO_PROFILES
+    if data.role not in DEMO_PROFILES or data.role not in (app_settings.get("demo_profiles") or []):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Este perfil não está disponível no modo demo.")
 
     role_map = {"teacher": UserRole.TEACHER, "technician": UserRole.TECHNICIAN, "admin": UserRole.ADMIN}
@@ -173,9 +191,12 @@ async def demo_login(data: DemoLoginRequest, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/no-access-contact")
-async def no_access_contact(data: NoAccessContactRequest):
+async def no_access_contact(data: NoAccessContactRequest, request: Request):
     from app.api.v1.settings import _read_settings
 
+    contact_key = f"contact:{rate_limit.client_ip(request)}"
+    rate_limit.check(contact_key, 5, 3600, "Já enviou várias mensagens. Aguarde um pouco antes de enviar outra.")
+    rate_limit.hit(contact_key)
     app_settings = _read_settings()
     to_email = (app_settings.get("no_access_contact_email") or "").strip()
     if not to_email:

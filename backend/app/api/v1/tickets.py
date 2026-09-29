@@ -22,8 +22,48 @@ router = APIRouter(prefix="/tickets", tags=["tickets"])
 
 UPLOAD_DIR = "/app/data/uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-ALLOWED_MIME_PREFIXES = ("image/",)
-ALLOWED_CONTENT_TYPES_EXACT = {"application/pdf", "application/octet-stream"}
+
+# Attachments allowed, by extension: stored content type and the file signature the content must start with.
+# Anything that a browser could run (HTML, SVG, JS…) is refused.
+_OLE = b"\xd0\xcf\x11\xe0"
+_ZIP = b"PK\x03\x04"
+ALLOWED_ATTACHMENTS: dict[str, tuple[str, tuple[bytes, ...] | None]] = {
+    ".png": ("image/png", (b"\x89PNG",)),
+    ".jpg": ("image/jpeg", (b"\xff\xd8\xff",)),
+    ".jpeg": ("image/jpeg", (b"\xff\xd8\xff",)),
+    ".gif": ("image/gif", (b"GIF87a", b"GIF89a")),
+    ".webp": ("image/webp", (b"RIFF",)),
+    ".heic": ("image/heic", None),
+    ".pdf": ("application/pdf", (b"%PDF",)),
+    ".doc": ("application/msword", (_OLE,)),
+    ".xls": ("application/vnd.ms-excel", (_OLE,)),
+    ".ppt": ("application/vnd.ms-powerpoint", (_OLE,)),
+    ".docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", (_ZIP,)),
+    ".xlsx": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", (_ZIP,)),
+    ".pptx": ("application/vnd.openxmlformats-officedocument.presentationml.presentation", (_ZIP,)),
+    ".odt": ("application/vnd.oasis.opendocument.text", (_ZIP,)),
+    ".ods": ("application/vnd.oasis.opendocument.spreadsheet", (_ZIP,)),
+    ".zip": ("application/zip", (_ZIP,)),
+    ".txt": ("text/plain", None),
+    ".csv": ("text/csv", None),
+}
+ALLOWED_LABEL = "imagem, PDF, Word, Excel, PowerPoint, OpenDocument, texto ou ZIP"
+
+
+def _attachment_type(filename: str, content: bytes) -> str | None:
+    """Content type to store, or None when the file is not an accepted, genuine document."""
+    ext = os.path.splitext(filename or "")[1].lower()
+    spec = ALLOWED_ATTACHMENTS.get(ext)
+    if not spec:
+        return None
+    content_type, signatures = spec
+    if signatures and not any(content.startswith(sig) for sig in signatures):
+        return None
+    if ext == ".webp" and content[8:12] != b"WEBP":
+        return None
+    if content_type.startswith("text/") and (b"\x00" in content[:4096] or b"<script" in content[:4096].lower() or b"<html" in content[:4096].lower()):
+        return None
+    return content_type
 
 
 def _can_set_reminder(ticket, user: User) -> bool:
@@ -358,13 +398,12 @@ async def upload_attachment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     if not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    ct = (file.content_type or "").lower()
-    if not (any(ct.startswith(p) for p in ALLOWED_MIME_PREFIXES) or ct in ALLOWED_CONTENT_TYPES_EXACT):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato inválido. Use imagem ou PDF.")
-
-    content = await file.read()
+    content = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ficheiro demasiado grande. Máximo: 10 MB.")
+    content_type = _attachment_type(file.filename or "", content)
+    if not content_type:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Formato não permitido. Envie {ALLOWED_LABEL}.")
 
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     ext = os.path.splitext(file.filename or "")[1].lower()
@@ -375,7 +414,7 @@ async def upload_attachment(
     attachment = Attachment(
         original_name=file.filename or "anexo",
         stored_name=stored_name,
-        content_type=file.content_type or "application/octet-stream",
+        content_type=content_type,
         size=len(content),
         ticket_id=ticket_id,
         uploaded_by_id=current_user.id,
@@ -416,7 +455,15 @@ async def download_attachment(
     path = os.path.join(UPLOAD_DIR, attachment.stored_name)
     if not os.path.exists(path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment file not found")
-    return FileResponse(path, media_type=attachment.content_type, filename=attachment.original_name)
+    # Never let the browser run a stored file as a page: images may show inline, everything else downloads
+    inline = attachment.content_type in {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"}
+    return FileResponse(
+        path,
+        media_type=attachment.content_type if inline else "application/octet-stream",
+        filename=attachment.original_name,
+        content_disposition_type="inline" if inline else "attachment",
+        headers={"X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox"},
+    )
 
 
 @router.get("/{ticket_id}", response_model=TicketRead)
@@ -452,6 +499,13 @@ async def update_ticket(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     if not _can_access_ticket(ticket, current_user, allow_watcher=False):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    # Without "Gerir tickets", people may only change their own email preference; status, priority and
+    # assignment are the support team's job (the API used to accept them from anyone linked to the ticket)
+    if not has_perm(current_user, "tickets.manage"):
+        if data.model_fields_set - {"creator_email_notifications"}:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só a equipa de apoio pode alterar o estado, a prioridade ou a atribuição do ticket.")
+        if ticket.creator_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só quem fez o pedido pode alterar as suas notificações por email.")
     content_fields = {"title", "description"}
     if data.model_fields_set & content_fields and current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só administradores podem editar o conteúdo do ticket")

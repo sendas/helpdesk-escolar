@@ -244,7 +244,7 @@
               ref="commentFileInput"
               type="file"
               style="display:none"
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+              accept=".png,.jpg,.jpeg,.gif,.webp,.heic,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.txt,.csv,.zip"
               @change="commentFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
             />
             <!-- Selected file preview -->

@@ -290,8 +290,9 @@ async def access_log_middleware(request: Request, call_next):
     return response
 
 app.include_router(router)
-os.makedirs("/app/data/uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="/app/data/uploads"), name="uploads")
+# Only the organisation logo is public; ticket attachments are served by the authenticated download endpoint
+os.makedirs("/app/data/uploads/branding", exist_ok=True)
+app.mount("/uploads/branding", StaticFiles(directory="/app/data/uploads/branding"), name="branding")
 
 
 @app.get("/health")

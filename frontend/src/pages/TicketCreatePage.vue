@@ -197,13 +197,13 @@
       <!-- Attachments -->
       <div class="hd-field" style="margin-bottom:32px">
         <label class="hd-label">Anexos <span class="hd-label-hint">(opcional)</span></label>
-        <input ref="fileInput" type="file" multiple accept="image/*,application/pdf,.pdf" style="display:none" @change="onFilesPicked" />
+        <input ref="fileInput" type="file" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.heic,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.txt,.csv,.zip" style="display:none" @change="onFilesPicked" />
         <div class="hd-dropzone" style="margin-top:8px" @dragover.prevent @drop.prevent="onDrop">
           <span class="material-icons" style="font-size:28px;color:var(--c-muted);margin-bottom:8px;display:block">attach_file</span>
           <div style="font-size:13.5px;color:var(--c-muted)">
             Arrastar ficheiros para aqui ou <span style="color:var(--c-primary);cursor:pointer" @click="fileInput?.click()">procurar</span>
           </div>
-          <div style="font-size:12px;color:var(--c-muted);margin-top:4px">PNG, JPG, PDF até 10 MB</div>
+          <div style="font-size:12px;color:var(--c-muted);margin-top:4px">Imagens, PDF, Word, Excel, PowerPoint, texto ou ZIP — até 10 MB</div>
         </div>
         <div v-if="files.length" style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
           <div v-for="(f, idx) in files" :key="`${f.name}-${idx}`" class="hd-row" style="justify-content:space-between;border:1px solid var(--c-border);border-radius:8px;padding:8px 10px">
@@ -378,7 +378,8 @@ function onDrop(event: DragEvent) {
 function addFiles(list: FileList | null) {
   if (!list) return
   const next = Array.from(list).filter(f => {
-    const allowed = f.type.startsWith('image/') || f.type === 'application/pdf' || f.name.match(/\.(png|jpe?g|pdf)$/i)
+    // Same list the server accepts (backend tickets.py ALLOWED_ATTACHMENTS)
+    const allowed = /\.(png|jpe?g|gif|webp|heic|pdf|docx?|xlsx?|pptx?|odt|ods|txt|csv|zip)$/i.test(f.name)
     return allowed && f.size <= 10 * 1024 * 1024
   })
   files.value.push(...next)

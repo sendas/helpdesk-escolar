@@ -96,3 +96,37 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# Secret that signs sessions (JWT). A default/placeholder or short value would let anyone forge an admin session,
+# so in that case a random key is generated once and kept in the data folder.
+_WEAK_SECRETS = {"", "dev-secret-change-me", "change-me", "change-me-to-a-random-32-char-string", "changeme", "secret"}
+
+
+def _ensure_strong_secret() -> None:
+    import logging, os, secrets
+    key = settings.app_secret_key or ""
+    if key not in _WEAK_SECRETS and not key.lower().startswith("change-me") and len(key) >= 32:
+        return
+    path = os.path.join(os.environ.get("APP_DATA_DIR", "/app/data"), ".secret_key")
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                stored = f.read().strip()
+            if len(stored) >= 32:
+                settings.app_secret_key = stored
+                return
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        stored = secrets.token_hex(32)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(stored)
+        os.chmod(path, 0o600)
+        settings.app_secret_key = stored
+        logging.getLogger(__name__).warning(
+            "APP_SECRET_KEY em falta ou fraca: foi gerada uma chave aleatória em %s. Defina APP_SECRET_KEY no app.env.", path)
+    except OSError:
+        # No writable data folder (e.g. local tools): still never run with the public default
+        settings.app_secret_key = secrets.token_hex(32)
+
+
+_ensure_strong_secret()

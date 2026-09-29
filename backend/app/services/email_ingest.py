@@ -12,7 +12,7 @@ from email.utils import parseaddr
 
 import httpx
 import msal
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -21,6 +21,7 @@ from app.models.group import HelpdeskGroup
 from app.models.ticket import Comment, ProcessedEmail, Ticket, TicketEvent, TicketStatus
 from app.models.user import User
 from app.services import email_service
+from app.services.permissions import permissions_for
 
 TICKET_RE = re.compile(r"\[Ticket\s+#(\d+)\]", re.IGNORECASE)
 # Matches "O Seu Ticket de Apoio ao Cliente [Ticket #XX]" in the body
@@ -236,16 +237,37 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
         return False
 
     status_action = msg.get("status_action")
-    user = (await db.execute(select(User).where(User.email.ilike(msg["sender_email"])))).scalar_one_or_none()
+    sender = (msg.get("sender_email") or "").strip().lower()
+    user = (await db.execute(select(User).where(func.lower(User.email) == sender, User.is_active.is_(True)))).scalar_one_or_none() if sender else None
 
-    # For regular replies (no status change), require a registered sender and body
-    if not status_action:
-        if not user:
-            logger.info("Mail reply skipped: sender %s is not a helpdesk user", msg["sender_email"])
-            return False
-        if not msg["body"]:
-            logger.info("Mail reply skipped: empty body for ticket #%s from %s", msg["ticket_id"], msg["sender_email"])
-            return False
+    # Only people who are part of the ticket (or the support team) may reply by email; the From address is
+    # otherwise trivial to fake, so strangers must never be able to post or change a ticket
+    linked = bool(user) and (
+        user.id == ticket.creator_id
+        or user.id == ticket.assignee_id
+        or any(a.id == user.id for a in ticket.assignees)
+        or any(w.id == user.id for w in ticket.watchers)
+        or bool(ticket.group and any(m.id == user.id for m in ticket.group.members))
+        or "tickets.manage" in permissions_for(user)
+    )
+    from app.api.v1.settings import _read_settings
+    provider = (_read_settings().get("support_provider_email") or "").strip().lower()
+    is_provider = bool(provider) and sender == provider
+    if not linked and not (is_provider and status_action):
+        logger.info("Mail reply skipped: %s is not part of ticket #%s", sender, ticket.id)
+        return False
+
+    # Closing/resolving by email: only the requester, the support team or the configured support company
+    if status_action:
+        may_close = is_provider or (user is not None and (user.id == ticket.creator_id or "tickets.manage" in permissions_for(user)))
+        if not may_close:
+            logger.info("Mail status change ignored: %s may not close ticket #%s", sender, ticket.id)
+            status_action = None
+            msg["status_action"] = None
+
+    if not status_action and not msg.get("body"):
+        logger.info("Mail reply skipped: empty body for ticket #%s from %s", msg["ticket_id"], sender)
+        return False
 
     # Add comment from registered user
     private_to_id = await _private_partner(db, ticket.id, user.id) if user and msg.get("private") else None
@@ -364,7 +386,13 @@ def _parse_reply(msg: Message) -> dict | None:
     }
 
 
+NEGATED_STATUS_RE = re.compile(r"\bn[ãa]o\s+(?:est[áa]\s+|foi\s+|ficou\s+)?(?:fechado|resolvido|resolved|closed)\b", re.IGNORECASE)
+
+
 def _detect_status_action(subject: str) -> str | None:
+    # "não resolvido" / "not closed" style subjects must never close a ticket
+    if NEGATED_STATUS_RE.search(subject) or re.search(r"\bnot\s+(?:resolved|closed)\b", subject, re.IGNORECASE):
+        return None
     m = CLOSE_SUBJECT_RE.search(subject)
     if not m:
         return None

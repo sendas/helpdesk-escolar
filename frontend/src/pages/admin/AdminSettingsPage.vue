@@ -388,8 +388,8 @@
           </div>
           <p class="demo-warning">
             <span class="material-icons" style="font-size:16px">warning</span>
-            <span>O modo demo usa a base de dados real. Os pedidos criados em demo são tickets verdadeiros, e os perfis
-            <strong>Técnico</strong> e <strong>Administrador</strong> dão acesso aos tickets e utilizadores reais. Desative quando já não for preciso.</span>
+            <span>O modo demo usa a base de dados real: os pedidos criados em demo são tickets verdadeiros. Por segurança só existe o perfil
+            <strong>Docente</strong> (os perfis Técnico e Administrador davam acesso aos dados reais a qualquer visitante). Desative quando já não for preciso.</span>
           </p>
         </div>
           <p v-if="demoError" class="set-err">{{ demoError }}</p>
@@ -557,8 +557,6 @@ const demoError = ref('')
 const demoContentVisible = ref(false)
 const demoProfileOptions = [
   { role: 'teacher', label: 'Docente' },
-  { role: 'technician', label: 'Técnico' },
-  { role: 'admin', label: 'Administrador' },
 ]
 const uiDesign = ref<UiDesign>('modern')
 const designError = ref('')

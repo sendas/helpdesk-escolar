@@ -58,7 +58,8 @@ DEFAULT_SETTINGS = {
 PRIVATE_KEYS = {"teams_webhook_url", "teams_overdue_notified", "role_permissions_granted", "settings_migrations", "unread_tracking_since"}
 
 UI_DESIGNS = {"modern", "classic"}
-DEMO_PROFILES = ("teacher", "technician", "admin")
+# Public demo accounts may only be docentes: technician/admin demo access would expose real data to anyone
+DEMO_PROFILES = ("teacher",)
 
 
 class AzureSyncSettings(BaseModel):
@@ -95,7 +96,9 @@ class SuggestionEmailSettings(BaseModel):
 
 @router.get("/public")
 async def public_settings():
-    return {k: v for k, v in _read_settings().items() if k not in PRIVATE_KEYS}
+    data = {k: v for k, v in _read_settings().items() if k not in PRIVATE_KEYS}
+    data["demo_profiles"] = [p for p in (data.get("demo_profiles") or []) if p in DEMO_PROFILES] or ["teacher"]
+    return data
 
 
 @router.put("")
