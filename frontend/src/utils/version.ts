@@ -1,8 +1,18 @@
-export const APP_VERSION = '2.10.0'
+export const APP_VERSION = '2.10.1'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '16:12'
+export const APP_VERSION_TIME = '16:56'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.10.1',
+    date: '2026-09-29',
+    time: '16:56',
+    title: 'Quadro: escolher os tipos de pedido a mostrar',
+    changes: [
+      'No Quadro, o botão "Tipos de pedido" abre a lista das categorias com um visto: tire o visto às que não quer ver. A escolha fica guardada neste dispositivo e mostra quantos pedidos há de cada tipo.',
+      'Botões "Mostrar todos" e "Esconder todos" para mudar tudo de uma vez.',
+    ],
+  },
   {
     version: '2.10.0',
     date: '2026-09-29',

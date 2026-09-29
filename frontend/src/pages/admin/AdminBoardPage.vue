@@ -2,10 +2,26 @@
   <div class="hd-page board-page">
     <div class="board-toolbar">
       <input v-model="search" class="hd-input board-search" placeholder="Filtrar por assunto, nº ou pessoa…" />
-      <select v-model="categoryId" class="hd-select board-filter" @change="load">
-        <option value="">Todos os tipos de pedido</option>
-        <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-      </select>
+      <!-- Types of request shown on the board: untick the ones you do not want to see (remembered on this device) -->
+      <div class="type-filter" @click.stop>
+        <button type="button" class="hd-btn hd-btn-outline type-filter-btn" :class="{ active: hiddenCats.length }" :aria-expanded="typesOpen" @click="typesOpen = !typesOpen">
+          <span class="material-icons">tune</span> Tipos de pedido
+          <span v-if="hiddenCats.length" class="type-filter-badge">{{ hiddenCats.length }} oculto{{ hiddenCats.length > 1 ? 's' : '' }}</span>
+        </button>
+        <div v-if="typesOpen" class="type-filter-panel">
+          <div class="type-filter-title">Mostrar no quadro</div>
+          <label v-for="c in categories" :key="c.id" class="type-filter-opt">
+            <input type="checkbox" :checked="!hiddenCats.includes(c.id)" @change="toggleCat(c.id)" />
+            <span class="type-filter-dot" :style="{ background: c.color }"></span>
+            <span class="type-filter-name">{{ c.name }}</span>
+            <span class="type-filter-count">{{ countByCat(c.id) }}</span>
+          </label>
+          <div class="type-filter-actions">
+            <button type="button" class="hd-btn hd-btn-outline" @click="setHidden([])">Mostrar todos</button>
+            <button type="button" class="hd-btn hd-btn-outline" @click="setHidden(categories.map((c) => c.id))">Esconder todos</button>
+          </div>
+        </div>
+      </div>
       <select v-model="schoolId" class="hd-select board-filter" @change="load">
         <option value="">Todas as escolas</option>
         <option v-for="s in schools" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -113,7 +129,20 @@ const schools = ref<any[]>([])
 const loading = ref(true)
 const search = ref('')
 const schoolId = ref<number | ''>('')
-const categoryId = ref<number | ''>('')
+const HIDDEN_KEY = 'board_hidden_categories'
+const hiddenCats = ref<number[]>((() => { try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]') } catch { return [] } })())
+const typesOpen = ref(false)
+function setHidden(ids: number[]) {
+  hiddenCats.value = ids
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(ids)) } catch { /* private mode */ }
+}
+function toggleCat(id: number) {
+  setHidden(hiddenCats.value.includes(id) ? hiddenCats.value.filter((x) => x !== id) : [...hiddenCats.value, id])
+}
+function countByCat(id: number) {
+  return tickets.value.filter((t) => t.category?.id === id).length
+}
+function closeTypes() { typesOpen.value = false }
 const categories = ref<any[]>([])
 const mobileCol = ref('open')
 const onlyMine = ref(false)
@@ -122,7 +151,7 @@ const overCol = ref('')
 
 function visible(status: string) {
   const q = search.value.trim().toLowerCase().replace(/^t-/, '')
-  return tickets.value.filter((t) => t.status === status && (!q
+  return tickets.value.filter((t) => t.status === status && !hiddenCats.value.includes(t.category?.id) && (!q
     || String(t.id) === q
     || String(t.title).toLowerCase().includes(q)
     || String(t.creator?.display_name ?? '').toLowerCase().includes(q)))
@@ -132,7 +161,6 @@ async function load() {
   try {
     const params: any = { admin: true, size: 100 }
     if (schoolId.value) params.school_id = schoolId.value
-    if (categoryId.value) params.category_id = categoryId.value
     if (onlyMine.value && auth.user) params.assignee_id = auth.user.id
     const pages = await Promise.all(columns.map((c) => getTickets({ ...params, status: c.status })))
     tickets.value = pages.flatMap((p) => p.items)
@@ -174,9 +202,10 @@ function refreshSoon() {
 }
 const offs = [onRealtime('tickets.changed', refreshSoon), onRealtime('ticket.changed', refreshSoon),
   onRealtime('realtime.connected', (e) => { if (e.resumed) refreshSoon() })]
-onBeforeUnmount(() => { offs.forEach((off) => off()); if (refreshTimer) clearTimeout(refreshTimer) })
+onBeforeUnmount(() => { offs.forEach((off) => off()); if (refreshTimer) clearTimeout(refreshTimer); document.removeEventListener('click', closeTypes) })
 
 onMounted(async () => {
+  document.addEventListener('click', closeTypes)
   getSchools().then((s) => { schools.value = s }).catch(() => {})
   getCategories().then((c) => { categories.value = c }).catch(() => {})
   await load()
@@ -189,6 +218,21 @@ onMounted(async () => {
 .board-search { width: 260px; }
 .board-filter { width: auto; }
 .board-mine { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--c-text); }
+.type-filter { position: relative; }
+.type-filter-btn { font-size: 13px; padding: 7px 12px; }
+.type-filter-btn .material-icons { font-size: 17px; }
+.type-filter-btn.active { border-color: var(--c-primary); color: var(--c-primary); }
+.type-filter-badge { font-size: 11px; font-weight: 800; background: var(--c-primary-soft); color: var(--c-primary); border-radius: 999px; padding: 1px 8px; }
+.type-filter-panel { position: absolute; left: 0; top: calc(100% + 6px); z-index: 50; width: 280px; max-height: 60vh; overflow-y: auto; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; box-shadow: var(--shadow-md); padding: 10px; }
+.type-filter-title { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c-muted); padding: 2px 4px 8px; }
+.type-filter-opt { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-radius: 8px; cursor: pointer; font-size: 13.5px; color: var(--c-text); }
+.type-filter-opt:hover { background: var(--c-surface-soft); }
+.type-filter-opt input { width: 16px; height: 16px; accent-color: var(--c-primary); }
+.type-filter-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.type-filter-name { flex: 1; min-width: 0; }
+.type-filter-count { font-size: 12px; color: var(--c-muted); }
+.type-filter-actions { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--c-border); }
+.type-filter-actions .hd-btn { font-size: 12px; padding: 5px 10px; flex: 1; justify-content: center; }
 .board-note { margin-left: auto; font-size: 12.5px; color: var(--c-muted); }
 .board-empty { padding: 60px; text-align: center; color: var(--c-muted); }
 /* The 5 columns share the width (they only scroll sideways on narrow screens) */
