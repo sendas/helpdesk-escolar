@@ -69,10 +69,12 @@ def is_assignable_technician(user: User | None) -> bool:
     return bool(user and user.is_active and (user.role == UserRole.TECHNICIAN or user.is_technician))
 
 
-async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User) -> Ticket:
+async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User, allow_assignment: bool = False) -> Ticket:
+    """allow_assignment: keep data.assignee_ids even if the creator is not an admin (planned maintenance, set up
+    by the support team)."""
     group_id, assignee_id = await _resolve_route(db, data.category_id, data.school_id)
-    assignee_ids = [uid for uid in dict.fromkeys([assignee_id, *data.assignee_ids]) if uid is not None]
-    if creator.role != UserRole.ADMIN:
+    assignee_ids = [uid for uid in dict.fromkeys([*data.assignee_ids, assignee_id] if allow_assignment else [assignee_id, *data.assignee_ids]) if uid is not None]
+    if creator.role != UserRole.ADMIN and not allow_assignment:
         assignee_ids = [uid for uid in assignee_ids if uid == assignee_id]
     assignees = await validate_active_technicians(db, assignee_ids)
     if not assignee_id and assignees:
@@ -352,7 +354,7 @@ async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) ->
     return await get_ticket(db, ticket.id)
 
 
-async def add_comment(db: AsyncSession, ticket: Ticket, data: CommentCreate, author: User, private_recipients: list[User] | None = None) -> Comment:
+async def add_comment(db: AsyncSession, ticket: Ticket, data: CommentCreate, author: User, private_recipients: list[User] | None = None, mention_ids: list[int] | None = None) -> Comment:
     remind_at = None
     if data.remind_at:
         remind_at = data.remind_at
@@ -366,6 +368,7 @@ async def add_comment(db: AsyncSession, ticket: Ticket, data: CommentCreate, aut
         remind_at=remind_at,
         private_to_id=(private_recipients[0].id if private_recipients else None),
         private_recipients=list(private_recipients or []),
+        mention_ids=",".join(str(i) for i in (mention_ids or [])) or None,
     )
     db.add(comment)
     ticket.updated_at = datetime.utcnow()

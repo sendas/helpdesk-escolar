@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head><meta charset="utf-8"><title>Relatório de {{ month_label }}</title>
+<style>@media print { .noprint { display:none } body { margin: 0 } }</style></head>
+<body style="font-family: Arial, sans-serif; color:#1F2937; max-width: 720px; margin: 0 auto; padding: 16px;">
+  <div style="background:#3D52D5;color:#fff;padding:20px 24px;border-radius:8px 8px 0 0">
+    <div style="font-size:13px;opacity:.85">{{ org_name }} · Helpdesk</div>
+    <h1 style="margin:4px 0 0;font-size:24px">Relatório de {{ month_label }}</h1>
+  </div>
+  <div style="border:1px solid #E5E7EB;border-top:none;border-radius:0 0 8px 8px;padding:20px 24px">
+    <table style="width:100%;border-collapse:separate;border-spacing:8px 0;margin:0 -8px 18px">
+      <tr>
+        <td style="background:#EEF2FF;border-radius:8px;padding:14px;text-align:center;width:25%">
+          <div style="font-size:26px;font-weight:bold;color:#3D52D5">{{ created }}</div>
+          <div style="font-size:12px;color:#4B5563">pedidos novos</div>
+          <div style="font-size:11px;color:#6B7280;margin-top:2px">{% if created_delta > 0 %}+{{ created_delta }}{% else %}{{ created_delta }}{% endif %} face ao mês anterior</div>
+        </td>
+        <td style="background:#ECFDF5;border-radius:8px;padding:14px;text-align:center;width:25%">
+          <div style="font-size:26px;font-weight:bold;color:#059669">{{ resolved }}</div>
+          <div style="font-size:12px;color:#4B5563">resolvidos ou fechados</div>
+        </td>
+        <td style="background:#FFFBEB;border-radius:8px;padding:14px;text-align:center;width:25%">
+          <div style="font-size:26px;font-weight:bold;color:#D97706">{% if avg_resolution_hours is not none %}{{ avg_resolution_hours }} h{% else %}—{% endif %}</div>
+          <div style="font-size:12px;color:#4B5563">tempo médio até resolver</div>
+        </td>
+        <td style="background:#FDF2F8;border-radius:8px;padding:14px;text-align:center;width:25%">
+          <div style="font-size:26px;font-weight:bold;color:#DB2777">{% if rating_average is not none %}{{ rating_average }} ★{% else %}—{% endif %}</div>
+          <div style="font-size:12px;color:#4B5563">satisfação ({{ rating_count }} avaliações)</div>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 18px;color:#4B5563">Em aberto neste momento: <strong>{{ open_now }}</strong> pedidos.</p>
+
+    {% for title, rows in [("Pedidos por escola", by_school), ("Categorias mais pedidas", by_category), ("Resolvidos por técnico", by_technician)] %}
+    <h3 style="margin:20px 0 8px;font-size:15px">{{ title }}</h3>
+    {% if rows %}
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      {% set top = rows[0].count or 1 %}
+      {% for r in rows %}
+      <tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #F3F4F6;width:40%">{{ r.name }}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #F3F4F6">
+          <div style="background:#C7D2FE;height:10px;border-radius:5px;width:{{ (r.count * 100 / top)|round|int }}%"></div>
+        </td>
+        <td style="padding:6px 8px;border-bottom:1px solid #F3F4F6;text-align:right;width:50px"><strong>{{ r.count }}</strong></td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p style="color:#6B7280;margin:0">Sem dados neste mês.</p>
+    {% endif %}
+    {% endfor %}
+
+    <p style="color:#9CA3AF;font-size:12px;margin-top:24px">Gerado em {{ generated_at }}. Pedidos de contas de demonstração não são contados.</p>
+  </div>
+</body>
+</html>

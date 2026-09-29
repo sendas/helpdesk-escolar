@@ -159,5 +159,9 @@ async def detach(db: AsyncSession, table: str, row_id: int) -> None:
         await db.execute(text(sql), {"id": row_id})
 
 
+async def category_plan_count(db: AsyncSession, category_id: int) -> int:
+    return (await db.execute(text("SELECT COUNT(*) FROM scheduled_tickets WHERE category_id = :id"), {"id": category_id})).scalar_one()
+
+
 async def category_ticket_count(db: AsyncSession, category_id: int) -> int:
     return (await db.execute(text("SELECT COUNT(*) FROM tickets WHERE category_id = :id"), {"id": category_id})).scalar_one()

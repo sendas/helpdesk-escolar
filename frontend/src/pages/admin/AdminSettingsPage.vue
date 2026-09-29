@@ -307,6 +307,8 @@
       <!-- ───────── Comunicação ───────── -->
       <SupportChatSettings v-if="section === 'apoio'" @changed="loadSupportFlag" />
       <TeamsSettings v-if="section === 'teams'" />
+      <QuickRepliesSettings v-if="section === 'respostas'" />
+      <ReportSettings v-if="section === 'relatorio'" />
 
       <template v-if="section === 'email'">
         <section class="set-card">
@@ -498,6 +500,8 @@ import { setUiDesign, type UiDesign } from '../../composables/useUiDesign'
 import { api } from '../../boot/axios'
 import SupportChatSettings from '../../components/SupportChatSettings.vue'
 import TeamsSettings from '../../components/TeamsSettings.vue'
+import QuickRepliesSettings from '../../components/QuickRepliesSettings.vue'
+import ReportSettings from '../../components/ReportSettings.vue'
 import { getGroups, getUsers } from '../../api/users'
 
 const route = useRoute()
@@ -515,6 +519,7 @@ const navGroups = computed(() => [
     { key: 'escolas', label: 'Escolas', icon: 'account_balance', desc: 'Escolas que os utilizadores escolhem ao abrir um ticket.' },
     { key: 'encaminhamento', label: 'Encaminhamento', icon: 'alt_route', desc: 'Quem fica responsável por cada tipo de pedido.' },
     { key: 'empresa', label: 'Empresa de apoio', icon: 'handshake', desc: 'Empresa externa para onde se reportam os tickets.' },
+    { key: 'respostas', label: 'Respostas-modelo', icon: 'quickreply', desc: 'Respostas prontas a usar nos tickets.' },
   ] },
   { label: 'Comunicação', items: [
     { key: 'apoio', label: 'Apoio ao vivo', icon: 'support_agent', desc: 'Balão de chat para os docentes falarem com a equipa TIC em tempo real.',
@@ -522,6 +527,7 @@ const navGroups = computed(() => [
     { key: 'teams', label: 'Microsoft Teams', icon: 'groups', desc: 'Avisos do helpdesk num canal do Teams.',
       badge: teamsConfigured.value ? { text: 'Ligado', cls: 'on' } : null },
     { key: 'email', label: 'Email e notificações', icon: 'mail', desc: 'Testes de email e de notificações, e quem recebe as sugestões.' },
+    { key: 'relatorio', label: 'Relatório mensal', icon: 'summarize', desc: 'Resumo mensal enviado por email à Direção.' },
   ] },
   { label: 'Acesso', items: [
     { key: 'login', label: 'Ecrã de login', icon: 'login', desc: 'Aviso inicial e contacto para quem não tem acesso ao mail institucional.' },
@@ -629,7 +635,7 @@ onMounted(async () => {
     demoEnabled.value = settings.demo_mode_enabled === true
     demoContentVisible.value = settings.demo_content_visible === true
     demoProfiles.value = settings.demo_profiles?.length ? settings.demo_profiles : ['teacher']
-    suggestionEmailsRaw.value = (settings.suggestion_emails || []).join(', ')
+    api.get('/api/v1/settings/suggestion-emails').then((r) => { suggestionEmailsRaw.value = (r.data.suggestion_emails || []).join(', ') }).catch(() => {})
     supportEnabled.value = (settings as any).support_chat_enabled === true
     categories.value = cats
     schools.value = schs

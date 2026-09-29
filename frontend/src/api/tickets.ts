@@ -17,7 +17,7 @@ export interface TicketDetail extends TicketListItem { description: string; comm
 export interface PaginatedTickets { items: TicketListItem[]; total: number; page: number; size: number }
 export interface KnowledgeArticle { id: number; title: string; body: string; is_published: boolean; category_id?: number | null; category?: Category | null; updated_at: string }
 
-export async function getTickets(params: { page?: number; size?: number; status?: string; status_in?: string[]; overdue?: boolean; expiring?: boolean; category_id?: number; exclude_category_ids?: number[]; school_id?: number; priority?: string; search?: string; admin?: boolean; is_escalated?: boolean }) {
+export async function getTickets(params: { page?: number; size?: number; status?: string; status_in?: string[]; overdue?: boolean; expiring?: boolean; category_id?: number; exclude_category_ids?: number[]; school_id?: number; assignee_id?: number; priority?: string; search?: string; admin?: boolean; is_escalated?: boolean }) {
   const prefix = params.admin ? '/api/v1/admin' : '/api/v1'
   const p = { ...params }
   delete (p as any).admin
@@ -175,8 +175,8 @@ export async function markTicketUnread(id: number) {
   await api.post(`/api/v1/tickets/${id}/unread`)
 }
 
-export async function addComment(ticketId: number, body: string, is_internal = false, remind_at: string | null = null, private_to_ids: number[] = [], new_status: string | null = null) {
-  const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal, remind_at, private_to_ids, new_status })
+export async function addComment(ticketId: number, body: string, is_internal = false, remind_at: string | null = null, private_to_ids: number[] = [], new_status: string | null = null, mention_ids: number[] = []) {
+  const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal, remind_at, private_to_ids, new_status, mention_ids })
   return data
 }
 

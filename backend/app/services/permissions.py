@@ -21,6 +21,7 @@ PERMISSIONS: list[dict] = [
     {"key": "chat.support", "label": "Responder ao apoio ao vivo", "hint": "Atender os docentes no balão de apoio."},
     {"key": "users.manage", "label": "Gerir utilizadores e papéis", "hint": "Alterar papéis, grupos e contas."},
     {"key": "settings.manage", "label": "Configurações do sistema", "hint": "Configurações, categorias, escolas, emails e cópias de segurança."},
+    {"key": "mailbox.read", "label": "Ver a caixa de entrada do helpdesk", "hint": "Ler os emails da caixa do helpdesk e criar tickets a partir deles."},
 ]
 ALL_PERMISSIONS = {p["key"] for p in PERMISSIONS}
 STAFF_PERMISSIONS = {"tickets.view_all", "tickets.manage"}
@@ -32,9 +33,9 @@ DEFAULT_ROLES: list[dict] = [
     {"key": "direcao", "label": "Direção", "icon": "account_balance", "color": "#7C3AED",
      "permissions": ["tickets.view_all", "stats.view", "chat.team"], "sort": 40},
     {"key": "technician", "label": "Técnico", "icon": "build", "color": "#F59E0B",
-     "permissions": ["tickets.view_all", "tickets.manage", "stats.view", "chat.team", "chat.support"], "sort": 50},
+     "permissions": ["tickets.view_all", "tickets.manage", "stats.view", "chat.team", "chat.support", "mailbox.read"], "sort": 50},
     {"key": "tic", "label": "Equipa TIC", "icon": "computer", "color": "#0891B2",
-     "permissions": ["tickets.view_all", "tickets.manage", "stats.view", "knowledge.edit", "chat.team", "chat.support"], "sort": 60},
+     "permissions": ["tickets.view_all", "tickets.manage", "stats.view", "knowledge.edit", "chat.team", "chat.support", "mailbox.read"], "sort": 60},
     {"key": "admin", "label": "Administrador", "icon": "admin_panel_settings", "color": "#EF4444",
      "permissions": sorted(ALL_PERMISSIONS), "sort": 90},
 ]
@@ -59,7 +60,7 @@ async def load_roles(db: AsyncSession) -> None:
 
 
 # Permissions added after the first release: given once to the default papéis that already exist
-LATER_PERMISSIONS = ["chat.team", "chat.support"]
+LATER_PERMISSIONS = ["chat.team", "chat.support", "mailbox.read"]
 
 
 async def ensure_default_roles(db: AsyncSession) -> None:

@@ -14,6 +14,7 @@ KINDS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     "replies": ("Respostas", "Novas respostas nos tickets que fez, que tem atribuídos ou que segue.", ("email", "push")),
     "private": ("Mensagens privadas", "Mensagens privadas que lhe enviam dentro de um ticket.", ("email", "push")),
     "status": ("Mudanças de estado", "Quando um ticket fica a aguardar a sua resposta, é resolvido ou fechado.", ("email", "push")),
+    "mentions": ("Menções", "Quando alguém o menciona com @ numa resposta ou nota.", ("email", "push")),
     "reminders": ("Lembretes", "Os lembretes que marcou nos tickets.", ("email", "push")),
     "chat": ("Chat", "Mensagens no chat da equipa e do apoio ao vivo quando não está na aplicação.", ("push",)),
 }

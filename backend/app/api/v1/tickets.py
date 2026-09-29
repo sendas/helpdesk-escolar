@@ -12,7 +12,8 @@ from app.models.user import User, UserRole
 from app.models.ticket import Attachment, Comment, TicketEvent, TicketReminder, TicketStatus
 from app.models.category import Category
 from app.models.school import School
-from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, TicketListItem, CommentCreate, CommentRead, CommentUpdate, WatcherAdd
+from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, TicketListItem, CommentCreate, CommentRead, CommentUpdate, WatcherAdd, TicketRatingCreate, TicketRatingRead
+from app.models.planning import TicketRating
 from app.services import ticket_service, email_service, push_service, read_service
 from app.api.v1.settings import _read_settings
 from app.config import settings
@@ -129,6 +130,26 @@ async def _private_message_recipients(db: AsyncSession, ticket, sender: User, re
             )
         recipients.append(recipient)
     return recipients
+
+
+async def _allowed_mentions(db: AsyncSession, ticket, author: User, data, private_recipients: list[User]) -> list[User]:
+    """People mentioned with @ who may actually read the message: for a private message its participants, for an
+    internal note the support team, otherwise anyone who can open the ticket. Others are silently ignored."""
+    ids = [i for i in dict.fromkeys(data.mention_ids or []) if i and i != author.id][:20]
+    if not ids:
+        return []
+    users = (await db.execute(select(User).where(User.id.in_(ids), User.is_active.is_(True)))).scalars().all()
+    allowed = []
+    for u in users:
+        if private_recipients:
+            ok = u.id in {p.id for p in private_recipients}
+        elif data.is_internal:
+            ok = has_perm(u, "tickets.manage") or _is_staff(u)
+        else:
+            ok = _can_access_ticket(ticket, u) or has_perm(u, "tickets.view_all")
+        if ok:
+            allowed.append(u)
+    return allowed
 
 
 def _private_comment_visible(comment: Comment, user: User) -> bool:
@@ -448,10 +469,38 @@ async def get_ticket(
     if hide_demo and ticket.creator and ticket.creator.auth_provider == "demo":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     data = TicketRead.model_validate(ticket)
+    if current_user.id == ticket.creator_id or has_perm(current_user, "tickets.view_all") or _is_staff(current_user):
+        rating = (await db.execute(select(TicketRating).where(TicketRating.ticket_id == ticket.id))).scalar_one_or_none()
+        data.rating = TicketRatingRead.model_validate(rating) if rating else None
     await read_service.mark_read(db, current_user.id, [ticket.id])
     if hide_demo:
         data.comments = [c for c in data.comments if c.author is None or c.author.auth_provider != "demo"]
     return data
+
+
+@router.put("/{ticket_id}/rating", response_model=TicketRatingRead)
+async def rate_ticket(ticket_id: int, data: TicketRatingCreate, current_user: User = Depends(get_current_user),
+                      db: AsyncSession = Depends(get_db)):
+    """The requester rates the help received, once the ticket is resolved or closed (can change it later)."""
+    ticket = await ticket_service.get_ticket_for_access(db, ticket_id)
+    if not ticket or ticket.creator_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
+    if ticket.status not in (TicketStatus.RESOLVED, TicketStatus.CLOSED):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Só é possível avaliar depois de o pedido estar resolvido.")
+    if not 1 <= data.stars <= 5:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha entre 1 e 5 estrelas.")
+    rating = (await db.execute(select(TicketRating).where(TicketRating.ticket_id == ticket_id))).scalar_one_or_none()
+    comment = (data.comment or "").strip()[:2000] or None
+    if rating:
+        rating.stars, rating.comment, rating.updated_at = data.stars, comment, datetime.utcnow()
+    else:
+        rating = TicketRating(ticket_id=ticket_id, user_id=current_user.id, stars=data.stars, comment=comment)
+        db.add(rating)
+        db.add(TicketEvent(ticket_id=ticket_id, actor_id=current_user.id, event_type="rated",
+                           message=f"Avaliação do requerente: {'★' * data.stars}{'☆' * (5 - data.stars)}"))
+    await db.commit()
+    await db.refresh(rating)
+    return rating
 
 
 @router.patch("/{ticket_id}", response_model=TicketRead)
@@ -661,7 +710,11 @@ async def add_comment(
     if private_ids:
         private_recipients = await _private_message_recipients(db, ticket, current_user, private_ids)
         data.is_internal = False
-    comment = await ticket_service.add_comment(db, ticket, data, current_user, private_recipients)
+    mentioned = await _allowed_mentions(db, ticket, current_user, data, private_recipients)
+    comment = await ticket_service.add_comment(db, ticket, data, current_user, private_recipients, [u.id for u in mentioned])
+    if mentioned:
+        await notifications.notify_mentions(ticket, current_user, mentioned, data.body, internal=data.is_internal,
+                                            private=bool(private_recipients))
 
     if private_recipients:
         others = ", ".join(u.display_name for u in private_recipients)

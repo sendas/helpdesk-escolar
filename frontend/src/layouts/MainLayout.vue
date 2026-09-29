@@ -65,6 +65,15 @@
             <span class="material-icons">manage_search</span> Gestão de tickets
             <span v-if="adminOpenCount" class="hd-nav-badge">{{ adminOpenCount }}</span>
           </router-link>
+          <router-link v-if="auth.can('tickets.view_all') || auth.isStaff" class="hd-nav-item" :class="{ active: $route.path === '/admin/quadro' }" to="/admin/quadro" @click="mobileMenuOpen = false">
+            <span class="material-icons">view_kanban</span> Quadro
+          </router-link>
+          <router-link v-if="auth.can('mailbox.read')" class="hd-nav-item" :class="{ active: $route.path === '/admin/caixa-entrada' }" to="/admin/caixa-entrada" @click="mobileMenuOpen = false">
+            <span class="material-icons">inbox</span> Caixa de entrada
+          </router-link>
+          <router-link v-if="auth.isStaff" class="hd-nav-item" :class="{ active: $route.path === '/admin/manutencao' }" to="/admin/manutencao" @click="mobileMenuOpen = false">
+            <span class="material-icons">event_repeat</span> Manutenção planeada
+          </router-link>
           <router-link v-if="auth.isStaff || auth.can('users.manage')" class="hd-nav-item" :class="{ active: $route.path === '/admin/users' }" to="/admin/users" @click="mobileMenuOpen = false">
             <span class="material-icons">group</span> Utilizadores
           </router-link>
@@ -320,6 +329,9 @@ const titleMap: Record<string, string> = {
   '/about': 'Sobre',
   '/suggestions': 'Sugestões',
   '/admin/tickets': 'Gestão de tickets',
+  '/admin/quadro': 'Quadro de tickets',
+  '/admin/caixa-entrada': 'Caixa de entrada do helpdesk',
+  '/admin/manutencao': 'Manutenção planeada',
   '/admin/users': 'Utilizadores e permissões',
   '/admin/stats': 'Estatísticas',
   '/admin/suggestions': 'Sugestões recebidas',

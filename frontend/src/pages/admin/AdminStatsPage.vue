@@ -1,5 +1,13 @@
 <template>
   <div class="hd-page">
+    <div class="report-bar">
+      <label>Relatório mensal
+        <input v-model="reportMonth" type="month" class="hd-input" style="width:auto;padding:5px 10px" />
+      </label>
+      <button type="button" class="hd-btn hd-btn-outline" :disabled="openingReport" @click="openReport">
+        <span class="material-icons" style="font-size:16px">print</span> {{ openingReport ? 'A preparar…' : 'Ver / imprimir' }}
+      </button>
+    </div>
     <!-- KPI cards -->
     <div class="hd-grid-4" style="margin-bottom:24px">
       <div class="hd-stat" v-for="s in kpis" :key="s.label">
@@ -90,10 +98,39 @@
       </div>
     </div>
 
+    <!-- Requesters' satisfaction -->
+    <div class="hd-card rating-card" style="padding:20px;margin-top:20px">
+      <div style="font-weight:600;font-size:14px;margin-bottom:4px">Satisfação dos utilizadores</div>
+      <div style="font-size:12px;color:var(--c-muted);margin-bottom:16px">Avaliações dos pedidos concluídos, últimos {{ ratings?.days ?? 90 }} dias</div>
+      <div v-if="!ratings || !ratings.count" style="color:var(--c-muted);font-size:13px">Ainda não há avaliações. Os requerentes podem avaliar cada pedido quando é resolvido ou fechado.</div>
+      <div v-else class="rating-layout">
+        <div class="rating-avg">
+          <div class="rating-avg-value">{{ ratings.average?.toFixed(1) }}</div>
+          <div class="rating-avg-stars">{{ '★'.repeat(Math.round(ratings.average ?? 0)) }}<span>{{ '★'.repeat(5 - Math.round(ratings.average ?? 0)) }}</span></div>
+          <div style="font-size:12px;color:var(--c-muted)">{{ ratings.count }} avaliaç{{ ratings.count === 1 ? 'ão' : 'ões' }}</div>
+        </div>
+        <div class="rating-bars">
+          <div v-for="n in [5, 4, 3, 2, 1]" :key="n" class="rating-bar-row">
+            <span>{{ n }} ★</span>
+            <div class="rating-bar"><div :style="{ width: ratingPct(n) + '%' }"></div></div>
+            <span class="rating-bar-count">{{ ratings.distribution[String(n)] }}</span>
+          </div>
+        </div>
+        <div class="rating-comments">
+          <router-link v-for="c in ratings.recent_comments" :key="c.ticket_id" :to="`/tickets/${c.ticket_id}`" class="rating-comment-item">
+            <span class="rating-comment-stars">{{ '★'.repeat(c.stars) }}</span> “{{ c.comment }}”
+            <small>T-{{ c.ticket_id }} · {{ c.title }}</small>
+          </router-link>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref as _ref, computed as _computed } from 'vue'
+import { api as _api } from '../../boot/axios'
+import { notifyError as _notifyError } from '../../utils/feedback'
 import { STATUS_LABELS } from '../../utils/ticketStatus'
 import { ref, computed, onMounted } from 'vue'
 import { Bar, Doughnut } from 'vue-chartjs'
@@ -195,9 +232,51 @@ function formatDateTime(value?: string | null) {
   if (!value) return '—'
   return new Intl.DateTimeFormat('pt-PT', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
 }
+
+const ratings = _computed<any>(() => (stats.value as any)?.ratings ?? null)
+function ratingPct(n: number) {
+  const r = ratings.value
+  if (!r || !r.count) return 0
+  return Math.round((r.distribution[String(n)] / r.count) * 100)
+}
+
+// Monthly report (the one emailed to the Direção), printable: Imprimir → Guardar como PDF
+const _prev = new Date(); _prev.setDate(1); _prev.setMonth(_prev.getMonth() - 1)
+const reportMonth = _ref(`${_prev.getFullYear()}-${String(_prev.getMonth() + 1).padStart(2, '0')}`)
+const openingReport = _ref(false)
+async function openReport() {
+  const win = window.open('', '_blank')
+  openingReport.value = true
+  try {
+    const { data } = await _api.get('/api/v1/admin/report/html', { params: { month: reportMonth.value }, responseType: 'text' })
+    if (win) { win.document.open(); win.document.write(data); win.document.close() }
+  } catch (e) {
+    win?.close()
+    _notifyError(e, 'Não foi possível gerar o relatório.')
+  } finally {
+    openingReport.value = false
+  }
+}
 </script>
 
 <style scoped>
+.report-bar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.report-bar label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--c-muted); }
+.rating-layout { display: grid; grid-template-columns: 140px minmax(0, 1fr) minmax(0, 1.3fr); gap: 24px; align-items: start; }
+@media (max-width: 900px) { .rating-layout { grid-template-columns: 1fr; } }
+.rating-avg { text-align: center; }
+.rating-avg-value { font-size: 40px; font-weight: 800; line-height: 1; }
+.rating-avg-stars { color: #F59E0B; font-size: 18px; letter-spacing: 1px; margin: 4px 0; }
+.rating-avg-stars span { color: #D1D5DB; }
+.rating-bar-row { display: grid; grid-template-columns: 36px 1fr 30px; align-items: center; gap: 8px; font-size: 12.5px; margin-bottom: 6px; }
+.rating-bar { height: 8px; border-radius: 4px; background: var(--c-border); overflow: hidden; }
+.rating-bar div { height: 100%; background: #F59E0B; border-radius: 4px; }
+.rating-bar-count { text-align: right; color: var(--c-muted); }
+.rating-comments { display: flex; flex-direction: column; gap: 8px; }
+.rating-comment-item { display: block; font-size: 13px; color: var(--c-text); text-decoration: none; padding: 8px 10px; border: 1px solid var(--c-border); border-radius: 10px; }
+.rating-comment-item:hover { border-color: var(--c-primary); }
+.rating-comment-item small { display: block; color: var(--c-muted); margin-top: 2px; }
+.rating-comment-stars { color: #F59E0B; }
 .stats-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;

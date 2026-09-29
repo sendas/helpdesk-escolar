@@ -70,6 +70,12 @@ async def delete_category(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Não é possível apagar esta categoria: tem {in_use} ticket(s). Mude primeiro a categoria desses tickets.",
         )
+    planned = await db_maintenance.category_plan_count(db, category.id)
+    if planned:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Não é possível apagar esta categoria: é usada em {planned} manutenção(ões) planeada(s).",
+        )
     await db_maintenance.detach(db, "categories", category.id)
     await db.delete(category)
     await db.commit()

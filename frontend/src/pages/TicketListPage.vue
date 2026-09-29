@@ -29,6 +29,10 @@
           <span class="material-icons">done_all</span> Marcar todos como lidos
         </button>
         <div class="list-toolbar-end">
+          <div class="view-switch" role="group" aria-label="Vista">
+            <button type="button" :class="{ on: viewMode === 'rows' }" title="Lista" aria-label="Vista em lista" @click="setView('rows')"><span class="material-icons">view_agenda</span></button>
+            <button type="button" :class="{ on: viewMode === 'table' }" title="Tabela compacta" aria-label="Vista em tabela" @click="setView('table')"><span class="material-icons">table_rows</span></button>
+          </div>
           <CategoryFilterButton :categories="categories" @changed="onHiddenChanged" />
         </div>
       </div>
@@ -40,7 +44,11 @@
         <button class="hd-btn hd-btn-outline" type="button" @click="load()">Tentar novamente</button>
       </div>
       <template v-else>
-        <div v-if="useCards" class="tcards">
+        <div v-if="viewMode === 'rows'" class="trows">
+          <TicketRow v-for="t in activeTickets" :key="'r' + t.id" :ticket="t" @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" />
+          <div v-if="!activeTickets.length" class="tcards-empty">{{ onlyUnread ? 'Não há tickets por ler.' : searchQuery.trim() ? `Nenhum ticket encontrado para "${searchQuery.trim()}".` : 'Sem tickets em aberto.' }}</div>
+        </div>
+        <div v-else-if="useCards" class="tcards">
           <TicketCard v-for="t in activeTickets" :key="'c' + t.id" :ticket="t" @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" />
           <div v-if="!activeTickets.length" class="tcards-empty">{{ onlyUnread ? 'Não há tickets por ler.' : searchQuery.trim() ? `Nenhum ticket encontrado para "${searchQuery.trim()}".` : 'Sem tickets em aberto.' }}</div>
         </div>
@@ -88,10 +96,13 @@
           </button>
         </div>
 
-        <div v-if="useCards && showCompleted && completedTickets.length" class="tcards">
+        <div v-if="viewMode === 'rows' && showCompleted && completedTickets.length" class="trows">
+          <TicketRow v-for="t in completedTickets" :key="'rd' + t.id" :ticket="t" done @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" />
+        </div>
+        <div v-if="viewMode === 'table' && useCards && showCompleted && completedTickets.length" class="tcards">
           <TicketCard v-for="t in completedTickets" :key="'d' + t.id" :ticket="t" done @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" />
         </div>
-        <table v-if="!useCards && showCompleted && completedTickets.length" class="hd-table completed-table list-table">
+        <table v-if="viewMode === 'table' && !useCards && showCompleted && completedTickets.length" class="hd-table completed-table list-table">
           <colgroup>
             <col style="width:88px" /><col /><col style="width:13%" /><col style="width:10%" />
             <col style="width:17%" /><col style="width:64px" /><col style="width:13%" /><col style="width:84px" />
@@ -138,6 +149,12 @@ import { useQuasar } from 'quasar'
 // Tablets and phones: cards like an inbox; wide screens: the table
 const $q = useQuasar()
 const useCards = _computed(() => $q.screen.width <= 1280)
+// "Lista" (default, like the Painel inicial) or the compact table, remembered on this device
+const viewMode = ref<'rows' | 'table'>((() => { try { return localStorage.getItem('tickets_view') === 'table' ? 'table' : 'rows' } catch { return 'rows' } })())
+function setView(v: 'rows' | 'table') {
+  viewMode.value = v
+  try { localStorage.setItem('tickets_view', v) } catch { /* private mode */ }
+}
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { getTickets, getCategories, markTicketsRead } from '../api/tickets'
 import { onRealtime } from '../services/realtime'
@@ -148,6 +165,7 @@ import CategoryFilterButton from '../components/CategoryFilterButton.vue'
 import PersonName from '../components/PersonName.vue'
 import ReminderChip from '../components/ReminderChip.vue'
 import TicketCard from '../components/TicketCard.vue'
+import TicketRow from '../components/TicketRow.vue'
 import TicketActions from '../components/TicketActions.vue'
 import { schoolInitials } from '../utils/names'
 import { errorMessage, notifyError } from '../utils/feedback'
@@ -314,6 +332,12 @@ function statusLabel(s: string, short = false) {
 </script>
 
 <style scoped>
+.trows { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.view-switch { display: inline-flex; border: 1px solid var(--c-border); border-radius: 10px; overflow: hidden; margin-right: 8px; vertical-align: middle; }
+.view-switch button { border: 0; background: var(--c-surface); color: var(--c-muted); padding: 5px 9px; cursor: pointer; display: inline-flex; }
+.view-switch button.on { background: var(--c-primary-soft); color: var(--c-primary); }
+.view-switch .material-icons { font-size: 18px; }
+.list-toolbar-end { display: flex; align-items: center; }
 /* A status never spills into the next column */
 .list-table td .hd-status { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-error { padding: 40px 16px; text-align: center; color: var(--c-muted); display: flex; flex-direction: column; align-items: center; gap: 10px; }

@@ -42,6 +42,16 @@ DEFAULT_SETTINGS = {
     "ui_design": "modern",
     # Dark mode look for everyone: "grey" (dark grey/blue) or "black" (true black, for OLED screens)
     "dark_style": "grey",
+    # Ready-made replies on the ticket page (editable in Configurações → Respostas-modelo)
+    "quick_replies": [
+        {"label": "Pedido recebido", "body": "O pedido foi recebido e está em análise. Daremos feedback assim que possível.", "status": ""},
+        {"label": "Preciso de mais dados", "body": "Para conseguirmos avançar, pode indicar mais detalhes sobre o problema e, se possível, anexar uma captura de ecrã?", "status": "waiting_user"},
+        {"label": "Resolvido ✓", "body": "A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.", "status": "closed"},
+    ],
+    # Monthly report for the Direção (sent on the 1st of each month)
+    "report_enabled": False,
+    "report_recipients": [],
+    "report_last_sent": "",
     "demo_mode_enabled": False,
     "demo_profiles": ["teacher"],
     "demo_content_visible": False,
@@ -63,7 +73,8 @@ DEFAULT_SETTINGS = {
 }
 
 # Never sent by /settings/public (the Teams address lets anyone post in the channel)
-PRIVATE_KEYS = {"teams_webhook_url", "teams_overdue_notified", "role_permissions_granted", "settings_migrations", "unread_tracking_since"}
+PRIVATE_KEYS = {"teams_webhook_url", "teams_overdue_notified", "role_permissions_granted", "settings_migrations", "unread_tracking_since",
+                "quick_replies", "report_recipients", "report_last_sent", "suggestion_emails", "azure_allowed_onprem_ous"}
 
 UI_DESIGNS = {"modern", "classic"}
 # Public demo accounts may only be docentes: technician/admin demo access would expose real data to anyone
@@ -199,6 +210,58 @@ async def update_design(payload: DesignSettings, _: User = Depends(require_perm(
     return {"ui_design": data["ui_design"]}
 
 
+class QuickReply(BaseModel):
+    label: str
+    body: str
+    status: str = ""
+
+
+class QuickRepliesPayload(BaseModel):
+    replies: list[QuickReply]
+
+
+_REPLY_STATES = {"", "open", "assigned", "in_progress", "waiting_user", "resolved", "closed"}
+
+
+@router.get("/quick-replies")
+async def get_quick_replies(_: User = Depends(require_perm("tickets.manage"))):
+    return {"replies": _read_settings().get("quick_replies") or []}
+
+
+@router.put("/quick-replies")
+async def update_quick_replies(payload: QuickRepliesPayload, _: User = Depends(require_perm("settings.manage"))):
+    replies = []
+    for r in payload.replies[:20]:
+        label, body = r.label.strip()[:40], r.body.strip()[:4000]
+        if not label or not body:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cada resposta-modelo precisa de um nome e de um texto.")
+        if r.status not in _REPLY_STATES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Estado inválido numa resposta-modelo.")
+        replies.append({"label": label, "body": body, "status": r.status})
+    _update_settings({"quick_replies": replies})
+    return {"replies": replies}
+
+
+class ReportSettings(BaseModel):
+    enabled: bool = False
+    recipients: list[str] = []
+
+
+@router.get("/report")
+async def get_report_settings(_: User = Depends(require_perm("settings.manage"))):
+    s = _read_settings()
+    return {"enabled": bool(s.get("report_enabled")), "recipients": s.get("report_recipients") or [], "last_sent": s.get("report_last_sent") or ""}
+
+
+@router.put("/report")
+async def update_report_settings(payload: ReportSettings, _: User = Depends(require_perm("settings.manage"))):
+    recipients = [e.strip().lower() for e in payload.recipients if e.strip()]
+    if any("@" not in e for e in recipients):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Há um email inválido na lista.")
+    data = _update_settings({"report_enabled": payload.enabled, "report_recipients": recipients[:20]})
+    return {"enabled": data["report_enabled"], "recipients": data["report_recipients"], "last_sent": data.get("report_last_sent") or ""}
+
+
 @router.put("/dark-style")
 async def update_dark_style(payload: DarkStyleSettings, _: User = Depends(require_perm("settings.manage"))):
     if payload.style not in {"grey", "black"}:
@@ -297,6 +360,11 @@ async def test_teams(payload: TeamsSettings, current_user: User = Depends(requir
     if not ok:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
     return {"ok": True}
+
+
+@router.get("/suggestion-emails")
+async def get_suggestion_emails(_: User = Depends(require_perm("settings.manage"))):
+    return {"suggestion_emails": _read_settings().get("suggestion_emails") or []}
 
 
 @router.put("/suggestion-emails")

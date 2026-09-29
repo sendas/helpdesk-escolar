@@ -155,49 +155,18 @@
           </button>
         </div>
 
-        <template v-if="contactSent">
-          <p style="font-size:13.5px;line-height:1.6;color:var(--c-text)">
-            <span class="material-icons" style="font-size:18px;color:#22C55E;vertical-align:-3px;margin-right:4px">check_circle</span>
-            Mensagem enviada. Vamos entrar em contacto assim que possível.
-          </p>
-          <div class="modal-actions">
-            <button class="hd-btn hd-btn-primary" @click="closeContactForm">Fechar</button>
-          </div>
-        </template>
-        <template v-else>
-          <p style="font-size:12.5px;color:var(--c-muted);margin:0 0 14px;line-height:1.5">
-            Preencha os seus dados. Vamos responder para o email que indicar (pode ser o seu email pessoal).
-          </p>
-          <div v-if="contactError" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:13px;color:#DC2626;margin-bottom:14px">
-            {{ contactError }}
-          </div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <input class="hd-input" v-model="contactForm.name" placeholder="Nome do docente" />
-            <input class="hd-input" v-model="contactForm.email" type="email" autocomplete="email" placeholder="Email para resposta (obrigatório)" />
-            <input class="hd-input" v-model="contactForm.phone" type="tel" autocomplete="tel" placeholder="Contacto telefónico" />
-            <input class="hd-input" v-model="contactForm.recruitment_group" placeholder="Grupo de recrutamento (ex: 550)" />
-            <input class="hd-input" v-model="contactForm.school" placeholder="Escola onde leciona" />
-            <textarea class="hd-textarea" v-model="contactForm.message" rows="4" placeholder="Mensagem"></textarea>
-          </div>
-          <div class="modal-actions">
-            <button class="hd-btn hd-btn-outline" @click="closeContactForm">Cancelar</button>
-            <button class="hd-btn hd-btn-primary" :disabled="contactSending || !contactForm.name.trim() || !contactEmailValid || !contactForm.message.trim()" @click="submitContactForm">
-              <span class="material-icons" style="font-size:16px">{{ contactSending ? 'hourglass_empty' : 'send' }}</span>
-              {{ contactSending ? 'A enviar...' : 'Enviar' }}
-            </button>
-          </div>
-        </template>
+        <NoAccessContactForm @close="closeContactForm" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import NoAccessContactForm from '../components/NoAccessContactForm.vue'
 import { errorMessage } from '../utils/feedback'
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { getPublicSettings } from '../api/settings'
-import { sendNoAccessContact } from '../api/auth'
 import DemoLoginPicker from '../components/DemoLoginPicker.vue'
 import { applyFavicon } from '../utils/branding'
 import { versionLabel } from '../utils/version'
@@ -216,11 +185,6 @@ const loginNoticeText = ref('')
 const demoProfiles = ref<string[]>([])
 
 const showContactForm = ref(false)
-const contactSending = ref(false)
-const contactSent = ref(false)
-const contactError = ref('')
-const contactEmailValid = computed(() => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contactForm.value.email.trim()))
-const contactForm = ref({ name: '', email: '', phone: '', recruitment_group: '', school: '', message: '' })
 
 const features = [
   { title: 'Aberto → Atribuído → Em Curso → Resolvido', sub: 'Estados claros e auditáveis', color: '#0D9488', icon: 'task_alt' },
@@ -269,9 +233,6 @@ async function onAdLogin() {
 }
 
 function openContactForm() {
-  contactSent.value = false
-  contactError.value = ''
-  contactForm.value = { name: '', email: '', phone: '', recruitment_group: '', school: '', message: '' }
   showContactForm.value = true
 }
 
@@ -279,26 +240,6 @@ function closeContactForm() {
   showContactForm.value = false
 }
 
-async function submitContactForm() {
-  if (contactSending.value) return
-  contactSending.value = true
-  contactError.value = ''
-  try {
-    await sendNoAccessContact({
-      name: contactForm.value.name.trim(),
-      email: contactForm.value.email.trim(),
-      phone: contactForm.value.phone.trim(),
-      recruitment_group: contactForm.value.recruitment_group.trim(),
-      school: contactForm.value.school.trim(),
-      message: contactForm.value.message.trim(),
-    })
-    contactSent.value = true
-  } catch (e: any) {
-    contactError.value = errorMessage(e, 'Não foi possível enviar a mensagem. Tente novamente.')
-  } finally {
-    contactSending.value = false
-  }
-}
 </script>
 
 <style scoped>

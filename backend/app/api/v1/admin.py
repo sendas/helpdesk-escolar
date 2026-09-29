@@ -351,6 +351,7 @@ async def admin_stats(
     )).scalar_one()
     avg_resolution_hours = round(avg_days * 24, 1) if avg_days is not None else None
 
+    ratings = await _rating_stats(db)
     access_stats = await _build_access_stats(db)
 
     return {
@@ -361,12 +362,74 @@ async def admin_stats(
         "by_category": by_category,
         "weekly": weekly,
         "avg_resolution_hours": avg_resolution_hours,
+        "ratings": ratings,
         "by_assignee": by_assignee,
         "user_count": user_count,
         "category_count": category_count,
         "staff_count": staff_count,
         "access": access_stats,
     }
+
+
+def _month_arg(month: str | None) -> tuple[int, int]:
+    from app.services.report_service import previous_month
+    if not month:
+        return previous_month()
+    try:
+        y, m = (int(x) for x in month.split("-"))
+        if not 1 <= m <= 12:
+            raise ValueError
+        return y, m
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mês inválido (use AAAA-MM).") from exc
+
+
+@router.get("/report")
+async def monthly_report(month: str | None = None, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("stats.view"))):
+    from app.services import report_service
+    return await report_service.build_report(db, *_month_arg(month))
+
+
+@router.get("/report/html")
+async def monthly_report_html(month: str | None = None, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("stats.view"))):
+    """Printable version (Imprimir → Guardar como PDF)."""
+    from fastapi.responses import HTMLResponse
+    from app.services import report_service
+    report = await report_service.build_report(db, *_month_arg(month))
+    return HTMLResponse(report_service.render_html(report, _read_settings().get("org_name") or "Helpdesk"))
+
+
+@router.post("/report/send")
+async def send_monthly_report(month: str | None = None, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
+    from app.services import report_service
+    recipients = _read_settings().get("report_recipients") or []
+    if not recipients:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Indique primeiro para que emails se envia o relatório.")
+    try:
+        report = await report_service.send_report(db, *_month_arg(month), recipients)
+    except Exception as exc:
+        logger.exception("Envio do relatório mensal falhou")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"O email não foi enviado: {exc}") from exc
+    return {"sent_to": recipients, "month_label": report["month_label"]}
+
+
+async def _rating_stats(db: AsyncSession, days: int = 90) -> dict:
+    """Requesters' ratings of the last `days` days: average, how many of each and the latest comments."""
+    from app.models.planning import TicketRating
+    since = datetime.utcnow() - timedelta(days=days)
+    rows = (await db.execute(
+        select(TicketRating, Ticket.title).join(Ticket, Ticket.id == TicketRating.ticket_id)
+        .where(TicketRating.created_at >= since).order_by(TicketRating.created_at.desc())
+    )).all()
+    dist = {str(i): 0 for i in range(1, 6)}
+    for r, _ in rows:
+        dist[str(r.stars)] += 1
+    avg = round(sum(r.stars for r, _ in rows) / len(rows), 2) if rows else None
+    recent = [
+        {"ticket_id": r.ticket_id, "title": title, "stars": r.stars, "comment": r.comment, "created_at": r.created_at.isoformat()}
+        for r, title in rows if r.comment
+    ][:8]
+    return {"average": avg, "count": len(rows), "distribution": dist, "recent_comments": recent, "days": days}
 
 
 async def _build_access_stats(db: AsyncSession) -> dict:

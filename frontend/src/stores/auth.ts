@@ -44,7 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
   const isStaff = computed(() => realIsStaff.value && !inPreview.value)
   // Can open the "Administração" area (manage or only supervise)
-  const hasAdminArea = computed(() => ['tickets.view_all', 'tickets.manage', 'stats.view', 'users.manage', 'settings.manage'].some(can))
+  const hasAdminArea = computed(() => ['tickets.view_all', 'tickets.manage', 'stats.view', 'users.manage', 'settings.manage', 'mailbox.read'].some(can))
 
   function setPreviewAsUser(on: boolean) {
     previewAsUser.value = on

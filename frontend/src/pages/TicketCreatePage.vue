@@ -87,7 +87,8 @@
       <div class="hd-field" :class="{ 'field-missing': !form.description.trim() }" style="margin-bottom:20px">
         <label class="hd-label">Descrição <span class="hd-label-hint">*</span></label>
         <textarea class="hd-textarea" v-model="form.description" rows="5"
-          placeholder="Descreva o problema com o máximo de detalhe: o que aconteceu, quando começou, o que já tentou..."
+          placeholder="Descreva o problema com o máximo de detalhe: o que aconteceu, quando começou, o que já tentou... (pode colar aqui capturas de ecrã)"
+          @paste="onPasteImage"
         ></textarea>
         <p class="hd-hint">Inclua, se possível, número da sala, equipamento e horário em que precisa de resolução.</p>
       </div>
@@ -374,6 +375,16 @@ function onFilesPicked(event: Event) {
 
 function onDrop(event: DragEvent) {
   addFiles(event.dataTransfer?.files ?? null)
+}
+
+// A screenshot pasted into the description becomes an attachment
+function onPasteImage(e: ClipboardEvent) {
+  const item = Array.from(e.clipboardData?.items ?? []).find((i) => i.kind === 'file' && i.type.startsWith('image/'))
+  const file = item?.getAsFile()
+  if (!file) return
+  e.preventDefault()
+  const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png'
+  files.value.push(new File([file], `captura-${files.value.length + 1}.${ext}`, { type: file.type }))
 }
 
 function addFiles(list: FileList | null) {

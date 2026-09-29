@@ -20,8 +20,12 @@ class DemoLoginRequest(BaseModel):
 
 
 class NoAccessContactRequest(BaseModel):
+    profile: str = Field("docente", max_length=20)  # docente | nao_docente | aluno
     name: str = Field(..., min_length=1, max_length=200)
-    email: str = Field(..., min_length=3, max_length=200)
+    email: str = Field("", max_length=200)
+    student_number: str = Field("", max_length=20)
+    year: str = Field("", max_length=10)
+    class_name: str = Field("", max_length=10)
     phone: str = Field("", max_length=40)
     recruitment_group: str = Field("", max_length=200)
     school: str = Field("", max_length=200)
@@ -205,12 +209,26 @@ async def no_access_contact(data: NoAccessContactRequest, request: Request):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envio de email não configurado no servidor.")
 
     contact_email = data.email.strip()
-    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", contact_email):
+    profile = data.profile if data.profile in {"docente", "nao_docente", "aluno"} else "docente"
+    if profile == "aluno":
+        # Students often have no email: the card number, year, class and school identify them
+        if not re.fullmatch(r"[aA]\d{3,8}", data.student_number.strip()):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Indique o número do cartão de aluno (ex.: a12345).")
+        if not data.year.strip() or not data.class_name.strip() or not data.school.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Indique o ano, a turma e a escola.")
+        if contact_email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", contact_email):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O email indicado não é válido.")
+    elif not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", contact_email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Indique um email válido para podermos responder.")
 
     await email_service.send_no_access_contact(
         to_email,
         {
+            "profile": {"docente": "Docente", "nao_docente": "Não docente", "aluno": "Aluno"}[profile],
+            "is_student": profile == "aluno",
+            "student_number": data.student_number.strip().lower(),
+            "year": data.year.strip(),
+            "class_name": data.class_name.strip().upper(),
             "name": data.name.strip(),
             "email": contact_email,
             "phone": data.phone.strip(),

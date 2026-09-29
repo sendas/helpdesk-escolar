@@ -12,6 +12,11 @@
       <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Título</td><td style="padding:8px">{{ title }}</td></tr>
       <tr><td style="padding:8px; font-weight:bold">Estado</td><td style="padding:8px">{{ status }}</td></tr>
     </table>
+    {% if ticket_url and status in ("Resolvido", "Fechado") %}
+    <p style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:12px 14px;margin:18px 0 0">
+      ⭐ Como correu? <a href="{{ ticket_url }}?avaliar=1">Avalie o atendimento</a> — leva 10 segundos e ajuda-nos a melhorar.
+    </p>
+    {% endif %}
     {% if ticket_url %}
     <p style="margin:24px 0 10px">
       <a href="{{ ticket_url }}" style="background:#FF8F00;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;display:inline-block;font-weight:bold">Abrir ticket</a>

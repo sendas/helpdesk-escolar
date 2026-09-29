@@ -218,6 +218,26 @@
           </div>
           </div>
 
+          <!-- The requester rates the help once the ticket is finished -->
+          <div v-if="canRate" id="avaliar" class="hd-card rate-card" :class="{ highlight: rateHighlight }">
+            <div class="rate-title">{{ ticket.rating ? 'A sua avaliação' : 'Como correu o atendimento?' }}</div>
+            <div class="rate-stars" role="radiogroup" aria-label="Avaliação de 1 a 5 estrelas">
+              <button v-for="n in 5" :key="n" type="button" class="rate-star" :class="{ on: n <= (rateHover || rateStars) }"
+                      role="radio" :aria-checked="rateStars === n" :aria-label="`${n} estrela${n > 1 ? 's' : ''}`"
+                      @mouseenter="rateHover = n" @mouseleave="rateHover = 0" @click="rateStars = n">
+                <span class="material-icons">{{ n <= (rateHover || rateStars) ? 'star' : 'star_border' }}</span>
+              </button>
+              <span class="rate-hint">{{ ['', 'Muito mau', 'Mau', 'Razoável', 'Bom', 'Excelente'][rateHover || rateStars] }}</span>
+            </div>
+            <textarea v-model="rateComment" class="hd-textarea" rows="2" placeholder="Comentário (opcional)"></textarea>
+            <div class="rate-actions">
+              <span v-if="rateSaved" class="rate-saved"><span class="material-icons">check_circle</span> Obrigado pela sua avaliação!</span>
+              <button type="button" class="hd-btn hd-btn-primary" :disabled="!rateStars || rateSaving" @click="saveRating">
+                {{ rateSaving ? 'A guardar…' : ticket.rating ? 'Atualizar avaliação' : 'Enviar avaliação' }}
+              </button>
+            </div>
+          </div>
+
           <div v-if="!canReply && !privateOnly" class="hd-card read-only-note">
             <span class="material-icons">visibility</span>
             Está a consultar este ticket em modo de leitura — o seu papel permite ver todos os tickets, mas não responder nem alterá-los.
@@ -262,20 +282,32 @@
                 v-for="reply in quickReplies"
                 :key="reply.label"
                 class="quick-reply"
-                :class="{ 'quick-reply-active': reply.autoClose && replyStatus === 'closed' }"
+                :class="{ 'quick-reply-active': reply.status && replyStatus === reply.status }"
                 type="button"
-                @click="newComment = reply.body; if (reply.autoClose) replyStatus = 'closed'"
+                :title="reply.status ? 'Também muda o estado para ' + statusLabel(reply.status) : ''"
+                @click="newComment = reply.body; if (reply.status) replyStatus = reply.status"
               >
                 {{ reply.label }}
               </button>
             </div>
             <textarea
               class="hd-textarea"
+              ref="replyBox"
               v-model="newComment"
               rows="4"
-              :placeholder="privateOn ? 'Escreva a mensagem privada...' : 'Escreva a sua resposta...'"
-              @input="onReplyTyping"
+              :placeholder="privateOn ? 'Escreva a mensagem privada...' : 'Escreva a sua resposta... (@ para mencionar alguém; pode colar imagens)'"
+              @input="onReplyTyping(); onMentionInput()"
+              @keydown="onMentionKey"
+              @paste="onPasteImage"
+              @blur="closeMentionsSoon"
             ></textarea>
+            <div v-if="mentionOpen && mentionMatches.length" class="mention-menu" role="listbox">
+              <button v-for="(u, i) in mentionMatches" :key="u.id" type="button" class="mention-item" :class="{ active: i === mentionIndex }"
+                      role="option" :aria-selected="i === mentionIndex" @mousedown.prevent="pickMention(u)">
+                <AvatarCircle :name="shortName(u.display_name)" size="22" />
+                <span>{{ shortName(u.display_name) }}</span><small v-if="u.tag">{{ u.tag }}</small>
+              </button>
+            </div>
             <div v-if="typingNames.length" class="live-typing"><span class="live-dots"><i></i><i></i><i></i></span>{{ typingNames.join(', ') }} {{ typingNames.length > 1 ? 'estão' : 'está' }} a escrever…</div>
             <!-- Hidden file input -->
             <input
@@ -345,6 +377,12 @@
                   <span class="material-icons" style="font-size:15px">attach_file</span>
                   Anexar
                 </button>
+                <button v-if="!privateOn && isTouch" type="button" class="hd-btn hd-btn-outline" style="font-size:12px;padding:5px 10px" title="Tirar fotografia" @click="cameraInput?.click()">
+                  <span class="material-icons" style="font-size:15px">photo_camera</span>
+                  Foto
+                </button>
+                <input ref="cameraInput" type="file" accept="image/*" capture="environment" style="display:none"
+                       @change="commentFile = ($event.target as HTMLInputElement).files?.[0] ?? null" />
               </div>
               <div class="hd-row send-group">
               <label v-if="auth.isStaff" class="reply-status" :class="{ changed: !!replyStatus }" :title="'Estado atual: ' + statusLabel(ticket.status) + '. Pode alterá-lo ao enviar a resposta.'">
@@ -528,10 +566,15 @@
               <span style="font-size:13px">{{ formatDate(ticket.created_at) }}</span>
             </div>
 
-            <div class="hd-detail-row" style="border-bottom:none">
+            <div class="hd-detail-row" :style="ticket.rating && !canRate ? '' : 'border-bottom:none'">
               <div class="hd-detail-label">Tempo de resposta</div>
               <span style="font-size:13px">{{ ticket.category.sla_hours }}h</span>
             </div>
+            <div v-if="ticket.rating && !canRate" class="hd-detail-row rating-row" style="border-bottom:none" :title="ticket.rating.comment || ''">
+              <div class="hd-detail-label">Avaliação</div>
+              <span class="rating-stars">{{ '★'.repeat(ticket.rating.stars) }}<span class="rating-off">{{ '★'.repeat(5 - ticket.rating.stars) }}</span></span>
+            </div>
+            <div v-if="ticket.rating?.comment && !canRate" class="rating-comment">“{{ ticket.rating.comment }}”</div>
 
             <div v-if="auth.isStaff && escalationMessage" class="provider-escalation">
               <p :class="{ error: escalationError }">{{ escalationMessage }}</p>
@@ -581,7 +624,7 @@
 
 <script setup lang="ts">
 import { statusLabel as labelFor } from '../utils/ticketStatus'
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, nextTick, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getTicket, markTicketUnread, adminBulkActionTickets, getMyReminders, setMyReminder, clearMyReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, getUsers, searchUsers } from '../api/users'
@@ -594,6 +637,7 @@ import { forgetSticky, onRealtime, sendRealtime } from '../services/realtime'
 import ReactionBar from '../components/ReactionBar.vue'
 import { getReactions, type ReactionSummary } from '../api/reactions'
 import PersonName from '../components/PersonName.vue'
+import { api } from '../boot/axios'
 import { confirmDialog, errorMessage, notifyError } from '../utils/feedback'
 
 const auth = useAuthStore()
@@ -948,15 +992,117 @@ const timeline = [
 ]
 
 const statusOrder = ['open', 'assigned', 'in_progress', 'waiting_user', 'resolved', 'closed']
-const quickReplies = [
-  { label: 'Pedido recebido', body: 'O pedido foi recebido e está em análise. Daremos feedback assim que possível.' },
-  { label: 'Preciso de mais dados', body: 'Para conseguirmos avançar, pode indicar mais detalhes sobre o problema e, se possível, anexar uma captura de ecrã?' },
-  { label: 'Resolvido ✓', body: 'A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.', autoClose: true },
-]
+// Ready-made replies (Configurações → Respostas-modelo)
+const quickReplies = ref<{ label: string; body: string; status: string }[]>([])
+async function loadQuickReplies() {
+  if (!auth.isStaff) return
+  try { quickReplies.value = (await api.get('/api/v1/settings/quick-replies')).data.replies ?? [] } catch { quickReplies.value = [] }
+}
+
+// Rating by the requester, once the ticket is resolved or closed
+const rateStars = ref(0)
+const rateHover = ref(0)
+const rateComment = ref('')
+const rateSaving = ref(false)
+const rateSaved = ref(false)
+const rateHighlight = ref(false)
+const canRate = computed(() => !!ticket.value && ticket.value.creator?.id === auth.user?.id
+  && ['resolved', 'closed'].includes(ticket.value.status) && !auth.inPreview)
+watch(() => ticket.value?.rating, (r: any) => {
+  if (r) { rateStars.value = r.stars; rateComment.value = r.comment ?? '' }
+}, { immediate: true })
+async function saveRating() {
+  if (!ticket.value || !rateStars.value) return
+  rateSaving.value = true
+  try {
+    const { data } = await api.put(`/api/v1/tickets/${ticket.value.id}/rating`, { stars: rateStars.value, comment: rateComment.value })
+    ticket.value.rating = data
+    rateSaved.value = true
+  } catch (e) {
+    notifyError(e, 'Não foi possível guardar a avaliação.')
+  } finally {
+    rateSaving.value = false
+  }
+}
+
+// Paste a screenshot straight into the reply; take a photo on phones/tablets
+const cameraInput = ref<HTMLInputElement | null>(null)
+const isTouch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+function onPasteImage(e: ClipboardEvent) {
+  const item = Array.from(e.clipboardData?.items ?? []).find((i) => i.kind === 'file' && i.type.startsWith('image/'))
+  const file = item?.getAsFile()
+  if (!file) return
+  e.preventDefault()
+  const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png'
+  const stamp = new Date().toLocaleString('pt-PT').replace(/[/:, ]+/g, '-')
+  commentFile.value = new File([file], `captura-${stamp}.${ext}`, { type: file.type })
+}
+
+// @mentions: pick someone from the list; they get a notification when the reply is sent
+const replyBox = ref<HTMLTextAreaElement | null>(null)
+const mentionOpen = ref(false)
+const mentionQuery = ref('')
+const mentionIndex = ref(0)
+const mentioned = new Map<string, number>()  // "@Nome Apelido" -> user id
+const mentionCandidates = computed(() => {
+  const me = auth.user?.id
+  const t: any = ticket.value
+  if (!t) return []
+  const people = new Map<number, any>()
+  const add = (u: any, tag = '') => { if (u && u.id !== me && !people.has(u.id)) people.set(u.id, { ...u, tag }) }
+  if (privateOn.value) {
+    privateChosen.value.forEach((u: any) => add(u))
+  } else {
+    if (!isInternal.value) {
+      add(t.creator, 'solicitante')
+      ;(t.watchers ?? []).forEach((u: any) => add(u, 'seguidor'))
+    }
+    ;[...(t.assignees ?? []), ...(t.assignee ? [t.assignee] : [])].forEach((u: any) => add(u, 'responsável'))
+    staffPeople.value.filter((u: any) => !isInternal.value || isStaffUser(u)).forEach((u: any) => add(u, u.role_label || ''))
+  }
+  return [...people.values()]
+})
+const mentionMatches = computed(() => {
+  const q = mentionQuery.value.toLowerCase()
+  return mentionCandidates.value.filter((u: any) => !q || String(u.display_name).toLowerCase().includes(q)).slice(0, 6)
+})
+function onMentionInput() {
+  const el = replyBox.value
+  if (!el) return
+  const before = newComment.value.slice(0, el.selectionStart ?? newComment.value.length)
+  const m = before.match(/(?:^|\s)@([\p{L}]*)$/u)
+  mentionOpen.value = !!m
+  mentionQuery.value = m ? m[1] : ''
+  mentionIndex.value = 0
+  if (m) loadStaffPeople()
+}
+function pickMention(u: any) {
+  const el = replyBox.value
+  const caret = el?.selectionStart ?? newComment.value.length
+  const before = newComment.value.slice(0, caret).replace(/@([\p{L}]*)$/u, '')
+  const label = `@${shortName(u.display_name)}`
+  newComment.value = `${before}${label} ${newComment.value.slice(caret)}`
+  mentioned.set(label, u.id)
+  mentionOpen.value = false
+  nextTick(() => { el?.focus(); const pos = before.length + label.length + 1; el?.setSelectionRange(pos, pos) })
+}
+function onMentionKey(e: KeyboardEvent) {
+  if (!mentionOpen.value || !mentionMatches.value.length) return
+  if (e.key === 'ArrowDown') { e.preventDefault(); mentionIndex.value = (mentionIndex.value + 1) % mentionMatches.value.length }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); mentionIndex.value = (mentionIndex.value - 1 + mentionMatches.value.length) % mentionMatches.value.length }
+  else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(mentionMatches.value[mentionIndex.value]) }
+  else if (e.key === 'Escape') mentionOpen.value = false
+}
+function closeMentionsSoon() { setTimeout(() => { mentionOpen.value = false }, 150) }
+function mentionIdsIn(text: string) {
+  return [...mentioned.entries()].filter(([label]) => text.includes(label)).map(([, id]) => id)
+}
 
 function renderText(text: string): string {
   if (!text) return ''
   const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // @Nome Apelido → highlighted (text already escaped, so this only adds our own tag)
+    .replace(/(^|\s)(@[\p{Lu}][\p{L}]+(?: [\p{Lu}][\p{L}]+)?)/gu, '$1<span class="mention">$2</span>')
   // Collapse 3+ consecutive newlines to 2, then convert to <br>
   return escaped.replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<br>')
 }
@@ -1095,6 +1241,11 @@ onMounted(() => init())
 
 async function init() {
   if (!(await firstLoad())) return
+  loadQuickReplies()
+  if (route.query.avaliar && canRate.value) {
+    rateHighlight.value = true
+    nextTick(() => document.getElementById('avaliar')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }
   loadReactions()
   loadReminders()
   if (ticket.value) startLive(ticket.value.id)
@@ -1218,7 +1369,8 @@ async function onAddComment() {
     const internal = isInternal.value && !privateIds.length
     // A public reply carries the new state itself: the requester gets one email with both
     const statusWithReply = newStatus && !internal && !privateIds.length ? newStatus : null
-    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', internal, null, privateIds, statusWithReply)
+    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', internal, null, privateIds, statusWithReply, mentionIdsIn(newComment.value))
+    mentioned.clear()
     newComment.value = ''
     isInternal.value = false
     privateOn.value = privateOnly.value
@@ -1474,6 +1626,25 @@ function formatSize(size: number) {
 </script>
 
 <style scoped>
+.rate-card { padding: 18px 20px; margin-bottom: 16px; border-color: #FDE68A; }
+.rate-card.highlight { box-shadow: 0 0 0 3px rgba(245, 158, 11, .35); }
+.rate-title { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+.rate-stars { display: flex; align-items: center; gap: 2px; margin-bottom: 10px; }
+.rate-star { border: 0; background: transparent; cursor: pointer; padding: 2px; color: #D1D5DB; line-height: 0; }
+.rate-star.on { color: #F59E0B; }
+.rate-star .material-icons { font-size: 30px; }
+.rate-hint { margin-left: 8px; font-size: 13px; color: var(--c-muted); font-weight: 600; }
+.rate-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 10px; }
+.rate-saved { color: #16A34A; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+.rate-saved .material-icons { font-size: 17px; }
+.rating-stars { color: #F59E0B; letter-spacing: 1px; font-size: 15px; }
+.rating-off { color: #D1D5DB; }
+.rating-comment { font-size: 12.5px; color: var(--c-muted); font-style: italic; padding: 0 0 10px; }
+.mention-menu { position: relative; z-index: 20; margin-top: 4px; border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-surface); box-shadow: var(--shadow-md); padding: 4px; max-width: 360px; }
+.mention-item { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; padding: 6px 8px; border-radius: 8px; cursor: pointer; color: var(--c-text); font-size: 13px; text-align: left; }
+.mention-item small { color: var(--c-muted); margin-left: auto; }
+.mention-item.active, .mention-item:hover { background: var(--c-primary-soft); }
+:deep(.mention) { color: var(--c-primary); font-weight: 700; background: var(--c-primary-soft); border-radius: 5px; padding: 0 3px; }
 .load-error { padding: 64px 16px; text-align: center; color: var(--c-muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .load-error .material-icons { font-size: 40px; color: #DC2626; }
 .escalated-badge {

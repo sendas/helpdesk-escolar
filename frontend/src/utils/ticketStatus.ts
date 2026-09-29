@@ -13,3 +13,12 @@ export function statusLabel(status: string, short = false): string {
   if (short && status === 'waiting_user') return 'A aguardar'
   return STATUS_LABELS[status] ?? status
 }
+
+// Accent colour per state (row borders, pills), same as the Painel inicial
+export const STATUS_COLORS: Record<string, string> = {
+  open: '#3B82F6', assigned: '#F59E0B', in_progress: '#8B5CF6', waiting_user: '#06B6D4', resolved: '#10B981', closed: '#94A3B8',
+}
+
+export function statusColor(status: string): string {
+  return STATUS_COLORS[status] ?? '#94A3B8'
+}

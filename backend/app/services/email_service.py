@@ -54,6 +54,14 @@ _PRIORITY_PT: dict[str, str] = {
 }
 
 
+async def send_html(recipients: list[str], subject: str, html_body: str) -> None:
+    """A ready-made HTML email (e.g. the monthly report). Raises on failure so the caller can report it."""
+    if not settings.mail_server:
+        raise RuntimeError("Envio de email não configurado no servidor.")
+    message = MessageSchema(subject=subject, recipients=recipients, body=html_body, subtype=MessageType.html)
+    await FastMail(_get_conf()).send_message(message)
+
+
 async def send_suggestion_notification(recipients: list[str], suggestion_data: dict) -> None:
     if not settings.mail_server or not recipients:
         return
@@ -89,7 +97,8 @@ async def send_no_access_contact(to_email: str, contact_data: dict) -> None:
 
     try:
         message = MessageSchema(
-            subject=f"[Helpdesk] Sem acesso ao mail institucional — {contact_data.get('name', 'Desconhecido')}",
+            subject=f"[Helpdesk] Sem acesso ao mail institucional — {contact_data.get('name', 'Desconhecido')}"
+                    + (f" (aluno {contact_data.get('student_number')}, {contact_data.get('year')} {contact_data.get('class_name')})" if contact_data.get("is_student") else ""),
             recipients=[to_email],
             body=html_body,
             subtype=MessageType.html,
@@ -240,6 +249,7 @@ _SUBJECTS = {
     "escalated": "Pedido de suporte",
     "supplier_comment": "Nova mensagem",
     "supplier_updated": "Pedido concluído",
+    "mentioned": "Foi mencionado",
 }
 
 

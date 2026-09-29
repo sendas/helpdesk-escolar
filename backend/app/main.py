@@ -131,6 +131,11 @@ async def _add_missing_columns(conn) -> None:
     ):
         await conn.execute(text(f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({cols})"))
 
+    # 7f. @mentions in replies and notes
+    rows_c2 = await conn.execute(text("PRAGMA table_info(comments)"))
+    if "mention_ids" not in {row[1] for row in rows_c2}:
+        await conn.execute(text("ALTER TABLE comments ADD COLUMN mention_ids VARCHAR(500)"))
+
     # 7e. Personal notification preferences
     rows_u3 = await conn.execute(text("PRAGMA table_info(users)"))
     if "notification_prefs" not in {row[1] for row in rows_u3}:
@@ -187,8 +192,10 @@ async def lifespan(app: FastAPI):
     support_task = _spawn(_support_timeouts_periodically())
     from app.services import access_log_buffer
     access_task = _spawn(access_log_buffer.run_forever())
+    planning_task = _spawn(_planning_and_reports_periodically())
     yield
     access_task.cancel()
+    planning_task.cancel()
     await access_log_buffer.flush()
     support_task.cancel()
     if sync_task:
@@ -287,6 +294,26 @@ async def _support_timeouts_periodically() -> None:
                     await teams_service.notify_overdue(db)
                 except Exception:
                     logger.exception("Aviso de tickets em atraso no Teams falhou")
+
+
+async def _planning_and_reports_periodically() -> None:
+    """Every hour: planned maintenance tickets that are due, and the monthly report on the 1st."""
+    from app.database import AsyncSessionLocal
+    from app.services import planning_service, report_service
+
+    await asyncio.sleep(120)
+    while True:
+        async with AsyncSessionLocal() as db:
+            try:
+                await planning_service.run_due(db)
+            except Exception:
+                logger.exception("Manutenção planeada falhou")
+        async with AsyncSessionLocal() as db:
+            try:
+                await report_service.send_due_report(db)
+            except Exception:
+                logger.exception("Relatório mensal falhou")
+        await asyncio.sleep(3600)
 
 
 async def _backup_periodically() -> None:

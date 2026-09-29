@@ -108,6 +108,8 @@ class Comment(Base):
     reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Private message: only the author and this user can see the comment
     private_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # People mentioned with @Nome (comma-separated user ids); they are notified
+    mention_ids: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

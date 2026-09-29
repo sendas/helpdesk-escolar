@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, tickets, categories, users, admin, schools, settings, knowledge, notifications, suggestions, roles, realtime, chat, reactions
+from app.api.v1 import auth, tickets, categories, users, admin, schools, settings, knowledge, notifications, suggestions, roles, realtime, chat, reactions, planning, mailbox
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth.router)
@@ -16,3 +16,5 @@ router.include_router(roles.router)
 router.include_router(realtime.router)
 router.include_router(chat.router)
 router.include_router(reactions.router)
+router.include_router(planning.router)
+router.include_router(mailbox.router)

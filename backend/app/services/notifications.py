@@ -158,3 +158,15 @@ async def notify_assigned(ticket: Ticket, users: list[User], actor: User | None,
                 "id": ticket.id, "title": ticket.title, "assignee": label or u.display_name,
             })
     _push(targets, "assigned", f"Ticket atribuído: {ticket.title}", f"T-{ticket.id} · {ticket.category.name if ticket.category else ''}", f"/tickets/{ticket.id}")
+
+
+async def notify_mentions(ticket: Ticket, actor: User, people: list[User], body: str, internal: bool = False,
+                          private: bool = False) -> None:
+    """Someone wrote @Name: tell that person (they already passed the "may read this" check)."""
+    kind = "nota interna" if internal else "mensagem privada" if private else "resposta"
+    for u in people:
+        if u.email and wants(u, "mentions", "email"):
+            await email_service.send_ticket_notification(u.email, "mentioned", {
+                "id": ticket.id, "title": ticket.title, "author": actor.display_name, "comment": body, "kind": kind,
+            })
+    _push(people, "mentions", f"{actor.display_name} mencionou-o", f"T-{ticket.id}: {body[:80]}", f"/tickets/{ticket.id}")

@@ -1,8 +1,27 @@
-export const APP_VERSION = '2.8.1'
+export const APP_VERSION = '2.9.0'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '15:14'
+export const APP_VERSION_TIME = '15:53'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.9.0',
+    date: '2026-09-29',
+    time: '15:53',
+    title: 'Caixa de entrada, quadro, avaliações, menções e muito mais',
+    changes: [
+      'Caixa de entrada do helpdesk dentro da aplicação: ler os emails, criar um ticket a partir de um email (o remetente fica como requerente e os anexos passam para o ticket) ou juntá-lo a um ticket existente, marcar como lido e arquivar. Nova permissão "Ver a caixa de entrada do helpdesk" (técnicos e Equipa TIC).',
+      '"Os meus tickets" com novo aspeto, como no Painel inicial: cor por estado, escola, categoria, requerente e há quanto tempo. A tabela compacta continua disponível no botão ao lado de "Categorias".',
+      'Quadro (Kanban) para a equipa: tickets por estado; arraste um cartão para mudar o estado.',
+      'Avaliação do atendimento: quando o pedido é resolvido ou fechado, o requerente dá 1 a 5 estrelas e um comentário (também a partir do email). As avaliações aparecem nas Estatísticas e no ticket.',
+      'Menções: escreva @ numa resposta ou nota para mencionar alguém; a pessoa recebe um aviso (só se puder ler essa mensagem).',
+      'Colar capturas de ecrã diretamente na resposta ou ao criar um ticket; botão "Foto" no telemóvel/tablet.',
+      'Respostas-modelo editáveis em Configurações → Respostas-modelo, cada uma pode também mudar o estado.',
+      'Relatório mensal para a Direção: enviado por email no dia 1 de cada mês (Configurações → Relatório mensal) e disponível para imprimir nas Estatísticas.',
+      'Manutenção planeada: tickets criados automaticamente todas as semanas, meses, períodos ou anos (ex.: verificar projetores).',
+      '"Não tenho acesso ao mail institucional" também para alunos: número do cartão (a12345), ano, turma e escola; o email passa a ser opcional para alunos.',
+      'Privacidade: os emails das sugestões e as OUs do Active Directory deixam de aparecer nas configurações públicas.',
+    ],
+  },
   {
     version: '2.8.1',
     date: '2026-09-29',

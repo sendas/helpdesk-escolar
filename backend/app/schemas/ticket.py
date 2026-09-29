@@ -58,6 +58,8 @@ class CommentCreate(BaseModel):
     private_to_ids: list[int] = []
     # The support team can change the state together with the reply (one email instead of two)
     new_status: TicketStatus | None = None
+    # People mentioned with @Nome in the text: they get a notification
+    mention_ids: list[int] = []
 
 
 class CommentRead(BaseModel):
@@ -74,6 +76,7 @@ class CommentRead(BaseModel):
     author: UserRead
     private_to: UserRead | None = None
     private_recipients: list[UserRead] = []
+    mention_ids: str | None = None
 
     @model_validator(mode="after")
     def _private_reminder(self):
@@ -108,6 +111,19 @@ class TicketEventRead(BaseModel):
     actor: UserRead | None = None
 
 
+class TicketRatingRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    stars: int
+    comment: str | None = None
+    created_at: datetime
+
+
+class TicketRatingCreate(BaseModel):
+    stars: int
+    comment: str | None = None
+
+
 class TicketRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -132,6 +148,8 @@ class TicketRead(BaseModel):
     attachments: list[AttachmentRead] = []
     watchers: list[UserRead] = []
     events: list[TicketEventRead] = []
+    rating: "TicketRatingRead | None" = None
+    resolved_at: datetime | None = None
 
     @model_validator(mode="after")
     def _hide_private_messages(self):

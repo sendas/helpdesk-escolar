@@ -1,0 +1,153 @@
+"""Ratings, @mentions, quick replies, monthly report, planned maintenance and the mailbox."""
+from datetime import date, timedelta
+
+import pytest
+
+from tests.test_notifications import outbox  # noqa: F401  (fixture)
+from tests.test_smoke import _new_ticket
+
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+
+async def test_requester_rates_a_finished_ticket(client, people, api):
+    tid = await _new_ticket(client, people, api, "Avaliar")
+    r = await client.put(f"{api}/tickets/{tid}/rating", headers=people["prof"]["h"], json={"stars": 5})
+    assert r.status_code == 400  # not finished yet
+    await client.patch(f"{api}/admin/tickets/{tid}", headers=people["tec"]["h"], json={"status": "resolved"})
+    assert (await client.put(f"{api}/tickets/{tid}/rating", headers=people["tec"]["h"], json={"stars": 5})).status_code == 404
+    r = await client.put(f"{api}/tickets/{tid}/rating", headers=people["prof"]["h"], json={"stars": 4, "comment": "Rápido!"})
+    assert r.status_code == 200 and r.json()["stars"] == 4
+    t = (await client.get(f"{api}/tickets/{tid}", headers=people["tec"]["h"])).json()
+    assert t["rating"]["stars"] == 4
+    stats = (await client.get(f"{api}/admin/stats", headers=people["adm"]["h"])).json()["ratings"]
+    assert stats["count"] >= 1 and stats["recent_comments"][0]["comment"] == "Rápido!"
+
+
+async def test_mentions_notify_only_who_may_read(client, people, api, outbox):  # noqa: F811
+    tid = await _new_ticket(client, people, api, "Menções")
+    outbox.clear()
+    # Internal note: the docente mentioned is ignored, the technician is told
+    r = await client.post(f"{api}/tickets/{tid}/comments", headers=people["tec"]["h"], json={
+        "body": "@Rui @Maria vejam isto", "is_internal": True, "mention_ids": [people["tec2"]["id"], people["prof"]["id"]],
+    })
+    assert r.status_code == 201
+    assert r.json()["mention_ids"] == str(people["tec2"]["id"])
+    mentioned = [to for to, ev, _ in outbox if ev == "mentioned"]
+    assert mentioned == ["tec2@escola.pt"]
+
+
+async def test_quick_replies_are_editable(client, people, api):
+    r = await client.get(f"{api}/settings/quick-replies", headers=people["tec"]["h"])
+    assert r.status_code == 200 and len(r.json()["replies"]) == 3
+    r = await client.put(f"{api}/settings/quick-replies", headers=people["adm"]["h"], json={"replies": [
+        {"label": "Visita agendada", "body": "Vamos passar pela sala amanhã.", "status": "in_progress"},
+    ]})
+    assert r.status_code == 200
+    assert (await client.get(f"{api}/settings/quick-replies", headers=people["tec"]["h"])).json()["replies"][0]["label"] == "Visita agendada"
+    assert (await client.put(f"{api}/settings/quick-replies", headers=people["tec"]["h"], json={"replies": []})).status_code == 403
+    public = (await client.get(f"{api}/settings/public")).json()
+    assert "quick_replies" not in public and "suggestion_emails" not in public
+
+
+async def test_monthly_report(client, people, api):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo("Europe/Lisbon"))
+    month = f"{now.year:04d}-{now.month:02d}"
+    r = await client.get(f"{api}/admin/report", params={"month": month}, headers=people["adm"]["h"])
+    assert r.status_code == 200 and r.json()["created"] >= 1
+    html = (await client.get(f"{api}/admin/report/html", params={"month": month}, headers=people["adm"]["h"])).text
+    assert "Relatório de" in html and "Pedidos por escola" in html
+    assert (await client.get(f"{api}/admin/report", headers=people["prof"]["h"])).status_code == 403
+
+
+async def test_planned_maintenance_creates_tickets(client, people, api):
+    cats = (await client.get(f"{api}/categories", headers=people["adm"]["h"])).json()
+    schools = (await client.get(f"{api}/schools", headers=people["adm"]["h"])).json()
+    r = await client.post(f"{api}/planning", headers=people["tec"]["h"], json={
+        "title": "Verificar projetores", "description": "Todas as salas.", "category_id": cats[0]["id"], "school_id": schools[0]["id"],
+        "assignee_id": people["tec2"]["id"], "frequency": "monthly", "next_run": (date.today() - timedelta(days=1)).isoformat(),
+    })
+    assert r.status_code == 201, r.text
+    plan_id = r.json()["id"]
+    from app.database import AsyncSessionLocal
+    from app.services import planning_service
+    async with AsyncSessionLocal() as db:
+        assert await planning_service.run_due(db) == 1
+    plans = (await client.get(f"{api}/planning", headers=people["tec"]["h"])).json()["items"]
+    plan = next(p for p in plans if p["id"] == plan_id)
+    assert plan["last_ticket_id"] and date.fromisoformat(plan["next_run"]) > date.today()
+    t = (await client.get(f"{api}/tickets/{plan['last_ticket_id']}", headers=people["tec2"]["h"])).json()
+    assert t["title"] == "Verificar projetores" and any(a["id"] == people["tec2"]["id"] for a in t["assignees"])
+    assert (await client.post(f"{api}/planning", headers=people["prof"]["h"], json={})).status_code in (403, 422)
+
+
+async def test_mailbox_with_a_fake_connection(client, people, api, monkeypatch):
+    from app.services import mailbox as mb
+
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 40
+
+    class Fake:
+        name = "graph"
+        can_archive = True
+        read = {}
+
+        async def list(self, page):
+            return [mb.MailSummary("m1", "Impressora encravada", "Maria", "prof@escola.pt", "2026-09-29T10:00:00Z", False,
+                                   "A impressora da sala 3...", True, "<m1@x>")], False
+
+        async def get(self, mid, with_content=False):
+            return mb.MailMessage("m1", "Impressora encravada", "Maria", "prof@escola.pt", "2026-09-29T10:00:00Z", False,
+                                  "A impressora...", True, "<m1@x>", body="A impressora da sala 3 está encravada.",
+                                  attachments=[mb.MailAttachment("foto.png", "image/png", len(png), png if with_content else None),
+                                               mb.MailAttachment("virus.exe", "application/octet-stream", 3, b"MZx" if with_content else None)])
+
+        async def set_read(self, mid, read):
+            Fake.read[mid] = read
+
+        async def archive(self, mid):
+            pass
+
+    monkeypatch.setattr(mb, "get_provider", lambda: Fake())
+    assert (await client.get(f"{api}/mailbox", headers=people["prof"]["h"])).status_code == 403
+    listing = (await client.get(f"{api}/mailbox", headers=people["tec"]["h"])).json()
+    assert listing["configured"] and listing["items"][0]["sender_known"] and listing["items"][0]["ticket_id"] is None
+    detail = (await client.get(f"{api}/mailbox/message", params={"id": "m1"}, headers=people["tec"]["h"])).json()
+    assert detail["sender"]["id"] == people["prof"]["id"] and len(detail["attachments"]) == 2
+    cats = (await client.get(f"{api}/categories", headers=people["adm"]["h"])).json()
+    schools = (await client.get(f"{api}/schools", headers=people["adm"]["h"])).json()
+    r = await client.post(f"{api}/mailbox/ticket", headers=people["tec"]["h"], json={"id": "m1", "category_id": cats[0]["id"], "school_id": schools[0]["id"]})
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["requester_found"] and out["attachments"] == 1 and out["skipped"] == ["virus.exe"]
+    t = (await client.get(f"{api}/tickets/{out['ticket_id']}", headers=people["prof"]["h"])).json()
+    assert t["creator"]["id"] == people["prof"]["id"] and t["title"] == "Impressora encravada"
+    assert Fake.read.get("m1") is True
+    listing = (await client.get(f"{api}/mailbox", headers=people["tec"]["h"])).json()
+    assert listing["items"][0]["ticket_id"] == out["ticket_id"]
+    # The same email cannot be imported twice
+    r = await client.post(f"{api}/mailbox/attach", headers=people["tec"]["h"], json={"id": "m1", "ticket_id": out["ticket_id"]})
+    assert r.status_code == 409
+
+
+async def test_no_access_form_for_students(client, api, monkeypatch):
+    from app.api.v1.settings import _update_settings
+    from app.config import settings
+    from app.services import email_service
+    sent = []
+
+    async def fake(to, data):
+        sent.append(data)
+
+    monkeypatch.setattr(settings, "mail_server", "smtp.test")
+    monkeypatch.setattr(email_service, "send_no_access_contact", fake)
+    _update_settings({"no_access_contact_email": "apoio@escola.pt"})
+    base = {"profile": "aluno", "name": "João Aluno", "message": "Não consigo entrar", "school": "EB Eça"}
+    r = await client.post(f"{api}/auth/no-access-contact", json={**base, "student_number": "12345", "year": "8.º", "class_name": "b"})
+    assert r.status_code == 400 and "cartão" in r.json()["detail"]
+    r = await client.post(f"{api}/auth/no-access-contact", json={**base, "student_number": "A12345", "year": "8.º", "class_name": "b"})
+    assert r.status_code == 200, r.text
+    assert sent[-1]["student_number"] == "a12345" and sent[-1]["class_name"] == "B" and sent[-1]["email"] == ""
+    # Staff still need an email
+    r = await client.post(f"{api}/auth/no-access-contact", json={"profile": "docente", "name": "X", "message": "Y"})
+    assert r.status_code == 400

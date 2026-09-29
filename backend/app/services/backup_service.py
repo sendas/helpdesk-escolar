@@ -5,11 +5,11 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
-from datetime import datetime
+from datetime import date as date_type, datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import DateTime, Enum as SAEnum, select, text
+from sqlalchemy import Date, DateTime, Enum as SAEnum, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.models  # noqa: F401 — every table registered on Base
@@ -389,6 +389,8 @@ def _column_value(column, value: Any) -> Any:
         return None
     if isinstance(column.type, DateTime) and isinstance(value, str):
         return datetime.fromisoformat(value)
+    if isinstance(column.type, Date) and isinstance(value, str):
+        return date_type.fromisoformat(value[:10])
     if isinstance(column.type, SAEnum) and column.type.enum_class is not None and not isinstance(value, enum.Enum):
         enum_class = column.type.enum_class
         try:
