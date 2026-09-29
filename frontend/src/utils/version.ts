@@ -1,12 +1,12 @@
 export const APP_VERSION = '2.7.0'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '15:00'
+export const APP_VERSION_TIME = '12:28'
 
 export const RELEASE_NOTES = [
   {
     version: '2.7.0',
     date: '2026-09-29',
-    time: '15:00',
+    time: '12:28',
     title: 'Mais rápido, conversas privadas mais práticas e manutenção',
     changes: [
       'Conversas privadas: cada conversa tem a sua própria caixa para responder logo ali (vai para todas as pessoas da conversa). O cabeçalho mostra quem participa sem cortar o texto.',
@@ -27,7 +27,7 @@ export const RELEASE_NOTES = [
   {
     version: '2.6.0',
     date: '2026-09-29',
-    time: '13:30',
+    time: '12:18',
     title: 'Mensagens privadas a várias pessoas, preto puro e menos falhas silenciosas',
     changes: [
       'Mensagens privadas a várias pessoas ao mesmo tempo: escolha um ou mais destinatários. A conversa aparece num bloco próprio e "Responder a todos em privado" responde a todo o grupo. Só o autor e os destinatários a veem.',
@@ -49,7 +49,7 @@ export const RELEASE_NOTES = [
   {
     version: '2.5.0',
     date: '2026-09-29',
-    time: '11:45',
+    time: '11:37',
     title: 'Dados mais seguros e fiáveis',
     changes: [
       'Apagar um ticket apaga também tudo o que lhe pertence (lembretes, reações, marcas de lido, anexos no disco). Corrigido: apagar um ticket com um lembrete pendente fazia parar todos os lembretes.',
@@ -67,7 +67,7 @@ export const RELEASE_NOTES = [
   {
     version: '2.4.0',
     date: '2026-09-29',
-    time: '11:00',
+    time: '11:22',
     title: 'Reforço de segurança',
     changes: [
       'Respostas por email: só são aceites de quem faz parte do ticket (requerente, técnicos atribuídos, observadores ou equipa de apoio). Fechar ou resolver por email só é possível ao requerente, à equipa de apoio ou à empresa de apoio. Frases como "não está resolvido" já não fecham o ticket.',
