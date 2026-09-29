@@ -217,7 +217,7 @@
 
       <!-- Escalation (admin only) -->
       <div v-if="auth.isAdmin" class="hd-field" style="margin-bottom:24px">
-        <div class="escalate-toggle" :class="{ active: escalate }" @click="escalate = !escalate">
+        <div class="escalate-toggle" :class="{ active: escalate }" role="switch" tabindex="0" :aria-checked="escalate" @click="escalate = !escalate" @keydown.enter.prevent="escalate = !escalate" @keydown.space.prevent="escalate = !escalate">
           <div>
             <div style="font-weight:600;font-size:13px">Reportar imediatamente à empresa de apoio</div>
             <div style="font-size:12px;color:var(--c-muted);margin-top:2px">

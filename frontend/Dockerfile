@@ -3,8 +3,9 @@ FROM node:22-alpine AS builder
 RUN apk add --no-cache imagemagick
 
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+# Exact versions from package-lock.json: every build installs the same packages
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
 COPY . .
 

@@ -182,7 +182,7 @@
               <div class="set-card-title">Avisos de categoria</div>
               <div class="set-desc">Mostra uma janela de aviso ao escolher uma categoria que tenha aviso configurado.</div>
             </div>
-            <div class="hd-toggle-wrap" @click="toggleCategoryWarnings"><div class="hd-toggle-track" :class="{ on: categoryWarningsEnabled }"><div class="hd-toggle-thumb"></div></div></div>
+            <div class="hd-toggle-wrap" @click="toggleCategoryWarnings" role="switch" tabindex="0" :aria-checked="!!(categoryWarningsEnabled)" @keydown.enter.prevent="toggleCategoryWarnings" @keydown.space.prevent="toggleCategoryWarnings"><div class="hd-toggle-track" :class="{ on: categoryWarningsEnabled }"><div class="hd-toggle-thumb"></div></div></div>
           </div>
         </section>
       </template>
@@ -358,7 +358,7 @@
               <div class="set-card-title">Aviso no ecrã de login</div>
               <div class="set-desc">Janela mostrada a quem abre a página de login, antes de entrar.</div>
             </div>
-            <div class="hd-toggle-wrap" @click="toggleLoginNotice"><div class="hd-toggle-track" :class="{ on: loginNoticeEnabled }"><div class="hd-toggle-thumb"></div></div></div>
+            <div class="hd-toggle-wrap" @click="toggleLoginNotice" role="switch" tabindex="0" :aria-checked="!!(loginNoticeEnabled)" @keydown.enter.prevent="toggleLoginNotice" @keydown.space.prevent="toggleLoginNotice"><div class="hd-toggle-track" :class="{ on: loginNoticeEnabled }"><div class="hd-toggle-thumb"></div></div></div>
           </div>
           <div :style="{ opacity: loginNoticeEnabled ? 1 : 0.5 }" style="margin-top:12px">
             <textarea class="hd-textarea" v-model="loginNoticeText" rows="4" placeholder="Texto do aviso"></textarea>
@@ -395,7 +395,7 @@
               <div class="set-card-title">Modo demonstração</div>
               <div class="set-desc">Mostra "Entrar em modo demo" no ecrã de login, para experimentar sem conta.</div>
             </div>
-            <div class="hd-toggle-wrap" @click="toggleDemoMode"><div class="hd-toggle-track" :class="{ on: demoEnabled }"><div class="hd-toggle-thumb"></div></div></div>
+            <div class="hd-toggle-wrap" @click="toggleDemoMode" role="switch" tabindex="0" :aria-checked="!!(demoEnabled)" @keydown.enter.prevent="toggleDemoMode" @keydown.space.prevent="toggleDemoMode"><div class="hd-toggle-track" :class="{ on: demoEnabled }"><div class="hd-toggle-thumb"></div></div></div>
           </div>
           <div v-if="demoEnabled" class="demo-settings" style="margin-top:12px">
           <div style="font-size:12px;font-weight:600;margin-bottom:6px">Perfis disponíveis</div>
@@ -419,7 +419,7 @@
               <div class="set-card-title">Mostrar tickets e mensagens do modo demo</div>
               <div class="set-desc">Desligado: o que for criado em modo demo fica escondido dos utilizadores reais.</div>
             </div>
-            <div class="hd-toggle-wrap" @click="toggleDemoContent"><div class="hd-toggle-track" :class="{ on: demoContentVisible }"><div class="hd-toggle-thumb"></div></div></div>
+            <div class="hd-toggle-wrap" @click="toggleDemoContent" role="switch" tabindex="0" :aria-checked="!!(demoContentVisible)" @keydown.enter.prevent="toggleDemoContent" @keydown.space.prevent="toggleDemoContent"><div class="hd-toggle-track" :class="{ on: demoContentVisible }"><div class="hd-toggle-thumb"></div></div></div>
           </div>
         </section>
       </template>
@@ -432,7 +432,7 @@
               <div class="set-card-title">Mostrar a Base de conhecimento</div>
               <div class="set-desc">Artigos visíveis a todos para resolver sozinhos os problemas mais comuns.</div>
             </div>
-            <div class="hd-toggle-wrap" @click="toggleKnowledge"><div class="hd-toggle-track" :class="{ on: knowledgeEnabled }"><div class="hd-toggle-thumb"></div></div></div>
+            <div class="hd-toggle-wrap" @click="toggleKnowledge" role="switch" tabindex="0" :aria-checked="!!(knowledgeEnabled)" @keydown.enter.prevent="toggleKnowledge" @keydown.space.prevent="toggleKnowledge"><div class="hd-toggle-track" :class="{ on: knowledgeEnabled }"><div class="hd-toggle-thumb"></div></div></div>
           </div>
         </section>
         <section class="set-card">

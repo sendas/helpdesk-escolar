@@ -94,7 +94,7 @@
       <div v-if="loading" class="state-block">A carregar...</div>
 
       <template v-else>
-        <div class="desktop-table-wrap" :class="{ 'read-only': readOnly }">
+        <div v-if="!useCards" class="desktop-table-wrap" :class="{ 'read-only': readOnly }">
           <table class="hd-table tickets-table">
             <thead>
               <tr>
@@ -154,7 +154,7 @@
           </table>
         </div>
 
-        <div class="mobile-ticket-list" :class="{ 'read-only': readOnly }">
+        <div v-else class="mobile-ticket-list" :class="{ 'read-only': readOnly }">
           <article v-for="t in tickets" :key="t.id" class="ticket-card" :class="{ 'card-auto-closed': isAutoClosed(t), 'card-unread': t.is_unread }">
             <div class="ticket-card-top">
               <input v-if="!readOnly" type="checkbox" :checked="selectedIds.includes(t.id)" @change="toggleSelected(t.id)" />
@@ -209,6 +209,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed as _computed } from 'vue'
+import { useQuasar } from 'quasar'
+// Tablets and phones: cards; wide screens: the table (only one of them is rendered)
+const $q = useQuasar()
+const useCards = _computed(() => $q.screen.width <= 1500)
 import { confirmDialog, notifyError } from '../../utils/feedback'
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { adminBulkActionTickets, adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies, forceSyncMailReplies, runInactivityCheck, type TicketListItem } from '../../api/tickets'
@@ -700,7 +705,7 @@ async function runInactivity() {
   border-top: 1px solid var(--c-border);
   color: var(--c-muted);
 }
-.mobile-ticket-list { display: none; }
+
 @media (max-width: 1200px) {
   .filters-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -718,7 +723,6 @@ async function runInactivity() {
 }
 /* Tablets and phones: the wide table becomes cards */
 @media (max-width: 1500px) {
-  .desktop-table-wrap { display: none; }
   .mobile-ticket-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; padding: 12px; }
   .tickets-heading { flex-direction: column; align-items: stretch; gap: 12px; text-align: left; }
   .tickets-heading > * { text-align: left; }

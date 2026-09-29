@@ -1,8 +1,29 @@
-export const APP_VERSION = '2.6.0'
+export const APP_VERSION = '2.7.0'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '13:30'
+export const APP_VERSION_TIME = '15:00'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.7.0',
+    date: '2026-09-29',
+    time: '15:00',
+    title: 'Mais rápido, conversas privadas mais práticas e manutenção',
+    changes: [
+      'Conversas privadas: cada conversa tem a sua própria caixa para responder logo ali (vai para todas as pessoas da conversa). O cabeçalho mostra quem participa sem cortar o texto.',
+      'Corrigido: na lista de tickets, o estado "A aguardar utilizador" ficava por cima da prioridade. Na tabela aparece "A aguardar" (o nome completo aparece ao passar o rato).',
+      'Modo escuro: os estados dos tickets deixam de aparecer com fundo claro.',
+      'As reações carregam muito mais depressa em tickets com muitas respostas; várias verificações de acesso ficaram mais leves.',
+      'Novos índices na base de dados: listas, contadores e tickets abrem mais depressa à medida que os dados crescem.',
+      'Os filtros "Fora do prazo" e "A expirar" deixam de carregar todos os tickets abertos.',
+      'Registo de acessos gravado em lotes (sem atrasar cada pedido) e limpo automaticamente ao fim de 180 dias.',
+      'Listas de tickets desenham só a vista visível (tabela ou cartões): mais leves em iPads e telemóveis.',
+      'Interruptores (toggles) usáveis com o teclado e anunciados aos leitores de ecrã.',
+      'Corrigido: os botões das notificações push no menu do sino podiam ficar sempre desativados.',
+      'A chave de sessão deixa de ficar escrita nos registos do servidor.',
+      'Instalação: versões exatas das bibliotecas em cada build (npm ci), ficheiros .dockerignore, fuso horário de Lisboa e registos dos contentores com tamanho limitado.',
+      'Testes automáticos do servidor e verificação de tipos do ecrã.',
+    ],
+  },
   {
     version: '2.6.0',
     date: '2026-09-29',

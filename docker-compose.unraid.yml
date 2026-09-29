@@ -10,6 +10,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file: app.env
+    environment:
+      - TZ=Europe/Lisbon
+    # Container logs rotate instead of growing forever
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
     volumes:
       - /mnt/cache/appdata/helpdesk/data:/app/data
       - /mnt/disks/ZXA0D6K5/Backup-ticket:/backup-secondary
@@ -28,6 +34,11 @@ services:
       args:
         VITE_LDAP_ENABLED: "false"
     restart: unless-stopped
+    environment:
+      - TZ=Europe/Lisbon
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
     ports:
       - "85:80"
     depends_on:

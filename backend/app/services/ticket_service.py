@@ -164,6 +164,15 @@ async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
     return result.scalar_one_or_none()
 
 
+async def get_ticket_for_access(db: AsyncSession, ticket_id: int) -> Ticket | None:
+    """The ticket with only what access checks need (creator, assignees, followers): much lighter than get_ticket,
+    which also loads every reply, event and attachment."""
+    result = await db.execute(
+        select(Ticket).where(Ticket.id == ticket_id).options(selectinload(Ticket.assignees), selectinload(Ticket.watchers))
+    )
+    return result.scalar_one_or_none()
+
+
 def private_visible_to(user_id: int):
     """SQL condition: the comment is not private, or this user is its author or one of its recipients."""
     from app.models.ticket import comment_private_recipients as cpr
@@ -242,11 +251,27 @@ async def list_tickets(
         query = query.where(search_condition(search, user))
 
     if overdue or expiring:
+        from app.models.category import Category
         query = query.where(Ticket.status.not_in(_DONE_STATUSES))
-        candidates = (await db.execute(query.order_by(Ticket.created_at.desc()))).scalars().all()
+        # In SQL, only tickets old enough to be late or nearly late (the weekend rule only moves deadlines later),
+        # loading just their category; the exact rule is then applied in Python and only one page is fully loaded
+        share = 1.0 if overdue else 0.75
+        old_enough = (
+            select(Ticket.id).join(Category, Category.id == Ticket.category_id)
+            .where(Category.sla_hours > 0,
+                   func.julianday("now") - func.julianday(Ticket.created_at) > Category.sla_hours * share / 24.0)
+        )
+        ids_query = query.with_only_columns(Ticket.id).where(Ticket.id.in_(old_enough))
+        candidates = (await db.execute(
+            select(Ticket).options(selectinload(Ticket.category)).where(Ticket.id.in_(ids_query)).order_by(Ticket.created_at.desc())
+        )).scalars().all()
         check = is_overdue if overdue else is_expiring
-        matching = [t for t in candidates if check(t)]
-        return matching[(page - 1) * size: page * size], len(matching)
+        matching = [t.id for t in candidates if check(t)]
+        page_ids = matching[(page - 1) * size: page * size]
+        if not page_ids:
+            return [], len(matching)
+        rows = {t.id: t for t in (await db.execute(query.where(Ticket.id.in_(page_ids)))).scalars().all()}
+        return [rows[i] for i in page_ids if i in rows], len(matching)
 
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar_one()

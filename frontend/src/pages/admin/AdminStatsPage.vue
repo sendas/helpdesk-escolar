@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { STATUS_LABELS } from '../../utils/ticketStatus'
 import { ref, computed, onMounted } from 'vue'
 import { Bar, Doughnut } from 'vue-chartjs'
 import {
@@ -155,9 +156,7 @@ const barOptions = {
 const statusColors: Record<string, string> = {
   open: '#3D52D5', assigned: '#F59E0B', in_progress: '#8B5CF6', waiting_user: '#0891B2', resolved: '#22C55E', closed: '#6B7280',
 }
-const statusLabels: Record<string, string> = {
-  open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', waiting_user: 'A aguardar utilizador', resolved: 'Resolvido', closed: 'Fechado',
-}
+const statusLabels = STATUS_LABELS
 
 const donutData = computed(() => {
   const by_status = stats.value?.by_status ?? {}

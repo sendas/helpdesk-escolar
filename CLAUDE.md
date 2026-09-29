@@ -58,6 +58,13 @@ O token é um GitHub Personal Access Token (classic) com scope `repo`.
 - **Migrações DB**: sem Alembic — usar `_add_missing_columns(conn)` em `main.py` com `PRAGMA table_info` + `ALTER TABLE ADD COLUMN`
 - **Settings runtime**: `app_settings.json` em `/app/data/` via `_read_settings()` / `_write_settings()`
 
+## Verificações antes de publicar
+
+- Backend: `cd backend && pip install -r requirements-dev.txt && pytest` (testes em `backend/tests/`)
+- Frontend: `cd frontend && npm run typecheck && npx quasar build`
+- Cada versão publicada leva uma tag git (`vX.Y.Z`), enviada com `git push helpdesk-gh vX.Y.Z`.
+  Para voltar atrás no servidor: `git checkout vX.Y.Z` e rebuild.
+
 ## Idioma
 
 Toda a UI e mensagens em **português europeu** (pt-PT). Nunca usar inglês nas mensagens visíveis ao utilizador.

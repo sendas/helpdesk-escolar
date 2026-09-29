@@ -258,7 +258,7 @@
                 </div>
               </td>
               <td>
-                <div class="hd-toggle-wrap" @click="toggleActive(u)" :title="u.is_active ? 'Desativar' : 'Ativar'">
+                <div class="hd-toggle-wrap" role="switch" tabindex="0" :aria-checked="!!u.is_active" :aria-label="u.is_active ? 'Desativar' : 'Ativar'" @click="toggleActive(u)" @keydown.enter.prevent="toggleActive(u)" @keydown.space.prevent="toggleActive(u)" :title="u.is_active ? 'Desativar' : 'Ativar'">
                   <div class="hd-toggle" :class="{ active: u.is_active }"></div>
                 </div>
               </td>

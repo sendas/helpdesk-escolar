@@ -101,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { statusLabel as labelFor } from '../utils/ticketStatus'
 import { ref, computed, onMounted } from 'vue'
 import { getTickets, getCategories } from '../api/tickets'
 import { useAuthStore } from '../stores/auth'
@@ -159,7 +160,7 @@ const stats = computed(() => {
 })
 
 function statusLabel(s: string) {
-  return { open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', waiting_user: 'A aguardar', resolved: 'Resolvido', closed: 'Fechado' }[s] ?? s
+  return labelFor(s, true)
 }
 </script>
 

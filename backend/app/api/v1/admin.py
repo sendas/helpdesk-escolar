@@ -441,19 +441,21 @@ async def _build_access_stats(db: AsyncSession) -> dict:
         select(func.count(distinct(AccessLog.user_id))).where(AccessLog.created_at >= since_30, AccessLog.user_id.is_not(None))
     )).scalar_one()
 
+    # The last 14 days in one query (it used to be 28)
+    first_day = (now - timedelta(days=13)).replace(hour=0, minute=0, second=0, microsecond=0)
+    day = func.date(AccessLog.created_at)
+    per_day = {
+        d: (hits, users)
+        for d, hits, users in (await db.execute(
+            select(day, func.count(), func.count(distinct(AccessLog.user_id)))
+            .where(AccessLog.created_at >= first_day).group_by(day)
+        )).all()
+    }
     daily = []
     for i in range(13, -1, -1):
-        day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        hits = (await db.execute(
-            select(func.count()).select_from(AccessLog)
-            .where(AccessLog.created_at >= day_start, AccessLog.created_at < day_end)
-        )).scalar_one()
-        users = (await db.execute(
-            select(func.count(distinct(AccessLog.user_id)))
-            .where(AccessLog.created_at >= day_start, AccessLog.created_at < day_end, AccessLog.user_id.is_not(None))
-        )).scalar_one()
-        daily.append({"date": day_start.date().isoformat(), "hits": hits, "users": users})
+        key = (now - timedelta(days=i)).date().isoformat()
+        hits, users = per_day.get(key, (0, 0))
+        daily.append({"date": key, "hits": hits, "users": users})
 
     top_users_result = await db.execute(
         select(User.id, User.display_name, User.email, func.count(AccessLog.id).label("hits"), func.max(AccessLog.created_at).label("last_seen"))

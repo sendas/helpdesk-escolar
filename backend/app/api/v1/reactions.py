@@ -23,30 +23,34 @@ class ReactionToggle(BaseModel):
     emoji: str
 
 
-async def _visible_comment(db: AsyncSession, comment_id: int, user: User) -> Comment | None:
+def _may_see_ticket(ticket, user: User) -> bool:
     from app.api.v1.tickets import _can_access_ticket
+    return bool(ticket) and (_can_access_ticket(ticket, user) or has_perm(user, "tickets.view_all"))
+
+
+def _may_see_comment(comment: Comment, user: User) -> bool:
+    if comment.deleted_at:
+        return False
+    if comment.is_internal and not has_perm(user, "tickets.manage"):
+        return False
+    return not comment.private_to_id or user.id in comment.private_participants()
+
+
+async def _visible_comment(db: AsyncSession, comment_id: int, user: User) -> Comment | None:
     from app.services import ticket_service
     comment = await db.get(Comment, comment_id)
-    if not comment or comment.deleted_at:
+    if not comment or not _may_see_comment(comment, user):
         return None
-    ticket = await ticket_service.get_ticket(db, comment.ticket_id)
-    if not ticket or not (_can_access_ticket(ticket, user) or has_perm(user, "tickets.view_all")):
-        return None
-    if comment.is_internal and not has_perm(user, "tickets.manage"):
-        return None
-    if comment.private_to_id and user.id not in comment.private_participants():
+    if not _may_see_ticket(await ticket_service.get_ticket_for_access(db, comment.ticket_id), user):
         return None
     return comment
 
 
 async def _visible_ticket(db: AsyncSession, ticket_id: int, user: User):
     """The ticket itself (its description, the first message of the conversation)."""
-    from app.api.v1.tickets import _can_access_ticket
     from app.services import ticket_service
-    ticket = await ticket_service.get_ticket(db, ticket_id)
-    if not ticket or not (_can_access_ticket(ticket, user) or has_perm(user, "tickets.view_all")):
-        return None
-    return ticket
+    ticket = await ticket_service.get_ticket_for_access(db, ticket_id)
+    return ticket if _may_see_ticket(ticket, user) else None
 
 
 async def _visible_chat_message(db: AsyncSession, message_id: int, user: User) -> ChatMessage | None:
@@ -63,7 +67,19 @@ async def _visible_chat_message(db: AsyncSession, message_id: int, user: User) -
 
 
 async def _visible_ids(db: AsyncSession, target_type: str, ids: list[int], user: User) -> list[int]:
-    check = {"comment": _visible_comment, "ticket": _visible_ticket}.get(target_type, _visible_chat_message)
+    if target_type == "comment":
+        # All the replies at once, and each ticket checked once (a long conversation used to take hundreds of queries)
+        from app.services import ticket_service
+        comments = (await db.execute(select(Comment).where(Comment.id.in_(ids or [0])))).scalars().all()
+        tickets: dict[int, bool] = {}
+        visible = set()
+        for c in comments:
+            if c.ticket_id not in tickets:
+                tickets[c.ticket_id] = _may_see_ticket(await ticket_service.get_ticket_for_access(db, c.ticket_id), user)
+            if tickets[c.ticket_id] and _may_see_comment(c, user):
+                visible.add(c.id)
+        return [i for i in ids if i in visible]
+    check = _visible_ticket if target_type == "ticket" else _visible_chat_message
     return [i for i in ids if await check(db, i, user)]
 
 

@@ -20,6 +20,7 @@
 
 <script setup lang="ts">
 // One ticket as a card, for tablets and phones (the table is used on wide screens)
+import { statusLabel as labelFor } from '../utils/ticketStatus'
 import { computed } from 'vue'
 import PriorityBadge from './PriorityBadge.vue'
 import ReminderChip from './ReminderChip.vue'
@@ -30,8 +31,7 @@ import { schoolInitials } from '../utils/names'
 
 const props = defineProps<{ ticket: any; done?: boolean }>()
 const emit = defineEmits<{ (e: 'read-changed', unread: boolean): void; (e: 'deleted'): void }>()
-const LABELS: Record<string, string> = { open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', waiting_user: 'A aguardar utilizador', resolved: 'Resolvido', closed: 'Fechado' }
-const statusLabel = computed(() => LABELS[props.ticket.status] ?? props.ticket.status)
+const statusLabel = computed(() => labelFor(props.ticket.status))
 </script>
 
 <style scoped>

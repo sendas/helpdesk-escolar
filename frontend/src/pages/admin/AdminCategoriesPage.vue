@@ -206,7 +206,7 @@
           <!-- Warning toggle -->
           <div class="hd-field">
             <label class="toggle-row">
-              <div class="hd-toggle-wrap" @click="form.warning_enabled = !form.warning_enabled">
+              <div class="hd-toggle-wrap" role="switch" tabindex="0" :aria-checked="!!form.warning_enabled" @click="form.warning_enabled = !form.warning_enabled" @keydown.enter.prevent="form.warning_enabled = !form.warning_enabled" @keydown.space.prevent="form.warning_enabled = !form.warning_enabled">
                 <div class="hd-toggle" :class="{ active: form.warning_enabled }"></div>
               </div>
               <span style="font-size:13px;font-weight:600">Aviso ao selecionar esta categoria</span>

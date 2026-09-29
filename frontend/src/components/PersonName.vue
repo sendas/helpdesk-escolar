@@ -5,6 +5,12 @@
   </span>
 </template>
 
+<script lang="ts">
+// Shared by every PersonName on the page: one canvas, and each name measured once per font
+let sharedCanvas: HTMLCanvasElement | null = null
+const widthCache = new Map<string, number>()
+</script>
+
 <script setup lang="ts">
 // Shows the full directory name ("Maria Leonor Marinho Nunes Serra Docente-510 - Física e Química") when it fits
 // in the available space, and the short form ("Maria Serra" + "510 FQ") only when it does not.
@@ -20,17 +26,23 @@ let observer: ResizeObserver | null = null
 let frame = 0
 let lastWidth = -1
 
-let canvas: HTMLCanvasElement | null = null
+let fontTimer: ReturnType<typeof setTimeout> | null = null
 
 // Width the full name needs, from the element's own font (scrollWidth is not reliable when the text is clipped)
 function naturalWidth(node: HTMLElement, text: string) {
-  canvas = canvas ?? document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return node.scrollWidth
   const cs = getComputedStyle(node)
-  ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+  const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
   const spacing = parseFloat(cs.letterSpacing) || 0
-  return ctx.measureText(text).width + spacing * text.length
+  const key = `${font}|${spacing}|${text}`
+  const cached = widthCache.get(key)
+  if (cached !== undefined) return cached
+  sharedCanvas = sharedCanvas ?? document.createElement('canvas')
+  const ctx = sharedCanvas.getContext('2d')
+  if (!ctx) return node.scrollWidth
+  ctx.font = font
+  const width = ctx.measureText(text).width + spacing * text.length
+  if (document.fonts?.status !== 'loading') widthCache.set(key, width)
+  return width
 }
 
 async function measure() {
@@ -59,14 +71,14 @@ onMounted(() => {
   measure()
   // Text width changes once the web font has loaded, without the container changing size
   document.fonts?.ready.then(() => measure()).catch(() => {})
-  setTimeout(measure, 400)
+  fontTimer = setTimeout(measure, 400)
   const parent = el.value?.parentElement
   if (parent && 'ResizeObserver' in window) {
     observer = new ResizeObserver(schedule)
     observer.observe(parent)
   }
 })
-onBeforeUnmount(() => { observer?.disconnect(); cancelAnimationFrame(frame) })
+onBeforeUnmount(() => { observer?.disconnect(); cancelAnimationFrame(frame); if (fontTimer) clearTimeout(fontTimer) })
 watch(() => props.name, () => { lastWidth = -1; measure() })
 </script>
 

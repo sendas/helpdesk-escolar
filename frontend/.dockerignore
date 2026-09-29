@@ -1,0 +1,6 @@
+node_modules
+dist
+.quasar
+npm-debug.log*
+.env
+.env.*

@@ -15,6 +15,19 @@ from app.api.v1.router import router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+class _HideTokens(logging.Filter):
+    """uvicorn's access log prints the full URL; the WebSocket URL carries the session token."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple) and len(record.args) >= 3 and "token=" in str(record.args[2]):
+            args = list(record.args)
+            args[2] = re.sub(r"token=[^&\s]+", "token=***", str(args[2]))
+            record.args = tuple(args)
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_HideTokens())
 logger = logging.getLogger("app.tasks")
 _background_tasks: set[asyncio.Task] = set()
 
@@ -82,6 +95,25 @@ async def _add_missing_columns(conn) -> None:
         SELECT id, private_to_id FROM comments WHERE private_to_id IS NOT NULL
     """))
 
+    # 7c. Indexes for the columns every ticket page, list and counter filters on
+    for name, table, cols in (
+        ("ix_comments_ticket_id", "comments", "ticket_id"),
+        ("ix_ticket_events_ticket_id", "ticket_events", "ticket_id"),
+        ("ix_attachments_ticket_id", "attachments", "ticket_id"),
+        ("ix_processed_emails_ticket_id", "processed_emails", "ticket_id"),
+        ("ix_tickets_status", "tickets", "status"),
+        ("ix_tickets_creator_id", "tickets", "creator_id"),
+        ("ix_tickets_assignee_id", "tickets", "assignee_id"),
+        ("ix_tickets_category_id", "tickets", "category_id"),
+        ("ix_tickets_created_at", "tickets", "created_at"),
+        ("ix_tickets_updated_at", "tickets", "updated_at"),
+        ("ix_tickets_archived_at", "tickets", "archived_at"),
+        ("ix_ticket_watchers_user_id", "ticket_watchers", "user_id"),
+        ("ix_ticket_assignees_user_id", "ticket_assignees", "user_id"),
+        ("ix_reactions_target", "reactions", "target_type, target_id"),
+    ):
+        await conn.execute(text(f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({cols})"))
+
     # 8. Editable papel per user
     rows_u2 = await conn.execute(text("PRAGMA table_info(users)"))
     if "role_key" not in {row[1] for row in rows_u2}:
@@ -131,7 +163,11 @@ async def lifespan(app: FastAPI):
     inactivity_task = _spawn(_inactivity_check_periodically())
     reminder_task = _spawn(_reminders_periodically())
     support_task = _spawn(_support_timeouts_periodically())
+    from app.services import access_log_buffer
+    access_task = _spawn(access_log_buffer.run_forever())
     yield
+    access_task.cancel()
+    await access_log_buffer.flush()
     support_task.cancel()
     if sync_task:
         sync_task.cancel()
@@ -317,7 +353,7 @@ async def access_log_middleware(request: Request, call_next):
     response = await call_next(request)
     if _should_log_access(request.url.path):
         try:
-            await _record_access(request, response.status_code, int((time.perf_counter() - start) * 1000))
+            _record_access(request, response.status_code, int((time.perf_counter() - start) * 1000))
         except Exception:
             logger.warning("Registo de acesso falhou", exc_info=True)
     return response
@@ -344,9 +380,8 @@ def _should_log_access(path: str) -> bool:
     return not any(path.startswith(prefix) for prefix in ignored)
 
 
-async def _record_access(request: Request, status_code: int, duration_ms: int) -> None:
-    from app.database import AsyncSessionLocal
-    from app.models.access_log import AccessLog
+def _record_access(request: Request, status_code: int, duration_ms: int) -> None:
+    from app.services import access_log_buffer
     from app.services.jwt_service import decode_token
 
     user_id = None
@@ -360,9 +395,9 @@ async def _record_access(request: Request, status_code: int, duration_ms: int) -
                 user_id = None
 
     user_agent = (request.headers.get("user-agent") or "")[:500]
-    forwarded_for = request.headers.get("x-forwarded-for", "")
-    ip_address = (forwarded_for.split(",", 1)[0].strip() or (request.client.host if request.client else ""))[:80]
-    entry = AccessLog(
+    # nginx sets X-Real-IP to the address it trusts (see frontend/nginx.conf); X-Forwarded-For can be faked
+    ip_address = (request.headers.get("x-real-ip", "").strip() or (request.client.host if request.client else ""))[:80]
+    access_log_buffer.add(dict(
         method=request.method[:12],
         path=request.url.path[:300],
         status_code=status_code,
@@ -372,10 +407,7 @@ async def _record_access(request: Request, status_code: int, duration_ms: int) -
         browser=_browser_from_user_agent(user_agent),
         device=_device_from_user_agent(user_agent),
         user_id=user_id,
-    )
-    async with AsyncSessionLocal() as db:
-        db.add(entry)
-        await db.commit()
+    ))
 
 
 def _browser_from_user_agent(user_agent: str) -> str:

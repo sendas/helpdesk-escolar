@@ -20,7 +20,7 @@
       <p class="scs-desc">Fora deste horário, a mensagem do docente passa logo a ticket.</p>
       <div class="scs-days">
         <div v-for="d in days" :key="d.key" class="scs-day" :class="{ off: !hours[d.key].enabled }">
-          <span class="hd-toggle-wrap" @click="hours[d.key].enabled = !hours[d.key].enabled">
+          <span class="hd-toggle-wrap" role="switch" tabindex="0" :aria-checked="hours[d.key].enabled" @click="hours[d.key].enabled = !hours[d.key].enabled" @keydown.enter.prevent="hours[d.key].enabled = !hours[d.key].enabled" @keydown.space.prevent="hours[d.key].enabled = !hours[d.key].enabled">
             <span class="hd-toggle-track" :class="{ on: hours[d.key].enabled }"><span class="hd-toggle-thumb"></span></span>
           </span>
           <strong>{{ d.label }}</strong>

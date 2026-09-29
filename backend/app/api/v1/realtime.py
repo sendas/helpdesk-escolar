@@ -26,7 +26,7 @@ class ClientMessage(BaseModel):
 async def _can_view_ticket(db: AsyncSession, user: User, ticket_id: int) -> bool:
     from app.api.v1.tickets import _can_access_ticket
     from app.services import ticket_service
-    ticket = await ticket_service.get_ticket(db, ticket_id)
+    ticket = await ticket_service.get_ticket_for_access(db, ticket_id)
     if not ticket:
         return False
     return _can_access_ticket(ticket, user) or has_perm(user, "tickets.view_all")

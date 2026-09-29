@@ -44,7 +44,7 @@
           <router-link v-if="auth.can('settings.manage')" to="/admin/settings?s=apoio">Ligar nas Configurações</router-link>
         </div>
         <label class="avail" :class="{ on: available }">
-          <span class="hd-toggle-wrap" @click.prevent="toggleAvailability">
+          <span class="hd-toggle-wrap" role="switch" tabindex="0" :aria-checked="available" @click.prevent="toggleAvailability" @keydown.enter.prevent="toggleAvailability" @keydown.space.prevent="toggleAvailability">
             <span class="hd-toggle-track" :class="{ on: available }"><span class="hd-toggle-thumb"></span></span>
           </span>
           <span>

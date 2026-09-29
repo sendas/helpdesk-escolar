@@ -107,7 +107,7 @@ export function usePushNotifications() {
 
       const publicKey = await withTimeout(getVapidPublicKey(), 10000, 'timeout-vapid')
       const sub = await withTimeout(
-        reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) }),
+        reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource }),
         15000, 'timeout-subscribe'
       )
       await withTimeout(subscribePush(sub.toJSON() as PushSubscriptionJSON), 10000, 'timeout-api')

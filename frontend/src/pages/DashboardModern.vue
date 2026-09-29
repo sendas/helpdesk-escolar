@@ -119,6 +119,7 @@
 </template>
 
 <script setup lang="ts">
+import { statusLabel as labelFor } from '../utils/ticketStatus'
 import { ref, computed, onMounted } from 'vue'
 import { getTickets, getCategories } from '../api/tickets'
 import { useAuthStore } from '../stores/auth'
@@ -190,7 +191,7 @@ async function loadSlaCounts() {
 }
 
 const stats = computed(() => {
-  const list = [
+  const list: Array<{ label: string; count: number | string; icon: string; sub: string; tone: string; to: string }> = [
     { label: 'Abertos', count: openCount.value, icon: 'inbox', sub: 'a aguardar resposta', tone: 'tone-blue', to: '/tickets?estado=abertos' },
     { label: 'Em curso', count: progressCount.value, icon: 'autorenew', sub: 'a ser tratados', tone: 'tone-violet', to: '/tickets?estado=em_curso' },
     { label: 'Resolvidos', count: doneCount.value, icon: 'task_alt', sub: 'resolvidos ou fechados', tone: 'tone-green', to: '/tickets?estado=resolvidos' },
@@ -213,7 +214,7 @@ function statusColor(s: string) {
 }
 
 function statusLabel(s: string) {
-  return { open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', waiting_user: 'A aguardar', resolved: 'Resolvido', closed: 'Fechado' }[s] ?? s
+  return labelFor(s, true)
 }
 </script>
 

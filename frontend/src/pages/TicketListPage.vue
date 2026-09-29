@@ -40,11 +40,11 @@
         <button class="hd-btn hd-btn-outline" type="button" @click="load()">Tentar novamente</button>
       </div>
       <template v-else>
-        <div class="tcards">
+        <div v-if="useCards" class="tcards">
           <TicketCard v-for="t in activeTickets" :key="'c' + t.id" :ticket="t" @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" />
           <div v-if="!activeTickets.length" class="tcards-empty">{{ onlyUnread ? 'Não há tickets por ler.' : searchQuery.trim() ? `Nenhum ticket encontrado para "${searchQuery.trim()}".` : 'Sem tickets em aberto.' }}</div>
         </div>
-        <table class="hd-table list-table">
+        <table v-else class="hd-table list-table">
           <colgroup>
             <col style="width:88px" /><col /><col style="width:13%" /><col style="width:10%" />
             <col style="width:17%" /><col style="width:64px" /><col style="width:13%" /><col style="width:84px" />
@@ -62,7 +62,7 @@
               <td class="cell-title">{{ t.title }}</td>
               <td>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                  <span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span>
+                  <span class="hd-status" :class="t.status" :title="statusLabel(t.status)">{{ statusLabel(t.status, true) }}</span>
                   <span v-if="t.is_escalated" class="badge-fornecedor" title="Reportado à empresa de apoio">E</span>
                 </div>
               </td>
@@ -88,10 +88,10 @@
           </button>
         </div>
 
-        <div v-if="showCompleted && completedTickets.length" class="tcards">
+        <div v-if="useCards && showCompleted && completedTickets.length" class="tcards">
           <TicketCard v-for="t in completedTickets" :key="'d' + t.id" :ticket="t" done @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" />
         </div>
-        <table v-if="showCompleted && completedTickets.length" class="hd-table completed-table list-table">
+        <table v-if="!useCards && showCompleted && completedTickets.length" class="hd-table completed-table list-table">
           <colgroup>
             <col style="width:88px" /><col /><col style="width:13%" /><col style="width:10%" />
             <col style="width:17%" /><col style="width:64px" /><col style="width:13%" /><col style="width:84px" />
@@ -107,7 +107,7 @@
                 <ReminderChip :at="t.reminder_at" compact />
               </td>
               <td class="cell-title">{{ t.title }}</td>
-              <td><span class="hd-status" :class="t.status">{{ statusLabel(t.status) }}</span></td>
+              <td><span class="hd-status" :class="t.status" :title="statusLabel(t.status)">{{ statusLabel(t.status, true) }}</span></td>
               <td><PriorityBadge :priority="t.priority" /></td>
               <td class="cell-person" :title="t.creator?.display_name">
                 <div class="person-box"><PersonName :name="t.creator?.display_name" /></div>
@@ -132,6 +132,12 @@
 </template>
 
 <script setup lang="ts">
+import { statusLabel as labelFor } from '../utils/ticketStatus'
+import { computed as _computed } from 'vue'
+import { useQuasar } from 'quasar'
+// Tablets and phones: cards like an inbox; wide screens: the table
+const $q = useQuasar()
+const useCards = _computed(() => $q.screen.width <= 1280)
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { getTickets, getCategories, markTicketsRead } from '../api/tickets'
 import { onRealtime } from '../services/realtime'
@@ -300,13 +306,16 @@ function isAutoClosed(t: any) {
   return !!t.closed_via_email && DONE.includes(t.status)
 }
 
-function statusLabel(s: string) {
-  return { open:'Aberto', assigned:'Atribuído', in_progress:'Em Curso', waiting_user:'A aguardar utilizador', resolved:'Resolvido', closed:'Fechado' }[s] ?? s
+// short: "A aguardar" in the table, where the full "A aguardar utilizador" does not fit the column
+function statusLabel(s: string, short = false) {
+  return labelFor(s, short)
 }
 
 </script>
 
 <style scoped>
+/* A status never spills into the next column */
+.list-table td .hd-status { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-error { padding: 40px 16px; text-align: center; color: var(--c-muted); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .list-error .material-icons { font-size: 36px; color: #DC2626; }
 .load-more { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; padding: 16px; border-top: 1px solid var(--c-border); color: var(--c-muted); font-size: 13px; }
@@ -323,10 +332,9 @@ function statusLabel(s: string) {
 .list-filter { width: auto; }
 .list-toolbar-end { margin-left: auto; }
 /* Wide screens: table. Tablets and phones: cards like an inbox */
-.tcards { display: none; }
+/* Only one of the two views is rendered (useCards): drawing both made long lists slow on iPads */
 .tcards-empty { text-align: center; color: var(--c-muted); padding: 32px 12px; }
 @media (max-width: 1280px) {
-  .list-table { display: none; }
   .tcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 10px; padding: 12px; }
 }
 @media (max-width: 700px) {

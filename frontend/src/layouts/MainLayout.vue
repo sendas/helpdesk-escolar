@@ -256,7 +256,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getTickets } from '../api/tickets'
@@ -277,13 +277,14 @@ import { loadSupportStatus, openSupportChat, supportStatus } from '../utils/supp
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const push = usePushNotifications()
+// reactive(): the template reads push.loading / push.permission as values (they are refs inside a plain object)
+const push = reactive(usePushNotifications())
 const search = ref('')
 const openCount = ref(0)
 const adminOpenCount = ref(0)
 const showNotifications = ref(false)
 const mobileMenuOpen = ref(false)
-const settings = ref({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '', knowledge_enabled: true })
+const settings = ref<{ org_name: string; logo_url: string; favicon_url: string; knowledge_enabled: boolean; dark_style?: string }>({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '', knowledge_enabled: true })
 const versionLabelText = versionLabel()
 const chatUnread = ref(0)
 const supportWaiting = ref(0)

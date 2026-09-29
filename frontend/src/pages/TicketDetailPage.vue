@@ -150,11 +150,9 @@
 
           <!-- Comments (consecutive private messages between the same people are grouped in one block) -->
           <div v-for="b in commentBlocks" :key="b.key" :class="{ 'private-thread': b.others }">
-          <div v-if="b.others" class="private-thread-head">
+          <div v-if="b.others" class="private-thread-head" title="Só as pessoas desta conversa a veem">
             <span class="material-icons">lock</span>
             <span>Conversa privada · {{ namesList(b.others, true) }}</span>
-            <span class="private-thread-note">{{ b.others.length > 1 ? `só vocês os ${b.others.length + 1} veem` : 'só vocês os dois veem' }}</span>
-            <button class="msg-action" @click="replyPrivately(b.others.map((u: any) => u.id))">{{ b.others.length > 1 ? 'Responder a todos em privado' : 'Responder em privado' }}</button>
           </div>
           <div
             v-for="c in b.items"
@@ -196,6 +194,28 @@
               <ReactionBar v-if="editingCommentId !== c.id" target-type="comment" :target-id="c.id" :reactions="reactions[c.id] ?? []" @update="(r) => (reactions[c.id] = r)" />
             </div>
           </div>
+          <!-- Answer this private conversation right here (goes to everyone in it) -->
+          <div v-if="b.others && b.lastOfGroup" class="thread-reply">
+            <textarea
+              v-model="threadDrafts[b.group]"
+              class="hd-textarea"
+              rows="1"
+              :placeholder="b.others.length > 1 ? `Responder em privado a ${namesList(b.others)}…` : `Responder em privado a ${namesList(b.others)}…`"
+              @input="autoGrow($event.target as HTMLTextAreaElement)"
+              @keydown.ctrl.enter.prevent="sendThreadReply(b)"
+              @keydown.meta.enter.prevent="sendThreadReply(b)"
+            ></textarea>
+            <button
+              class="hd-btn hd-btn-primary thread-send"
+              type="button"
+              :disabled="!threadDrafts[b.group]?.trim() || threadSending === b.group"
+              :title="'Enviar só para ' + namesList(b.others, true)"
+              @click="sendThreadReply(b)"
+            >
+              <span class="material-icons">{{ threadSending === b.group ? 'hourglass_empty' : 'lock' }}</span>
+              {{ threadSending === b.group ? 'A enviar…' : 'Enviar' }}
+            </button>
+          </div>
           </div>
 
           <div v-if="!canReply && !privateOnly" class="hd-card read-only-note">
@@ -207,7 +227,7 @@
             <div style="font-weight:600;font-size:14px;margin-bottom:12px">Responder</div>
             <div v-if="privateTargets.length" class="private-box" :class="{ off: !privateOn }">
               <div class="private-title">
-                <div v-if="!privateOnly" class="hd-toggle-wrap" @click="togglePrivate">
+                <div v-if="!privateOnly" class="hd-toggle-wrap" @click="togglePrivate" role="switch" tabindex="0" :aria-checked="!!(privateOn)" @keydown.enter.prevent="togglePrivate" @keydown.space.prevent="togglePrivate">
                   <div class="hd-toggle-track" :class="{ on: privateOn }">
                     <div class="hd-toggle-thumb"></div>
                   </div>
@@ -275,7 +295,7 @@
             </div>
             <div v-if="canRemind" class="reminder-box" :class="{ off: !reminderOn }">
               <div class="reminder-title">
-                <div class="hd-toggle-wrap" @click="toggleReminder">
+                <div class="hd-toggle-wrap" @click="toggleReminder" role="switch" tabindex="0" :aria-checked="!!(reminderOn)" @keydown.enter.prevent="toggleReminder" @keydown.space.prevent="toggleReminder">
                   <div class="hd-toggle-track" :class="{ on: reminderOn }">
                     <div class="hd-toggle-thumb"></div>
                   </div>
@@ -307,7 +327,7 @@
             <div class="hd-row" style="justify-content:space-between;margin-top:12px">
               <div class="hd-row" style="gap:8px">
                 <label v-if="auth.isStaff && !privateOn" class="hd-row" style="gap:8px;cursor:pointer;font-size:13px;color:var(--c-muted)">
-                  <div class="hd-toggle-wrap" @click="isInternal = !isInternal">
+                  <div class="hd-toggle-wrap" @click="isInternal = !isInternal" role="switch" tabindex="0" :aria-checked="!!(isInternal)" @keydown.enter.prevent="isInternal = !isInternal" @keydown.space.prevent="isInternal = !isInternal">
                     <div class="hd-toggle-track" :class="{ on: isInternal }">
                       <div class="hd-toggle-thumb"></div>
                     </div>
@@ -560,6 +580,7 @@
 </template>
 
 <script setup lang="ts">
+import { statusLabel as labelFor } from '../utils/ticketStatus'
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getTicket, markTicketUnread, adminBulkActionTickets, getMyReminders, setMyReminder, clearMyReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
@@ -603,7 +624,7 @@ function privatePeople(c: any): any[] {
 }
 const commentBlocks = computed(() => {
   const me = auth.user?.id
-  const blocks: { key: string; others: any[] | null; group: string; items: any[] }[] = []
+  const blocks: { key: string; others: any[] | null; group: string; items: any[]; lastOfGroup?: boolean }[] = []
   // In "Ver como docente" internal notes are hidden, as the server does for docentes
   for (const c of (ticket.value?.comments ?? []).filter((x: any) => !(auth.inPreview && x.is_internal)) as any[]) {
     const others = c.private_to ? privatePeople(c).filter((u: any) => u.id !== me) : null
@@ -611,6 +632,12 @@ const commentBlocks = computed(() => {
     const last = blocks[blocks.length - 1]
     if (others && last?.others && last.group === group) last.items.push(c)
     else blocks.push({ key: `c${c.id}`, others, group, items: [c] })
+  }
+  // The quick reply box goes under the most recent block of each private conversation
+  const seen = new Set<string>()
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const b = blocks[i]
+    if (b.others && !seen.has(b.group)) { b.lastOfGroup = true; seen.add(b.group) }
   }
   return blocks
 })
@@ -691,12 +718,29 @@ function togglePrivate() {
     privateToIds.value = privateToIds.value.filter((id) => privateTargets.value.some((u: any) => u.id === id))
   }
 }
-function replyPrivately(userIds: number[]) {
-  privateOn.value = true
-  isInternal.value = false
-  commentFile.value = null
-  privateToIds.value = [...userIds]
+// Quick replies inside a private conversation block, one draft per conversation
+const threadDrafts = ref<Record<string, string>>({})
+const threadSending = ref('')
+function autoGrow(el: HTMLTextAreaElement) {
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 220) + 'px'
 }
+async function sendThreadReply(b: { group: string; others: any[] | null }) {
+  const text = (threadDrafts.value[b.group] ?? '').trim()
+  if (!text || !b.others || threadSending.value || !ticket.value) return
+  threadSending.value = b.group
+  try {
+    await addComment(ticket.value.id, text, false, null, b.others.map((u: any) => u.id))
+    threadDrafts.value[b.group] = ''
+    await load({ live: true })
+    loadReactions()
+  } catch (e) {
+    notifyError(e, 'Não foi possível enviar a mensagem privada.')
+  } finally {
+    threadSending.value = ''
+  }
+}
+
 
 // Reminders saved on their own (without writing a reply)
 const myReminders = ref<{ id: string; remind_at: string; note: string | null; source: string }[]>([])
@@ -1398,7 +1442,7 @@ function isAssignableTechnician(u: any) {
 }
 
 function statusLabel(s: string) {
-  return { open: 'Aberto', assigned: 'Atribuído', in_progress: 'Em Curso', waiting_user: 'A aguardar utilizador', resolved: 'Resolvido', closed: 'Fechado' }[s] ?? s
+  return labelFor(s)
 }
 
 function formatDate(d: string) {
@@ -1977,8 +2021,10 @@ function formatSize(size: number) {
   font-size: 12.5px; font-weight: 700; color: #6D28D9;
 }
 .private-thread-head .material-icons { font-size: 16px; }
-.private-thread-note { flex: 1 1 0; min-width: 0; font-weight: 400; color: var(--c-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.private-thread-head .msg-action { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+.thread-reply { display: flex; align-items: flex-end; gap: 8px; margin-top: 4px; }
+.thread-reply .hd-textarea { flex: 1; min-width: 0; min-height: 40px; resize: none; padding: 9px 12px; font-size: 13.5px; line-height: 1.4; }
+.thread-send { flex-shrink: 0; padding: 8px 14px; font-size: 13px; }
+.thread-send .material-icons { font-size: 15px; }
 .dark .private-thread-head { color: #DDD6FE; }
 .hd-msg-private .hd-msg-bubble { background: rgba(255, 255, 255, .75); border: 1px solid #E9E1FD; }
 .dark .hd-msg-private .hd-msg-bubble { background: rgba(255, 255, 255, .05); border-color: rgba(167, 139, 250, .18); }

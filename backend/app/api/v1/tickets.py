@@ -204,7 +204,7 @@ async def list_my_reminders(ticket_id: int, current_user: User = Depends(get_cur
 
 @router.post("/{ticket_id}/reminders", status_code=status.HTTP_201_CREATED)
 async def create_reminder(ticket_id: int, data: ReminderCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    ticket = await ticket_service.get_ticket(db, ticket_id)
+    ticket = await ticket_service.get_ticket_for_access(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not _can_set_reminder(ticket, current_user):
@@ -220,7 +220,7 @@ async def create_reminder(ticket_id: int, data: ReminderCreate, current_user: Us
 @router.put("/{ticket_id}/reminders/mine")
 async def set_my_reminder(ticket_id: int, data: ReminderCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """The "Lembrar-me deste ticket" switch: one pending reminder per person and ticket, saved as soon as it changes."""
-    ticket = await ticket_service.get_ticket(db, ticket_id)
+    ticket = await ticket_service.get_ticket_for_access(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not _can_set_reminder(ticket, current_user):
@@ -282,7 +282,7 @@ async def mark_tickets_read(data: ReadMarks, current_user: User = Depends(get_cu
 
 @router.post("/{ticket_id}/unread", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_ticket_unread(ticket_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    ticket = await ticket_service.get_ticket(db, ticket_id)
+    ticket = await ticket_service.get_ticket_for_access(db, ticket_id)
     if not ticket or not (_can_access_ticket(ticket, current_user) or has_perm(current_user, "tickets.view_all")):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     await read_service.mark_unread(db, current_user.id, ticket_id)
@@ -462,7 +462,7 @@ async def download_attachment(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    ticket = await ticket_service.get_ticket(db, ticket_id)
+    ticket = await ticket_service.get_ticket_for_access(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not _can_access_ticket(ticket, current_user) and not has_perm(current_user, "tickets.view_all"):

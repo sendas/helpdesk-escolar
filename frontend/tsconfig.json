@@ -8,11 +8,28 @@
     "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
-      "src/*": ["src/*"]
+      "src/*": [
+        "src/*"
+      ]
     },
-    "types": ["quasar", "vite/client", "node"],
-    "lib": ["ESNext", "DOM"]
+    "types": [
+      "quasar",
+      "vite/client",
+      "node"
+    ],
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
+    "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "quasar.config.js"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.vue",
+    "quasar.config.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

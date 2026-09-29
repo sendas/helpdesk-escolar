@@ -28,7 +28,7 @@
     <div style="font-weight:600;font-size:13px;margin:18px 0 8px">O que publicar no canal</div>
     <div class="ts-events">
       <label v-for="e in eventOptions" :key="e.key" class="ts-event" :class="{ on: events.includes(e.key) }" @click.prevent="toggle(e.key)">
-        <span class="hd-toggle-wrap"><span class="hd-toggle-track" :class="{ on: events.includes(e.key) }"><span class="hd-toggle-thumb"></span></span></span>
+        <span class="hd-toggle-wrap" role="switch" tabindex="0" :aria-checked="events.includes(e.key)" @keydown.enter.prevent="toggle(e.key)" @keydown.space.prevent="toggle(e.key)"><span class="hd-toggle-track" :class="{ on: events.includes(e.key) }"><span class="hd-toggle-thumb"></span></span></span>
         <span><strong>{{ e.label }}</strong><small>{{ e.hint }}</small></span>
       </label>
     </div>
