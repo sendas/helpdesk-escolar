@@ -62,8 +62,9 @@ O token é um GitHub Personal Access Token (classic) com scope `repo`.
 
 - Backend: `cd backend && pip install -r requirements-dev.txt && pytest` (testes em `backend/tests/`)
 - Frontend: `cd frontend && npm run typecheck && npx quasar build`
-- Cada versão publicada leva uma tag git (`vX.Y.Z`), enviada com `git push helpdesk-gh vX.Y.Z`.
-  Para voltar atrás no servidor: `git checkout vX.Y.Z` e rebuild.
+- Cada commit de versão começa por `vX.Y.Z:` (ex.: `v2.7.0: ...`). O envio de tags git a partir desta sessão é
+  bloqueado; para voltar atrás no servidor: `git log --oneline | grep "v2.6.0:"` → `git checkout <commit>` e rebuild
+  (depois `git checkout main` para voltar a atualizar normalmente).
 
 ## Idioma
 
