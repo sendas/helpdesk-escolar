@@ -32,6 +32,11 @@ class User(Base):
     # Papel atribuído manualmente (chave em roles.key); vazio = papel por omissão do "role" base
     role_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
     hidden_category_ids: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # The person chose how their name appears ("O meu perfil"); the directory sync then keeps it.
+    # directory_name is the name as it comes from Entra ID / Active Directory, to put it back.
+    name_locked: Mapped[bool] = mapped_column(Boolean, default=False)
+    directory_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # Personal notification choices (JSON, only what differs from the defaults: see services/notification_prefs.py)
     notification_prefs: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -41,6 +41,15 @@ class UserPreferences(BaseModel):
 
 class MeRead(UserRead):
     permissions: list[str] = []
+    name_locked: bool = False
+    directory_name: str | None = None
+    phone: str | None = None
+
+
+class ProfileUpdate(BaseModel):
+    display_name: str | None = None
+    phone: str | None = None
+    reset_name: bool = False
 
 
 class UserUpdate(BaseModel):

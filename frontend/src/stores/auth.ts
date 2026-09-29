@@ -18,6 +18,9 @@ interface User {
   effective_role_key?: string
   role_label?: string
   permissions?: string[]
+  name_locked?: boolean
+  directory_name?: string | null
+  phone?: string | null
 }
 
 export const useAuthStore = defineStore('auth', () => {

@@ -235,7 +235,25 @@
               </div>
             </div>
           </div>
-          <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="36" style="cursor:pointer" />
+          <div class="me-wrap" @click.stop>
+            <button type="button" class="me-btn" title="O meu perfil" aria-label="O meu perfil" :aria-expanded="showMe" @click="showMe = !showMe; showNotifications = false">
+              <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="36" />
+            </button>
+            <div v-if="showMe" class="me-panel">
+              <div class="me-head">
+                <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="44" />
+                <div class="me-id">
+                  <div class="me-name">{{ auth.user?.display_name }}</div>
+                  <div class="me-mail">{{ auth.user?.email }}</div>
+                  <div class="me-role">{{ roleLabel }}</div>
+                </div>
+              </div>
+              <router-link class="me-item" to="/perfil" @click="showMe = false"><span class="material-icons">badge</span> O meu perfil e o meu nome</router-link>
+              <router-link class="me-item" to="/notificacoes" @click="showMe = false"><span class="material-icons">tune</span> As minhas notificações</router-link>
+              <button type="button" class="me-item" @click="auth.toggleDark()"><span class="material-icons">{{ auth.isDark ? 'light_mode' : 'dark_mode' }}</span> {{ auth.isDark ? 'Modo claro' : 'Modo escuro' }}</button>
+              <button type="button" class="me-item danger" @click="showMe = false; askLogout()"><span class="material-icons">logout</span> Terminar sessão</button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -325,6 +343,7 @@ const titleMap: Record<string, string> = {
   '/tickets/new': 'Novo pedido',
   '/knowledge': 'Base de conhecimento',
   '/notificacoes': 'As minhas notificações',
+  '/perfil': 'O meu perfil',
   '/version': 'Versão / Atualizações',
   '/about': 'Sobre',
   '/suggestions': 'Sugestões',
@@ -364,7 +383,9 @@ function togglePreview() {
 
 function closeNotifications() {
   showNotifications.value = false
+  showMe.value = false
 }
+const showMe = ref(false)
 
 async function refreshCounts() {
   try {

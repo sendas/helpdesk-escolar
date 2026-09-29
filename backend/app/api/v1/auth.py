@@ -42,6 +42,8 @@ async def get_or_create_user(db: AsyncSession, info: dict) -> User:
 
     if user:
         user.last_login = datetime.utcnow()
+        if info.get("display_name"):
+            user.directory_name = info["display_name"]
         if info.get("onprem_dn") is not None:
             user.onprem_dn = info.get("onprem_dn")
         if info.get("onprem_path") is not None:
@@ -64,6 +66,7 @@ async def get_or_create_user(db: AsyncSession, info: dict) -> User:
         username=info["username"],
         email=info["email"],
         display_name=info["display_name"],
+        directory_name=info["display_name"],
         department=info.get("department"),
         role=UserRole.ADMIN if info.get("is_admin") else role,
         role_source="entra" if info["auth_provider"] == "azure" else info["auth_provider"],

@@ -315,10 +315,10 @@ async def admin_stats(
             select(func.count()).select_from(Ticket)
             .where(Ticket.created_at >= week_start, Ticket.created_at < week_end)
         )).scalar_one()
-        # Resolved or closed in that week (by the date it happened, not the last time the ticket changed)
+        # Of the tickets created that week, how many are already resolved or closed (never more than created)
         resolved = (await db.execute(
             select(func.count()).select_from(Ticket)
-            .where(Ticket.resolved_at >= week_start, Ticket.resolved_at < week_end,
+            .where(Ticket.created_at >= week_start, Ticket.created_at < week_end,
                    Ticket.status.in_([TicketStatus.RESOLVED, TicketStatus.CLOSED]))
         )).scalar_one()
         label = f"Sem {4 - i}"

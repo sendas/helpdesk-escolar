@@ -27,7 +27,7 @@
       <!-- Bar chart -->
       <div class="hd-card" style="padding:20px">
         <div style="font-weight:600;font-size:14px;margin-bottom:4px">Tickets criados vs resolvidos</div>
-        <div style="font-size:12px;color:var(--c-muted);margin-bottom:16px">Últimas 4 semanas</div>
+        <div style="font-size:12px;color:var(--c-muted);margin-bottom:16px">Tickets criados em cada uma das últimas 4 semanas e quantos desses já estão resolvidos ou fechados</div>
         <div v-if="loading" style="height:220px;display:flex;align-items:center;justify-content:center;color:var(--c-muted)">
           A carregar...
         </div>
@@ -161,7 +161,7 @@ const kpis = computed(() => {
   ]
   const s = stats.value
   return [
-    { label: 'Total de tickets', value: s.total ?? '—', icon: 'confirmation_number', trend: 'este mês', up: true },
+    { label: 'Total de tickets', value: s.total ?? '—', icon: 'confirmation_number', trend: 'no total', up: true },
     { label: 'Abertos', value: s.open ?? '—', icon: 'inbox', trend: 'aguardando', up: false },
     { label: 'Resolvidos/fechados', value: s.by_status ? (s.by_status.resolved ?? 0) + (s.by_status.closed ?? 0) : '—', icon: 'check_circle', trend: 'total', up: true },
     { label: 'Tempo médio', value: s.avg_resolution_hours ? `${s.avg_resolution_hours}h` : '—', icon: 'schedule', trend: 'até resolução', up: true },
@@ -178,7 +178,7 @@ const barData = computed(() => {
     labels,
     datasets: [
       { label: 'Criados', data: created, backgroundColor: '#3D52D5cc', borderRadius: 4 },
-      { label: 'Resolvidos/fechados', data: resolved, backgroundColor: '#22C55Ecc', borderRadius: 4 },
+      { label: 'Desses, já resolvidos', data: resolved, backgroundColor: '#22C55Ecc', borderRadius: 4 },
     ],
   }
 })

@@ -13,6 +13,7 @@ from app.schemas.user import (
     UserBulkUpdate,
     UserCreate,
     MeRead,
+    ProfileUpdate,
     UserPreferences,
     UserRead,
     UserUpdate,
@@ -44,6 +45,34 @@ async def update_my_preferences(
     await db.commit()
     await db.refresh(current_user)
     return _me(current_user)
+
+
+@router.put("/me/profile", response_model=MeRead)
+async def update_my_profile(data: ProfileUpdate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Each person edits how their name appears in the tickets (kept by the directory sync) and their phone."""
+    user = await db.get(User, current_user.id)
+    if data.reset_name:
+        if user.directory_name:
+            user.display_name = user.directory_name
+        user.name_locked = False
+    elif data.display_name is not None:
+        name = " ".join(data.display_name.split())
+        if len(name) < 3:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Indique um nome com pelo menos 3 letras.")
+        if len(name) > 200:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O nome é demasiado longo.")
+        if name != user.display_name:
+            if not user.directory_name:
+                user.directory_name = user.display_name
+            user.display_name = name
+            user.name_locked = name != user.directory_name
+    if data.phone is not None:
+        user.phone = data.phone.strip()[:40] or None
+    await db.commit()
+    await db.refresh(user)
+    from app.services import realtime
+    realtime.remember_name(user.id, user.display_name)
+    return _me(user)
 
 
 @router.get("/me/notifications")

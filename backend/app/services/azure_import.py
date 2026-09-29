@@ -87,7 +87,11 @@ async def import_azure_users(db: AsyncSession) -> dict:
                 user.email = email
                 by_email[email.lower()] = user
                 changed = True
-            if user.display_name != display_name:
+            if user.directory_name != display_name:
+                user.directory_name = display_name
+                changed = True
+            # A name the person chose in "O meu perfil" is kept
+            if not user.name_locked and user.display_name != display_name:
                 user.display_name = display_name
                 changed = True
             if department and user.department != department:

@@ -111,6 +111,7 @@ async def _add_missing_columns(conn) -> None:
             WHERE status IN ('RESOLVED', 'CLOSED') AND resolved_at IS NULL
         """))
     await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tickets_resolved_at ON tickets (resolved_at)"))
+    await _recompute_resolved_at_once(conn)
 
     # 7c. Indexes for the columns every ticket page, list and counter filters on
     for name, table, cols in (
@@ -136,6 +137,17 @@ async def _add_missing_columns(conn) -> None:
     if "mention_ids" not in {row[1] for row in rows_c2}:
         await conn.execute(text("ALTER TABLE comments ADD COLUMN mention_ids VARCHAR(500)"))
 
+    # 7g. Own profile: chosen name, name from the directory, phone
+    rows_u4 = await conn.execute(text("PRAGMA table_info(users)"))
+    cols_u4 = {row[1] for row in rows_u4}
+    if "name_locked" not in cols_u4:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN name_locked BOOLEAN NOT NULL DEFAULT 0"))
+    if "directory_name" not in cols_u4:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN directory_name VARCHAR(200)"))
+        await conn.execute(text("UPDATE users SET directory_name = display_name WHERE auth_provider IN ('azure', 'ldap')"))
+    if "phone" not in cols_u4:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(40)"))
+
     # 7e. Personal notification preferences
     rows_u3 = await conn.execute(text("PRAGMA table_info(users)"))
     if "notification_prefs" not in {row[1] for row in rows_u3}:
@@ -157,6 +169,43 @@ async def _add_missing_columns(conn) -> None:
         ) AND closed_via_email = 0
     """))
 
+
+
+_DONE_WORDS = ("resolvido", "fechado")
+_OPEN_WORDS = ("aberto", "atribuído", "em curso", "a aguardar")
+
+
+async def _recompute_resolved_at_once(conn) -> None:
+    """v2.9.1: resolved_at of older tickets = when they FIRST became resolved/closed (after any reopening), read from
+    their history. The first fill used the last change, so a ticket resolved one week and auto-closed later counted
+    in the wrong week."""
+    from sqlalchemy import text
+    from app.api.v1.settings import _read_settings, _update_settings
+    done = set(_read_settings().get("settings_migrations") or [])
+    if "resolved_at_first_transition" in done:
+        return
+    rows = (await conn.execute(text("""
+        SELECT t.id, t.updated_at, e.created_at, e.event_type, e.message
+        FROM tickets t LEFT JOIN ticket_events e ON e.ticket_id = t.id
+        WHERE t.status IN ('RESOLVED', 'CLOSED')
+        ORDER BY t.id, e.created_at
+    """))).all()
+    result: dict[int, object] = {}
+    fallback: dict[int, object] = {}
+    for tid, updated_at, when, kind, message in rows:
+        fallback[tid] = updated_at
+        text_ = (message or "").lower()
+        if when is None or not (kind == "status_changed" or text_.startswith("estado alterado para")):
+            continue
+        target = text_.split("estado alterado para", 1)[-1] if "estado alterado para" in text_ else text_
+        if any(w in target for w in _DONE_WORDS):
+            result.setdefault(tid, when)          # first move to resolved/closed
+        elif any(w in target for w in _OPEN_WORDS):
+            result.pop(tid, None)                 # reopened: the next move counts
+    for tid, upd in fallback.items():
+        await conn.execute(text("UPDATE tickets SET resolved_at = :w WHERE id = :id"), {"w": result.get(tid, upd), "id": tid})
+    done.add("resolved_at_first_transition")
+    _update_settings({"settings_migrations": sorted(done)})
 
 
 @asynccontextmanager

@@ -1,8 +1,21 @@
-export const APP_VERSION = '2.9.0'
+export const APP_VERSION = '2.9.1'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '15:53'
+export const APP_VERSION_TIME = '16:04'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.9.1',
+    date: '2026-09-29',
+    time: '16:04',
+    title: 'O meu perfil e estatísticas corrigidas',
+    changes: [
+      'Clicar no seu avatar (canto superior direito) abre um menu com o seu nome, email e papel, e ligações para "O meu perfil", "As minhas notificações", modo escuro e terminar sessão.',
+      'Nova página "O meu perfil": cada pessoa pode mudar a forma como o seu nome aparece nos tickets, com pré-visualização do nome longo e do nome curto (com a etiqueta do grupo, ex.: 510 FQ). A sincronização com o Microsoft 365 deixa de o alterar; há um botão para voltar ao nome da conta da escola.',
+      'Corrigido: o gráfico "Tickets criados vs resolvidos" podia mostrar mais resolvidos do que criados. Agora mostra, para os tickets criados em cada semana, quantos desses já estão resolvidos ou fechados.',
+      'Corrigido: a data de resolução dos tickets antigos usava a última mudança de estado (ex.: o fecho automático por inatividade) em vez do momento em que foram resolvidos. Foi recalculada a partir do histórico.',
+      'O cartão "Total de tickets" dizia "este mês", mas mostra o total.',
+    ],
+  },
   {
     version: '2.9.0',
     date: '2026-09-29',

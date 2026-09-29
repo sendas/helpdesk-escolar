@@ -25,6 +25,7 @@ const routes = [
       { path: 'tickets/:id', meta: { remount: true }, component: () => import('../pages/TicketDetailPage.vue') },
       { path: 'knowledge', component: () => import('../pages/KnowledgePage.vue') },
       { path: 'notificacoes', component: () => import('../pages/NotificationSettingsPage.vue') },
+      { path: 'perfil', component: () => import('../pages/ProfilePage.vue') },
       { path: 'version', component: () => import('../pages/VersionPage.vue') },
       { path: 'about', component: () => import('../pages/AboutPage.vue') },
       { path: 'suggestions', component: () => import('../pages/SuggestionsPage.vue') },

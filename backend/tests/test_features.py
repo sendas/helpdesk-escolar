@@ -151,3 +151,19 @@ async def test_no_access_form_for_students(client, api, monkeypatch):
     # Staff still need an email
     r = await client.post(f"{api}/auth/no-access-contact", json={"profile": "docente", "name": "X", "message": "Y"})
     assert r.status_code == 400
+
+
+async def test_own_profile_name(client, people, api):
+    h = people["tec2"]["h"]
+    r = await client.put(f"{api}/users/me/profile", headers=h, json={"display_name": "  Rui   Silva Docente-550 - Informática ", "phone": "912345678"})
+    assert r.status_code == 200, r.text
+    me = r.json()
+    assert me["display_name"] == "Rui Silva Docente-550 - Informática" and me["name_locked"] and me["phone"] == "912345678"
+    assert (await client.put(f"{api}/users/me/profile", headers=h, json={"display_name": "R"})).status_code == 400
+    me = (await client.put(f"{api}/users/me/profile", headers=h, json={"reset_name": True})).json()
+    assert me["display_name"] == "Rui Técnico" and not me["name_locked"]
+
+
+async def test_weekly_resolved_never_exceeds_created(client, people, api):
+    weekly = (await client.get(f"{api}/admin/stats", headers=people["adm"]["h"])).json()["weekly"]
+    assert all(w["resolved"] <= w["created"] for w in weekly)
