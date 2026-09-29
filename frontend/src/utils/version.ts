@@ -1,8 +1,18 @@
-export const APP_VERSION = '2.9.1'
+export const APP_VERSION = '2.9.2'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '16:04'
+export const APP_VERSION_TIME = '16:07'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.9.2',
+    date: '2026-09-29',
+    time: '16:07',
+    title: 'Quadro mais compacto',
+    changes: [
+      'As cinco colunas do Quadro cabem no ecrã de um portátil (a partir de 1280 px); só em ecrãs estreitos passa a deslizar para o lado.',
+      'Cartões mais compactos e uma frase no topo a explicar o Quadro.',
+    ],
+  },
   {
     version: '2.9.1',
     date: '2026-09-29',

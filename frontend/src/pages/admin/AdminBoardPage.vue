@@ -10,7 +10,7 @@
         <input v-model="onlyMine" type="checkbox" @change="load" /> Só os meus
       </label>
       <span v-if="!canMove" class="board-note">Só leitura — o seu papel não permite mudar o estado.</span>
-      <span v-else class="board-note">Arraste um cartão para outra coluna para mudar o estado.</span>
+      <span v-else class="board-note">Tickets em aberto por estado. Arraste um cartão para outra coluna para mudar o estado.</span>
     </div>
 
     <div v-if="loading" class="board-empty">A carregar…</div>
@@ -173,29 +173,31 @@ onMounted(async () => {
 .board-mine { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--c-text); }
 .board-note { margin-left: auto; font-size: 12.5px; color: var(--c-muted); }
 .board-empty { padding: 60px; text-align: center; color: var(--c-muted); }
-.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(215px, 1fr); gap: 14px; overflow-x: auto; padding-bottom: 12px; align-items: start; }
+/* The 5 columns share the width (they only scroll sideways on narrow screens) */
+.board { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 12px; align-items: start; }
+@media (max-width: 900px) { .board { grid-template-columns: repeat(5, minmax(220px, 1fr)); scroll-snap-type: x mandatory; } .board-col { scroll-snap-align: start; } }
 .board-col { background: var(--c-surface-soft); border: 1px solid var(--c-border); border-top: 3px solid var(--col-color); border-radius: 14px; min-height: 200px; display: flex; flex-direction: column; max-height: calc(100vh - 200px); }
 .board-col.over { background: color-mix(in srgb, var(--col-color) 10%, var(--c-surface)); border-color: var(--col-color); }
-.board-col-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; font-weight: 800; font-size: 13px; color: var(--c-text); }
+.board-col-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px; font-weight: 800; font-size: 12.5px; color: var(--c-text); white-space: nowrap; min-width: 0; }
 .board-col-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--col-color); }
-.board-count { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--col-color); background: color-mix(in srgb, var(--col-color) 14%, transparent); border-radius: 999px; padding: 1px 9px; }
-.board-cards { display: flex; flex-direction: column; gap: 8px; padding: 0 10px 12px; overflow-y: auto; }
-.board-card { background: var(--c-surface); border: 1px solid var(--c-border); border-left: 3px solid var(--col-color); border-radius: 10px; padding: 10px 12px; cursor: pointer; box-shadow: var(--shadow-sm); }
+.board-count { margin-left: auto; font-size: 11.5px; font-weight: 700; color: var(--col-color); background: color-mix(in srgb, var(--col-color) 14%, transparent); border-radius: 999px; padding: 1px 8px; }
+.board-cards { display: flex; flex-direction: column; gap: 6px; padding: 0 6px 8px; overflow-y: auto; }
+.board-card { background: var(--c-surface); border: 1px solid var(--c-border); border-left: 3px solid var(--col-color); border-radius: 10px; padding: 8px 9px; cursor: pointer; box-shadow: var(--shadow-sm); min-width: 0; }
 .board-card[draggable="true"] { cursor: grab; }
 .board-card:hover { border-color: var(--col-color); }
 .board-card.dragging { opacity: .45; }
 .board-card.unread .board-title { font-weight: 800; }
-.board-card-top { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-muted); flex-wrap: wrap; }
+.board-card-top { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--c-muted); flex-wrap: wrap; }
 .board-card-top :deep(.priority-badge), .board-card-top > * { white-space: nowrap; }
 .board-id { font-weight: 700; white-space: nowrap; }
 .board-school { font-size: 10.5px; font-weight: 800; color: #0E7490; background: #CFFAFE; border-radius: 6px; padding: 0 5px; }
 .dark .board-school { color: #A5F3FC; background: rgba(8, 145, 178, .2); }
 .board-move { margin-left: auto; border: 1px solid transparent; background: transparent; color: var(--c-muted); border-radius: 6px; font-size: 11px; padding: 1px 0; max-width: 22px; cursor: pointer; }
 .board-move:hover, .board-move:focus { border-color: var(--c-border); background: var(--c-surface); max-width: 110px; }
-.board-title { font-size: 13.5px; font-weight: 600; color: var(--c-text); margin: 6px 0 4px; line-height: 1.3; overflow-wrap: anywhere; }
-.board-meta { font-size: 11.5px; color: var(--c-muted); display: flex; gap: 4px; flex-wrap: wrap; }
+.board-title { font-size: 13px; font-weight: 600; color: var(--c-text); margin: 5px 0 3px; line-height: 1.3; overflow-wrap: anywhere; }
+.board-meta { font-size: 11px; color: var(--c-muted); display: flex; gap: 4px; flex-wrap: wrap; }
 .board-cat { color: var(--c-primary); font-weight: 600; }
-.board-people { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--c-muted); min-width: 0; }
+.board-people { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 11.5px; color: var(--c-muted); min-width: 0; }
 .board-requester { min-width: 0; flex: 1; }
 .board-assignees { display: inline-flex; gap: 2px; }
 .board-col-empty { text-align: center; color: var(--c-muted); font-size: 12.5px; padding: 18px 0; }
