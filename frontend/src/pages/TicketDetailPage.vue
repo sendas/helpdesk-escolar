@@ -622,22 +622,34 @@ function privatePeople(c: any): any[] {
   const seen = new Set<number>()
   return list.filter((u: any) => u && !seen.has(u.id) && seen.add(u.id))
 }
+// Each private conversation (same people) is ONE box with all its messages in order, shown where its latest
+// message is; public replies and notes stay in the normal flow around it
 const commentBlocks = computed(() => {
   const me = auth.user?.id
-  const blocks: { key: string; others: any[] | null; group: string; items: any[]; lastOfGroup?: boolean }[] = []
   // In "Ver como docente" internal notes are hidden, as the server does for docentes
-  for (const c of (ticket.value?.comments ?? []).filter((x: any) => !(auth.inPreview && x.is_internal)) as any[]) {
-    const others = c.private_to ? privatePeople(c).filter((u: any) => u.id !== me) : null
-    const group = others ? others.map((u: any) => u.id).sort((a: number, b: number) => a - b).join(',') : ''
-    const last = blocks[blocks.length - 1]
-    if (others && last?.others && last.group === group) last.items.push(c)
-    else blocks.push({ key: `c${c.id}`, others, group, items: [c] })
+  const all = (ticket.value?.comments ?? []).filter((x: any) => !(auth.inPreview && x.is_internal)) as any[]
+  const groups = new Map<string, { others: any[]; items: any[] }>()
+  const groupOf = new Map<number, string>()
+  for (const c of all) {
+    if (!c.private_to) continue
+    const others = privatePeople(c).filter((u: any) => u.id !== me)
+      .sort((a: any, b: any) => String(a.display_name).localeCompare(String(b.display_name), 'pt'))
+    const key = others.map((u: any) => u.id).sort((a: number, b: number) => a - b).join(',')
+    if (!groups.has(key)) groups.set(key, { others, items: [] })
+    groups.get(key)!.items.push(c)
+    groupOf.set(c.id, key)
   }
-  // The quick reply box goes under the most recent block of each private conversation
-  const seen = new Set<string>()
-  for (let i = blocks.length - 1; i >= 0; i--) {
-    const b = blocks[i]
-    if (b.others && !seen.has(b.group)) { b.lastOfGroup = true; seen.add(b.group) }
+  const blocks: { key: string; others: any[] | null; group: string; items: any[]; lastOfGroup?: boolean }[] = []
+  for (const c of all) {
+    const key = groupOf.get(c.id)
+    if (key === undefined) {
+      blocks.push({ key: `c${c.id}`, others: null, group: '', items: [c] })
+      continue
+    }
+    const g = groups.get(key)!
+    if (g.items[g.items.length - 1].id === c.id) {
+      blocks.push({ key: `p${key}`, others: g.others, group: key, items: g.items, lastOfGroup: true })
+    }
   }
   return blocks
 })

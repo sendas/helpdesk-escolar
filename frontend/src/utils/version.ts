@@ -1,8 +1,18 @@
-export const APP_VERSION = '2.8.0'
+export const APP_VERSION = '2.8.1'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '15:12'
+export const APP_VERSION_TIME = '15:14'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.8.1',
+    date: '2026-09-29',
+    time: '15:14',
+    title: 'Conversas privadas numa só caixa',
+    changes: [
+      'Cada conversa privada fica numa única caixa com todas as mensagens encadeadas, mesmo que haja respostas públicas pelo meio. A caixa aparece no ponto da mensagem mais recente, com a caixa de resposta no fundo.',
+      'Os nomes das pessoas da conversa aparecem sempre pela mesma ordem.',
+    ],
+  },
   {
     version: '2.8.0',
     date: '2026-09-29',
