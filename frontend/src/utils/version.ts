@@ -1,8 +1,19 @@
-export const APP_VERSION = '2.7.0'
+export const APP_VERSION = '2.7.1'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '12:28'
+export const APP_VERSION_TIME = '12:38'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.7.1',
+    date: '2026-09-29',
+    time: '12:38',
+    title: 'Estatísticas: tickets resolvidos contados corretamente',
+    changes: [
+      'Corrigido: o gráfico "Tickets criados vs resolvidos" só contava tickets no estado "Resolvido" e pela data da última alteração. Agora conta resolvidos e fechados, na semana em que foram resolvidos/fechados.',
+      'Cada ticket passa a guardar a data em que foi resolvido ou fechado (para os tickets antigos é recuperada do histórico).',
+      'O cartão "Resolvidos/fechados" soma os dois estados, e o "Tempo médio" até à resolução passa a ser calculado (últimos 90 dias).',
+    ],
+  },
   {
     version: '2.7.0',
     date: '2026-09-29',

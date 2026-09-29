@@ -379,10 +379,11 @@ async def admin_stats(
             select(func.count()).select_from(Ticket)
             .where(Ticket.created_at >= week_start, Ticket.created_at < week_end)
         )).scalar_one()
+        # Resolved or closed in that week (by the date it happened, not the last time the ticket changed)
         resolved = (await db.execute(
             select(func.count()).select_from(Ticket)
-            .where(Ticket.updated_at >= week_start, Ticket.updated_at < week_end,
-                   Ticket.status == TicketStatus.RESOLVED)
+            .where(Ticket.resolved_at >= week_start, Ticket.resolved_at < week_end,
+                   Ticket.status.in_([TicketStatus.RESOLVED, TicketStatus.CLOSED]))
         )).scalar_one()
         label = f"Sem {4 - i}"
         weekly.append({"week": label, "created": created, "resolved": resolved})
@@ -395,7 +396,7 @@ async def admin_stats(
     for u in staff_users:
         resolved_count = (await db.execute(
             select(func.count()).select_from(Ticket)
-            .where(Ticket.assignee_id == u.id, Ticket.status == TicketStatus.RESOLVED)
+            .where(Ticket.assignee_id == u.id, Ticket.status.in_([TicketStatus.RESOLVED, TicketStatus.CLOSED]))
         )).scalar_one()
         in_progress = (await db.execute(
             select(func.count()).select_from(Ticket)
@@ -406,6 +407,14 @@ async def admin_stats(
             "in_progress": in_progress, "rating": min(5, max(1, resolved_count // 2 + 1)),
         })
 
+    # Average time from opening to resolved/closed, tickets finished in the last 90 days
+    avg_days = (await db.execute(
+        select(func.avg(func.julianday(Ticket.resolved_at) - func.julianday(Ticket.created_at)))
+        .where(Ticket.status.in_([TicketStatus.RESOLVED, TicketStatus.CLOSED]),
+               Ticket.resolved_at >= datetime.utcnow() - timedelta(days=90))
+    )).scalar_one()
+    avg_resolution_hours = round(avg_days * 24, 1) if avg_days is not None else None
+
     access_stats = await _build_access_stats(db)
 
     return {
@@ -415,6 +424,7 @@ async def admin_stats(
         "by_status": counts,
         "by_category": by_category,
         "weekly": weekly,
+        "avg_resolution_hours": avg_resolution_hours,
         "by_assignee": by_assignee,
         "user_count": user_count,
         "category_count": category_count,

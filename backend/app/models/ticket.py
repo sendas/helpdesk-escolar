@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import String, Text, ForeignKey, DateTime, Enum as SAEnum, Boolean, Column, Table
+from sqlalchemy import String, Text, ForeignKey, DateTime, Enum as SAEnum, Boolean, Column, Table, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -58,6 +58,8 @@ class Ticket(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # When the ticket was resolved or closed (cleared if it is reopened); used by the statistics
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     creator_email_notifications: Mapped[bool] = mapped_column(Boolean, default=True)
     is_escalated: Mapped[bool] = mapped_column(Boolean, default=False)
     closed_via_email: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -203,3 +205,13 @@ class ProcessedEmail(Base):
     ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
     sender_email: Mapped[str] = mapped_column(String(200))
     processed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+@event.listens_for(Ticket.status, "set", active_history=True)
+def _track_resolved_at(target: Ticket, value, oldvalue, _initiator) -> None:
+    """Every way a ticket changes state (page, email, inactivity, bulk) passes here."""
+    done = (TicketStatus.RESOLVED, TicketStatus.CLOSED)
+    if value in done and oldvalue not in done:
+        target.resolved_at = datetime.utcnow()
+    elif value not in done:
+        target.resolved_at = None

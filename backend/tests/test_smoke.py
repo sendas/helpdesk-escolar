@@ -103,3 +103,18 @@ async def test_overdue_filter_and_reactions_batch(client, people, api):
         ids.append((await client.post(f"{api}/tickets/{tid}/comments", headers=people["tec"]["h"], json={"body": f"r{i}"})).json()["id"])
     r = await client.get(f"{api}/reactions", params={"target_type": "comment", "ids": ",".join(map(str, ids))}, headers=people["prof"]["h"])
     assert sorted(map(int, r.json())) == sorted(ids)
+
+
+async def test_resolved_and_closed_count_in_weekly_stats(client, people, api):
+    before = (await client.get(f"{api}/admin/stats", headers=people["adm"]["h"])).json()["weekly"][-1]["resolved"]
+    a = await _new_ticket(client, people, api, "Fica resolvido")
+    b = await _new_ticket(client, people, api, "Fica fechado")
+    assert (await client.patch(f"{api}/tickets/{a}", headers=people["tec"]["h"], json={"status": "resolved"})).status_code == 200
+    assert (await client.patch(f"{api}/tickets/{b}", headers=people["tec"]["h"], json={"status": "closed"})).status_code == 200
+    stats = (await client.get(f"{api}/admin/stats", headers=people["adm"]["h"])).json()
+    assert stats["weekly"][-1]["resolved"] == before + 2
+    assert stats["avg_resolution_hours"] is not None
+    # Reopening takes it out again
+    await client.patch(f"{api}/tickets/{a}", headers=people["tec"]["h"], json={"status": "in_progress"})
+    stats = (await client.get(f"{api}/admin/stats", headers=people["adm"]["h"])).json()
+    assert stats["weekly"][-1]["resolved"] == before + 1

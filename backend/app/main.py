@@ -95,6 +95,23 @@ async def _add_missing_columns(conn) -> None:
         SELECT id, private_to_id FROM comments WHERE private_to_id IS NOT NULL
     """))
 
+    # 7d. When each ticket was resolved/closed (statistics). Older tickets: the last recorded change to Resolvido/
+    # Fechado in their history, otherwise their last update
+    rows_t = await conn.execute(text("PRAGMA table_info(tickets)"))
+    if "resolved_at" not in {row[1] for row in rows_t}:
+        await conn.execute(text("ALTER TABLE tickets ADD COLUMN resolved_at DATETIME"))
+        await conn.execute(text("""
+            UPDATE tickets SET resolved_at = COALESCE(
+                (SELECT MAX(e.created_at) FROM ticket_events e
+                 WHERE e.ticket_id = tickets.id
+                   AND (e.event_type = 'status_changed'
+                        OR e.message LIKE 'Estado alterado para Resolvido%'
+                        OR e.message LIKE 'Estado alterado para Fechado%')),
+                updated_at)
+            WHERE status IN ('RESOLVED', 'CLOSED') AND resolved_at IS NULL
+        """))
+    await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tickets_resolved_at ON tickets (resolved_at)"))
+
     # 7c. Indexes for the columns every ticket page, list and counter filters on
     for name, table, cols in (
         ("ix_comments_ticket_id", "comments", "ticket_id"),

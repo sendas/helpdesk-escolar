@@ -126,7 +126,7 @@ const kpis = computed(() => {
   return [
     { label: 'Total de tickets', value: s.total ?? '—', icon: 'confirmation_number', trend: 'este mês', up: true },
     { label: 'Abertos', value: s.open ?? '—', icon: 'inbox', trend: 'aguardando', up: false },
-    { label: 'Resolvidos', value: s.resolved ?? '—', icon: 'check_circle', trend: 'total', up: true },
+    { label: 'Resolvidos/fechados', value: s.by_status ? (s.by_status.resolved ?? 0) + (s.by_status.closed ?? 0) : '—', icon: 'check_circle', trend: 'total', up: true },
     { label: 'Tempo médio', value: s.avg_resolution_hours ? `${s.avg_resolution_hours}h` : '—', icon: 'schedule', trend: 'até resolução', up: true },
   ]
 })
@@ -141,7 +141,7 @@ const barData = computed(() => {
     labels,
     datasets: [
       { label: 'Criados', data: created, backgroundColor: '#3D52D5cc', borderRadius: 4 },
-      { label: 'Resolvidos', data: resolved, backgroundColor: '#22C55Ecc', borderRadius: 4 },
+      { label: 'Resolvidos/fechados', data: resolved, backgroundColor: '#22C55Ecc', borderRadius: 4 },
     ],
   }
 })
