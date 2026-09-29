@@ -181,3 +181,39 @@ async def test_news_popup(client, people, api):
     assert me["news_seen"] == 0
     assert (await client.put(f"{api}/users/me/news-seen", headers=people["prof"]["h"], json={"news_id": 2})).status_code == 204
     assert (await client.get(f"{api}/users/me", headers=people["prof"]["h"])).json()["news_seen"] == 2
+
+
+async def test_mailbox_reply_forward_delete(client, people, api, monkeypatch):
+    from app.services import mailbox as mb
+    calls = []
+
+    class Fake:
+        name = "graph"
+        can_archive = True
+
+        async def reply(self, mid, text, reply_all=False):
+            calls.append(("reply", mid, text, reply_all))
+
+        async def forward(self, mid, recipients, text):
+            calls.append(("forward", mid, recipients, text))
+
+        async def delete(self, mid):
+            calls.append(("delete", mid))
+
+        async def set_read(self, mid, read):
+            pass
+
+    monkeypatch.setattr(mb, "get_provider", lambda: Fake())
+    tec = people["tec"]["h"]
+    assert (await client.post(f"{api}/mailbox/reply", headers=tec, json={"id": "m9", "text": "  "})).status_code == 400
+    r = await client.post(f"{api}/mailbox/reply", headers=tec, json={"id": "m9", "text": "Obrigado, já tratámos.", "reply_all": True})
+    assert r.status_code == 204
+    assert calls[-1][0] == "reply" and calls[-1][3] is True and "Tiago Costa" in calls[-1][2]  # signed by who answered
+    r = await client.post(f"{api}/mailbox/forward", headers=tec, json={"id": "m9", "to": ["prof@escola.pt", "externo@gmail.com"], "text": "Para conhecimento"})
+    assert r.status_code == 204
+    assert calls[-1][2] == [("prof@escola.pt", people and "Maria Serra Docente-510 - Física e Química"), ("externo@gmail.com", "")]
+    assert (await client.post(f"{api}/mailbox/forward", headers=tec, json={"id": "m9", "to": ["não-é-email"]})).status_code == 400
+    assert (await client.post(f"{api}/mailbox/delete", headers=tec, json={"id": "m9"})).status_code == 204
+    assert calls[-1] == ("delete", "m9")
+    # Only the support team sends from the helpdesk address
+    assert (await client.post(f"{api}/mailbox/reply", headers=people["prof"]["h"], json={"id": "m9", "text": "x"})).status_code == 403

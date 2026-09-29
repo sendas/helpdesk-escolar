@@ -66,6 +66,12 @@
             <span v-for="a in detail.attachments" :key="a.name" class="mail-att"><span class="material-icons">attach_file</span>{{ a.name }} <small>{{ size(a.size) }}</small></span>
           </div>
 
+          <div v-if="canManage" class="mail-actions mail-actions-main">
+            <button class="hd-btn hd-btn-outline" type="button" :class="{ on: mode === 'reply' }" @click="startReply(false)"><span class="material-icons">reply</span> Responder</button>
+            <button class="hd-btn hd-btn-outline" type="button" :class="{ on: mode === 'replyAll' }" @click="startReply(true)"><span class="material-icons">reply_all</span> Responder a todos</button>
+            <button class="hd-btn hd-btn-outline" type="button" :class="{ on: mode === 'forward' }" @click="startForward"><span class="material-icons">forward</span> Reencaminhar</button>
+            <button v-if="canArchive" class="hd-btn hd-btn-outline danger" type="button" @click="removeMail"><span class="material-icons">delete</span> Eliminar</button>
+          </div>
           <div class="mail-actions">
             <template v-if="!detail.ticket_id && canManage">
               <button class="hd-btn hd-btn-primary" type="button" @click="mode = mode === 'new' ? '' : 'new'"><span class="material-icons">add_task</span> Criar ticket</button>
@@ -73,6 +79,40 @@
             </template>
             <button class="hd-btn hd-btn-outline" type="button" @click="toggleRead"><span class="material-icons">{{ current.is_read ? 'mark_email_unread' : 'mark_email_read' }}</span> {{ current.is_read ? 'Marcar como não lido' : 'Marcar como lido' }}</button>
             <button v-if="canArchive" class="hd-btn hd-btn-outline" type="button" @click="archive"><span class="material-icons">archive</span> Arquivar</button>
+          </div>
+
+          <!-- Reply / reply all / forward -->
+          <div v-if="mode === 'reply' || mode === 'replyAll' || mode === 'forward'" class="mail-form">
+            <div v-if="mode !== 'forward'" class="mail-form-hint">
+              Para: <strong>{{ detail.from_name || detail.from_email }}</strong> &lt;{{ detail.from_email }}&gt;
+              <template v-if="mode === 'replyAll' && replyAllOthers.length"> · Cc: {{ replyAllOthers.join(', ') }}</template>
+            </div>
+            <div v-else class="fwd-to">
+              <label class="fwd-label">Para</label>
+              <div class="fwd-box" @click="fwdInput?.focus()">
+                <span v-for="r in fwdTo" :key="r.email" class="fwd-chip" :title="r.email">
+                  {{ r.name || r.email }}
+                  <button type="button" :aria-label="'Retirar ' + (r.name || r.email)" @click.stop="removeRecipient(r.email)"><span class="material-icons">close</span></button>
+                </span>
+                <input ref="fwdInput" v-model="fwdQuery" class="fwd-input" placeholder="Nome ou email (docentes, funcionários, alunos)…"
+                       @input="searchPeople" @keydown.enter.prevent="addTyped" @keydown.tab="fwdQuery.trim() && ($event.preventDefault(), addTyped())"
+                       @keydown.backspace="!fwdQuery && fwdTo.pop()" @blur="closeResultsSoon" />
+              </div>
+              <div v-if="fwdResults.length" class="fwd-results">
+                <button v-for="u in fwdResults" :key="u.id" type="button" class="fwd-result" @mousedown.prevent="addRecipient(u.email, u.display_name)">
+                  <strong>{{ u.display_name }}</strong><small>{{ u.email }}<template v-if="u.role_label"> · {{ u.role_label }}</template></small>
+                </button>
+              </div>
+            </div>
+            <textarea v-model="composeText" class="hd-textarea" rows="5"
+                      :placeholder="mode === 'forward' ? 'Mensagem (opcional)' : 'Escreva a resposta…'"></textarea>
+            <div class="mail-form-hint">Sai do endereço {{ mailbox }}, com o seu nome no fim. {{ mode === 'forward' ? 'Os anexos seguem com a mensagem.' : 'A mensagem original vai citada por baixo.' }}</div>
+            <div class="compose-actions">
+              <button class="hd-btn hd-btn-outline" type="button" @click="mode = ''">Cancelar</button>
+              <button class="hd-btn hd-btn-primary" type="button" :disabled="busy || (mode === 'forward' ? !fwdTo.length : !composeText.trim())" @click="sendCompose">
+                <span class="material-icons">send</span> {{ busy ? 'A enviar…' : 'Enviar' }}
+              </button>
+            </div>
           </div>
 
           <div v-if="mode === 'new'" class="mail-form">
@@ -110,7 +150,8 @@ import { useRouter } from 'vue-router'
 import { api } from '../../boot/axios'
 import { getCategories, getSchools } from '../../api/tickets'
 import { useAuthStore } from '../../stores/auth'
-import { errorMessage, notifyError, notifySuccess } from '../../utils/feedback'
+import { confirmDialog, errorMessage, notifyError, notifySuccess } from '../../utils/feedback'
+import { searchUsers } from '../../api/users'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -126,7 +167,86 @@ const canArchive = ref(true)
 const current = ref<any | null>(null)
 const detail = ref<any | null>(null)
 const loadingMsg = ref(false)
-const mode = ref<'' | 'new' | 'attach'>('')
+const mode = ref<'' | 'new' | 'attach' | 'reply' | 'replyAll' | 'forward'>('')
+const composeText = ref('')
+const fwdTo = ref<{ email: string; name: string }[]>([])
+const fwdQuery = ref('')
+const fwdResults = ref<any[]>([])
+const fwdInput = ref<HTMLInputElement | null>(null)
+let fwdTimer: ReturnType<typeof setTimeout> | null = null
+const replyAllOthers = computed(() => {
+  const d = detail.value
+  if (!d) return []
+  const own = mailbox.value.toLowerCase()
+  return `${d.to || ''},${d.cc || ''}`.split(',').map((x: string) => x.trim()).filter((x: string) => x && x.toLowerCase() !== own && x.toLowerCase() !== d.from_email)
+})
+
+function startReply(all: boolean) {
+  mode.value = all ? 'replyAll' : 'reply'
+  composeText.value = ''
+}
+function startForward() {
+  mode.value = 'forward'
+  composeText.value = ''
+  fwdTo.value = []
+  fwdQuery.value = ''
+}
+// People synchronised from the directory (docentes, não docentes, alunos) — or any address typed in full
+function searchPeople() {
+  if (fwdTimer) clearTimeout(fwdTimer)
+  const q = fwdQuery.value.trim()
+  if (q.length < 2) { fwdResults.value = []; return }
+  fwdTimer = setTimeout(async () => {
+    try {
+      const people = await searchUsers(q, { limit: 8 })
+      if (fwdQuery.value.trim() === q) fwdResults.value = people.filter((u: any) => u.email && !fwdTo.value.some((r) => r.email === u.email.toLowerCase()))
+    } catch { fwdResults.value = [] }
+  }, 250)
+}
+function addRecipient(email: string, name = '') {
+  const e = email.trim().toLowerCase()
+  if (e && !fwdTo.value.some((r) => r.email === e)) fwdTo.value.push({ email: e, name })
+  fwdQuery.value = ''
+  fwdResults.value = []
+}
+function addTyped() {
+  const q = fwdQuery.value.trim().replace(/[,;]$/, '')
+  if (fwdResults.value.length) return addRecipient(fwdResults.value[0].email, fwdResults.value[0].display_name)
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(q)) addRecipient(q)
+}
+function closeResultsSoon() { setTimeout(() => { fwdResults.value = [] }, 150) }
+function removeRecipient(email: string) {
+  fwdTo.value = fwdTo.value.filter((r) => r.email !== email)
+}
+async function sendCompose() {
+  busy.value = true
+  try {
+    if (mode.value === 'forward') {
+      await api.post('/api/v1/mailbox/forward', { id: current.value.id, to: fwdTo.value.map((r) => r.email), text: composeText.value })
+      notifySuccess(`Email reencaminhado para ${fwdTo.value.map((r) => r.name || r.email).join(', ')}.`)
+    } else {
+      await api.post('/api/v1/mailbox/reply', { id: current.value.id, text: composeText.value, reply_all: mode.value === 'replyAll' })
+      current.value.is_read = true
+      notifySuccess('Resposta enviada.')
+    }
+    mode.value = ''
+  } catch (e) {
+    notifyError(e, 'Não foi possível enviar.')
+  } finally {
+    busy.value = false
+  }
+}
+async function removeMail() {
+  if (!(await confirmDialog('Eliminar este email? Vai para os "Itens eliminados" da caixa (pode ser recuperado no Outlook).', { ok: 'Eliminar', danger: true }))) return
+  try {
+    await api.post('/api/v1/mailbox/delete', { id: current.value.id })
+    items.value = items.value.filter((x) => x.id !== current.value.id)
+    current.value = null
+    notifySuccess('Email eliminado.')
+  } catch (e) {
+    notifyError(e, 'Não foi possível eliminar.')
+  }
+}
 const busy = ref(false)
 const categories = ref<any[]>([])
 const schools = ref<any[]>([])
@@ -291,6 +411,22 @@ onMounted(async () => {
 .mail-att small { color: var(--c-muted); }
 .mail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .mail-actions .hd-btn { font-size: 12.5px; }
+.mail-actions-main { padding-bottom: 12px; border-bottom: 1px solid var(--c-border); }
+.mail-actions-main + .mail-actions { margin-top: 12px; }
+.mail-actions .hd-btn.on { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-primary-soft); }
+.mail-actions .hd-btn.danger:hover { border-color: #DC2626; color: #DC2626; }
+.compose-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.fwd-to { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.fwd-label { font-size: 12.5px; font-weight: 700; color: var(--c-muted); }
+.fwd-box { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 42px; padding: 6px 8px; border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-surface); cursor: text; }
+.fwd-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--c-primary-soft); color: var(--c-primary); border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 12.5px; font-weight: 700; }
+.fwd-chip button { border: 0; background: transparent; color: inherit; cursor: pointer; display: inline-flex; padding: 1px; border-radius: 50%; }
+.fwd-chip .material-icons { font-size: 14px; }
+.fwd-input { flex: 1; min-width: 180px; border: 0; outline: none; background: transparent; color: var(--c-text); font-size: 13.5px; padding: 4px; }
+.fwd-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 30; margin-top: 4px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 10px; box-shadow: var(--shadow-md); padding: 4px; max-height: 260px; overflow-y: auto; }
+.fwd-result { display: flex; flex-direction: column; align-items: flex-start; width: 100%; border: 0; background: transparent; padding: 7px 10px; border-radius: 8px; cursor: pointer; color: var(--c-text); text-align: left; font-size: 13px; }
+.fwd-result small { color: var(--c-muted); font-size: 11.5px; }
+.fwd-result:hover { background: var(--c-primary-soft); }
 .mail-form { margin-top: 14px; border: 1px solid var(--c-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--c-surface-soft); }
 .mail-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 700; color: var(--c-muted); }
 .mail-form .mail-check { flex-direction: row; align-items: center; gap: 6px; font-weight: 600; }

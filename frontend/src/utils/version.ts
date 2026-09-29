@@ -1,8 +1,19 @@
-export const APP_VERSION = '2.10.2'
+export const APP_VERSION = '2.11.0'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '17:12'
+export const APP_VERSION_TIME = '17:17'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.11.0',
+    date: '2026-09-29',
+    time: '17:17',
+    title: 'Caixa de entrada: responder, reencaminhar e eliminar',
+    changes: [
+      'Na caixa de entrada é possível responder, responder a todos, reencaminhar e eliminar emails. As mensagens saem do endereço do helpdesk, com o nome de quem respondeu no fim; a mensagem original vai citada.',
+      'Ao reencaminhar, os destinatários escolhem-se da lista de pessoas sincronizadas (docentes, funcionários e alunos) — basta escrever parte do nome ou do email — ou escrevendo um endereço completo. Os anexos seguem com a mensagem.',
+      'Corrigido: abrir alguns emails dava "Erro no servidor" (o conteúdo dos anexos era descarregado logo ao abrir, e alguns erros de ligação não eram tratados). Agora só se leem os nomes dos anexos, as imagens das assinaturas não aparecem na lista, e se algo falhar a mensagem explica porquê.',
+    ],
+  },
   {
     version: '2.10.2',
     date: '2026-09-29',

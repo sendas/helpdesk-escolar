@@ -1,5 +1,6 @@
 """Caixa de entrada: the helpdesk mailbox inside the app. People with "mailbox.read" read it; the support team can
 turn an email into a ticket or add it to an existing one (with its attachments)."""
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -16,6 +17,7 @@ from app.services import mailbox as mb
 from app.services.permissions import has_perm
 
 router = APIRouter(prefix="/mailbox", tags=["mailbox"])
+logger = logging.getLogger(__name__)
 
 
 def _provider():
@@ -31,6 +33,13 @@ async def _run(coro):
         return await coro
     except mb.MailboxError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # Say what went wrong instead of a bare "Internal Server Error"
+        logger.exception("Caixa de entrada: erro inesperado")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail=f"Erro inesperado na caixa de correio ({exc.__class__.__name__}: {str(exc)[:160]}).") from exc
 
 
 async def _linked(db: AsyncSession, message_ids: list[str]) -> dict[str, int]:
@@ -61,7 +70,7 @@ async def list_mail(page: int = Query(1, ge=1, le=200), db: AsyncSession = Depen
         known = {e for (e,) in (await db.execute(select(func.lower(User.email)).where(func.lower(User.email).in_(senders)))).all()}
     return {
         "configured": True, "provider": provider.name, "mailbox": mb.mailbox_address(), "page": page, "has_more": has_more,
-        "can_archive": getattr(provider, "can_archive", True),
+        "can_archive": getattr(provider, "can_archive", True), "can_delete": getattr(provider, "can_archive", True),
         "items": [{**i.__dict__, "ticket_id": linked.get(i.internet_message_id), "ticket_hint": _ticket_hint(i.subject),
                    "sender_known": i.from_email in known} for i in items],
     }
@@ -71,7 +80,7 @@ async def list_mail(page: int = Query(1, ge=1, le=200), db: AsyncSession = Depen
 async def get_mail(id: str = Query(..., max_length=500), db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("mailbox.read"))):
     m = await _run(_provider().get(id))
     linked = await _linked(db, [m.internet_message_id])
-    sender = (await db.execute(select(User).where(func.lower(User.email) == m.from_email))).scalar_one_or_none() if m.from_email else None
+    sender = (await db.execute(select(User).where(func.lower(User.email) == m.from_email).order_by(User.is_active.desc()))).scalars().first() if m.from_email else None
     return {
         **{k: v for k, v in m.__dict__.items() if k != "attachments"},
         "attachments": [{"name": a.name, "content_type": a.content_type, "size": a.size} for a in m.attachments],
@@ -96,6 +105,67 @@ async def mark_mail(data: ReadIn, _: User = Depends(require_perm("mailbox.read")
 @router.post("/archive", status_code=status.HTTP_204_NO_CONTENT)
 async def archive_mail(data: MessageRef, _: User = Depends(require_perm("mailbox.read"))):
     await _run(_provider().archive(data.id))
+
+
+@router.post("/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_mail(data: MessageRef, user: User = Depends(require_perm("mailbox.read"))):
+    _require_team(user, "eliminar emails")
+    await _run(_provider().delete(data.id))
+
+
+def _require_team(user: User, what: str) -> None:
+    if not has_perm(user, "tickets.manage"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Só a equipa de apoio pode {what}.")
+
+
+def _signed(text: str, user: User) -> str:
+    """Replies go out from the helpdesk address: say who wrote them."""
+    from app.api.v1.settings import _read_settings
+    org = _read_settings().get("org_name") or "Helpdesk"
+    import re
+    # "Tiago Costa Docente-550 - Informática" → "Tiago Costa"
+    name = re.split(r"\s+Docente[-\s]*\d", user.display_name or "", maxsplit=1)[0].split(" - ")[0].strip() or user.display_name
+    return f"{text.strip()}\n\n--\n{name}\nCentro de Apoio Digital · {org}"
+
+
+class ReplyIn(MessageRef):
+    text: str
+    reply_all: bool = False
+
+
+@router.post("/reply", status_code=status.HTTP_204_NO_CONTENT)
+async def reply_mail(data: ReplyIn, user: User = Depends(require_perm("mailbox.read"))):
+    """Answer an email from the helpdesk mailbox (the original is quoted below, as in Outlook)."""
+    _require_team(user, "responder a emails")
+    if not data.text.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escreva a resposta.")
+    await _run(_provider().reply(data.id, _signed(data.text, user)[:20000], data.reply_all))
+    logger.info("Caixa de entrada: %s respondeu%s ao email %s", user.email, " a todos" if data.reply_all else "", data.id[:40])
+    try:
+        await _provider().set_read(data.id, True)
+    except (mb.MailboxError, HTTPException):
+        pass
+
+
+class ForwardIn(MessageRef):
+    to: list[str]
+    text: str = ""
+
+
+@router.post("/forward", status_code=status.HTTP_204_NO_CONTENT)
+async def forward_mail(data: ForwardIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_perm("mailbox.read"))):
+    """Forward an email (with its attachments) to people of the Agrupamento or any address."""
+    import re
+    _require_team(user, "reencaminhar emails")
+    emails = list(dict.fromkeys(e.strip().lower() for e in data.to if e.strip()))[:30]
+    if not emails:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha pelo menos um destinatário.")
+    bad = [e for e in emails if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", e)]
+    if bad:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Endereço inválido: {bad[0]}")
+    names = dict((e, n) for e, n in (await db.execute(select(func.lower(User.email), User.display_name).where(func.lower(User.email).in_(emails)))).all())
+    await _run(_provider().forward(data.id, [(e, names.get(e, "")) for e in emails], _signed(data.text, user) if data.text.strip() else _signed("", user).strip()))
+    logger.info("Caixa de entrada: %s reencaminhou o email %s para %s", user.email, data.id[:40], ", ".join(emails))
 
 
 async def _copy_attachments(db: AsyncSession, message: mb.MailMessage, ticket_id: int, user_id: int) -> tuple[int, list[str]]:
@@ -144,7 +214,7 @@ async def ticket_from_mail(data: NewTicketIn, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Este email já está ligado a um ticket.")
     requester = None
     if message.from_email:
-        requester = (await db.execute(select(User).where(func.lower(User.email) == message.from_email, User.is_active.is_(True)))).scalar_one_or_none()
+        requester = (await db.execute(select(User).where(func.lower(User.email) == message.from_email, User.is_active.is_(True)))).scalars().first()
     body = message.body or message.preview or "(email sem texto)"
     description = body if requester else _email_text(message)
     ticket = await ticket_service.create_ticket(db, TicketCreate(
@@ -188,7 +258,7 @@ async def attach_mail(data: AttachIn, db: AsyncSession = Depends(get_db),
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Este email já está ligado a um ticket.")
     sender = None
     if message.from_email:
-        sender = (await db.execute(select(User).where(func.lower(User.email) == message.from_email, User.is_active.is_(True)))).scalar_one_or_none()
+        sender = (await db.execute(select(User).where(func.lower(User.email) == message.from_email, User.is_active.is_(True)))).scalars().first()
     linked_sender = sender is not None and (sender.id == ticket.creator_id or any(a.id == sender.id for a in ticket.assignees)
                                              or any(w.id == sender.id for w in ticket.watchers))
     author = sender if linked_sender and not data.internal else user

@@ -9,7 +9,7 @@ import imaplib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from email.utils import parseaddr, parsedate_to_datetime
+from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 
 import httpx
 
@@ -49,7 +49,20 @@ class MailAttachment:
 class MailMessage(MailSummary):
     body: str = ""
     to: str = ""
+    cc: str = ""
     attachments: list[MailAttachment] = field(default_factory=list)
+
+
+def _mid(message_id: str) -> str:
+    """Microsoft 365 message ids may contain "/" or "+": escape them in the URL path."""
+    from urllib.parse import quote
+    return quote(message_id, safe="")
+
+
+def _html(text: str) -> str:
+    """Plain text typed in the app as the HTML Outlook expects (escaped, line breaks kept)."""
+    import html
+    return html.escape(text).replace("\n", "<br>")
 
 
 def mailbox_address() -> str:
@@ -81,10 +94,15 @@ class GraphProvider:
         return headers
 
     async def _call(self, method: str, path: str, text_body: bool = False, **kw) -> dict:
-        async with httpx.AsyncClient(timeout=25) as client:
-            r = await client.request(method, f"{GRAPH}/users/{self.mailbox}{path}", headers=await self._headers(text_body), **kw)
+        try:
+            async with httpx.AsyncClient(timeout=40) as client:
+                r = await client.request(method, f"{GRAPH}/users/{self.mailbox}{path}", headers=await self._headers(text_body), **kw)
+        except httpx.TimeoutException as exc:
+            raise MailboxError("O Microsoft 365 demorou demasiado a responder. Tente novamente.") from exc
+        except httpx.HTTPError as exc:
+            raise MailboxError(f"Não foi possível contactar o Microsoft 365 ({exc.__class__.__name__}).") from exc
         if r.status_code == 403:
-            raise MailboxError("O Microsoft 365 recusou o acesso à caixa (falta a permissão Mail.ReadWrite na app registration).")
+            raise MailboxError("O Microsoft 365 recusou o pedido (verifique as permissões Mail.ReadWrite e Mail.Send da app registration).")
         if r.status_code == 404:
             raise MailboxError("Mensagem ou caixa de correio não encontrada.")
         if r.status_code >= 400:
@@ -110,26 +128,45 @@ class GraphProvider:
         return [self._summary(m) for m in rows[:PAGE_SIZE]], len(rows) > PAGE_SIZE
 
     async def get(self, message_id: str, with_content: bool = False) -> MailMessage:
-        m = await self._call("GET", f"/messages/{message_id}", text_body=True, params={
-            "$select": "id,subject,from,toRecipients,receivedDateTime,isRead,bodyPreview,hasAttachments,internetMessageId,body",
+        m = await self._call("GET", f"/messages/{_mid(message_id)}", text_body=True, params={
+            "$select": "id,subject,from,toRecipients,ccRecipients,receivedDateTime,isRead,bodyPreview,hasAttachments,internetMessageId,body",
         })
         s = self._summary(m)
         to = ", ".join((r.get("emailAddress") or {}).get("address", "") for r in m.get("toRecipients") or [])
+        cc = ", ".join((r.get("emailAddress") or {}).get("address", "") for r in m.get("ccRecipients") or [])
         attachments: list[MailAttachment] = []
         if s.has_attachments:
-            data = await self._call("GET", f"/messages/{message_id}/attachments")
+            # Reading only needs names and sizes; the files themselves are downloaded only to copy or forward them
+            params = None if with_content else {"$select": "id,name,contentType,size,isInline"}
+            data = await self._call("GET", f"/messages/{_mid(message_id)}/attachments", params=params)
             for a in data.get("value") or []:
-                if a.get("@odata.type") != "#microsoft.graph.fileAttachment":
+                if a.get("isInline"):
+                    continue  # images inside the text (e.g. signature logos)
+                if with_content and a.get("@odata.type") != "#microsoft.graph.fileAttachment":
                     continue
                 content = base64.b64decode(a["contentBytes"]) if with_content and a.get("contentBytes") else None
                 attachments.append(MailAttachment(a.get("name") or "anexo", a.get("contentType") or "", int(a.get("size") or 0), content))
-        return MailMessage(**s.__dict__, body=((m.get("body") or {}).get("content") or "").strip(), to=to, attachments=attachments)
+        return MailMessage(**s.__dict__, body=((m.get("body") or {}).get("content") or "").strip(), to=to, cc=cc, attachments=attachments)
 
     async def set_read(self, message_id: str, read: bool) -> None:
-        await self._call("PATCH", f"/messages/{message_id}", json={"isRead": read})
+        await self._call("PATCH", f"/messages/{_mid(message_id)}", json={"isRead": read})
 
     async def archive(self, message_id: str) -> None:
-        await self._call("POST", f"/messages/{message_id}/move", json={"destinationId": "archive"})
+        await self._call("POST", f"/messages/{_mid(message_id)}/move", json={"destinationId": "archive"})
+
+    async def reply(self, message_id: str, text: str, reply_all: bool = False) -> None:
+        # Outlook quotes the original message and keeps the conversation together
+        await self._call("POST", f"/messages/{_mid(message_id)}/{'replyAll' if reply_all else 'reply'}", json={"comment": _html(text)})
+
+    async def forward(self, message_id: str, recipients: list[tuple[str, str]], text: str) -> None:
+        await self._call("POST", f"/messages/{_mid(message_id)}/forward", json={
+            "comment": _html(text),
+            "toRecipients": [{"emailAddress": {"address": a, "name": n or a}} for a, n in recipients],
+        })
+
+    async def delete(self, message_id: str) -> None:
+        # To "Itens eliminados": can still be recovered in Outlook
+        await self._call("POST", f"/messages/{_mid(message_id)}/move", json={"destinationId": "deleteditems"})
 
 
 class ImapProvider:
@@ -173,7 +210,7 @@ class ImapProvider:
             from_email=addr.lower(), received_at=received, is_read=b"\\Seen" in flags,
             preview=" ".join(body.split())[:300], has_attachments=bool(attachments),
             internet_message_id=(msg.get("Message-ID") or "").strip(), body=body,
-            to=_decode_header_value(msg.get("To", "")), attachments=attachments,
+            to=_decode_header_value(msg.get("To", "")), cc=_decode_header_value(msg.get("Cc", "")), attachments=attachments,
         )
 
     def _fetch(self, client, uid: str) -> tuple[bytes, bytes]:
@@ -232,6 +269,62 @@ class ImapProvider:
 
     async def archive(self, message_id: str) -> None:
         raise MailboxError("Arquivar só está disponível com o Microsoft 365 (Graph).")
+
+    async def delete(self, message_id: str) -> None:
+        raise MailboxError("Eliminar só está disponível com o Microsoft 365 (Graph).")
+
+    async def reply(self, message_id: str, text: str, reply_all: bool = False) -> None:
+        m = await self.get(message_id)
+        own = mailbox_address().lower()
+        to = [m.from_email]
+        cc: list[str] = []
+        if reply_all:
+            cc = [a for _, a in getaddresses([m.to, m.cc]) if a and a.lower() not in {own, m.from_email}]
+        subject = m.subject if m.subject.lower().startswith(("re:", "res:")) else f"RE: {m.subject}"
+        headers = {"In-Reply-To": m.internet_message_id, "References": m.internet_message_id} if m.internet_message_id else {}
+        await _smtp_send(to, cc, subject, f"{text}\n\n{_quote(m)}", headers)
+
+    async def forward(self, message_id: str, recipients: list[tuple[str, str]], text: str) -> None:
+        m = await self.get(message_id, with_content=True)
+        subject = m.subject if m.subject.lower().startswith(("fw:", "fwd:", "enc:")) else f"FW: {m.subject}"
+        await _smtp_send([a for a, _ in recipients], [], subject, f"{text}\n\n{_quote(m, forward=True)}", {}, m.attachments)
+
+
+def _quote(m: MailMessage, forward: bool = False) -> str:
+    head = "---------- Mensagem encaminhada ----------" if forward else "---------- Mensagem original ----------"
+    return (f"{head}\nDe: {m.from_name} <{m.from_email}>\nData: {m.received_at}\nAssunto: {m.subject}\nPara: {m.to}\n\n"
+            f"{m.body or m.preview}")
+
+
+async def _smtp_send(to: list[str], cc: list[str], subject: str, text: str, headers: dict,
+                     attachments: list[MailAttachment] | None = None) -> None:
+    """Send from the helpdesk address through the configured SMTP (used with IMAP mailboxes)."""
+    import os
+    import shutil
+    import tempfile
+    from fastapi_mail import FastMail, MessageSchema, MessageType
+    from app.services.email_service import _get_conf
+    if not settings.mail_server:
+        raise MailboxError("O envio de email (SMTP) não está configurado no servidor.")
+    tmp_dir = tempfile.mkdtemp(prefix="helpdesk-fwd-")
+    files = []
+    try:
+        for a in attachments or []:
+            if a.content is None:
+                continue
+            path = os.path.join(tmp_dir, os.path.basename(a.name) or "anexo")
+            with open(path, "wb") as f:
+                f.write(a.content)
+            files.append(path)
+        message = MessageSchema(subject=subject, recipients=to, cc=cc, body=text, subtype=MessageType.plain,
+                                headers=headers or None, attachments=files)
+        await FastMail(_get_conf()).send_message(message)
+    except MailboxError:
+        raise
+    except Exception as exc:
+        raise MailboxError(f"O email não foi enviado: {exc}") from exc
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def get_provider():
