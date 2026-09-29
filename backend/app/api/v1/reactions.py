@@ -34,7 +34,7 @@ async def _visible_comment(db: AsyncSession, comment_id: int, user: User) -> Com
         return None
     if comment.is_internal and not has_perm(user, "tickets.manage"):
         return None
-    if comment.private_to_id and user.id not in (comment.author_id, comment.private_to_id):
+    if comment.private_to_id and user.id not in comment.private_participants():
         return None
     return comment
 

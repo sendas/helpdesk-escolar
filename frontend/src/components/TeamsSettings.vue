@@ -46,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from '../utils/feedback'
 import { onMounted, ref } from 'vue'
 import { api } from '../boot/axios'
 
@@ -84,7 +85,7 @@ async function save() {
     message.value = 'Guardado!'
   } catch (e: any) {
     ok.value = false
-    message.value = e?.response?.data?.detail || 'Erro ao guardar.'
+    message.value = errorMessage(e, 'Erro ao guardar.')
   } finally {
     saving.value = false
   }
@@ -99,7 +100,7 @@ async function test() {
     message.value = 'Mensagem de teste enviada — veja o canal no Teams.'
   } catch (e: any) {
     ok.value = false
-    message.value = e?.response?.data?.detail || 'Não foi possível enviar o teste.'
+    message.value = errorMessage(e, 'Não foi possível enviar o teste.')
   } finally {
     testing.value = false
   }

@@ -209,6 +209,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmDialog, notifyError } from '../../utils/feedback'
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { adminBulkActionTickets, adminBulkUpdateTickets, adminUpdateTicket, getCategories, getSchools, getTickets, syncMailReplies, forceSyncMailReplies, runInactivityCheck, type TicketListItem } from '../../api/tickets'
 import { getGroups, getUsers } from '../../api/users'
@@ -448,17 +449,25 @@ async function applyBulk(payload: any) {
 
 async function archiveSelected() {
   if (!selectedIds.value.length) return
-  if (!window.confirm(`Arquivar ${selectedIds.value.length} ticket(s) selecionado(s)?`)) return
-  await adminBulkActionTickets({ ids: selectedIds.value, action: 'archive' })
-  selectedIds.value = []
+  if (!(await confirmDialog(`Arquivar ${selectedIds.value.length} ticket(s) selecionado(s)?`, { ok: 'Arquivar' }))) return
+  try {
+    await adminBulkActionTickets({ ids: selectedIds.value, action: 'archive' })
+    selectedIds.value = []
+  } catch (e) {
+    notifyError(e, 'Não foi possível arquivar os tickets.')
+  }
   await load()
 }
 
 async function deleteSelected() {
   if (!selectedIds.value.length) return
-  if (!window.confirm(`Apagar definitivamente ${selectedIds.value.length} ticket(s)? Esta ação não pode ser anulada.`)) return
-  await adminBulkActionTickets({ ids: selectedIds.value, action: 'delete' })
-  selectedIds.value = []
+  if (!(await confirmDialog(`Apagar definitivamente ${selectedIds.value.length} ticket(s)? Esta ação não pode ser anulada.`, { ok: 'Apagar', danger: true }))) return
+  try {
+    await adminBulkActionTickets({ ids: selectedIds.value, action: 'delete' })
+    selectedIds.value = []
+  } catch (e) {
+    notifyError(e, 'Não foi possível apagar os tickets.')
+  }
   await load()
 }
 
@@ -491,7 +500,7 @@ async function syncReplies() {
 
 async function forceSyncReplies() {
   if (forceSyncing.value) return
-  if (!confirm('Processar todos os emails da caixa de correio (incluindo já lidos) para fechar tickets automaticamente?\n\nIsso pode demorar alguns segundos.')) return
+  if (!(await confirmDialog('Processar todos os emails da caixa de correio (incluindo já lidos) para fechar tickets automaticamente?\n\nIsto pode demorar alguns segundos.', { ok: 'Processar' }))) return
   forceSyncing.value = true
   mailSyncMessage.value = 'A processar todos os emails...'
   try {

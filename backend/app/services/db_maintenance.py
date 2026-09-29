@@ -69,6 +69,7 @@ _ORPHAN_DELETES = (
     "DELETE FROM processed_emails WHERE ticket_id NOT IN (SELECT id FROM tickets)",
     "DELETE FROM ticket_events WHERE ticket_id NOT IN (SELECT id FROM tickets)",
     "DELETE FROM comments WHERE ticket_id NOT IN (SELECT id FROM tickets)",
+    "DELETE FROM comment_private_recipients WHERE comment_id NOT IN (SELECT id FROM comments)",
     "DELETE FROM reactions WHERE target_type = 'comment' AND target_id NOT IN (SELECT id FROM comments)",
     "DELETE FROM reactions WHERE target_type = 'ticket' AND target_id NOT IN (SELECT id FROM tickets)",
     "DELETE FROM reactions WHERE target_type = 'chat' AND target_id NOT IN (SELECT id FROM chat_messages)",

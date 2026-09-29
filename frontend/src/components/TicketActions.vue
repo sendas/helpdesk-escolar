@@ -19,6 +19,7 @@
 
 <script setup lang="ts">
 // Per-ticket actions: read/unread (everyone) and delete (administrators)
+import { confirmDialog, notifyError } from '../utils/feedback'
 import { ref } from 'vue'
 import { adminBulkActionTickets, markTicketUnread, markTicketsRead } from '../api/tickets'
 import { useAuthStore } from '../stores/auth'
@@ -35,19 +36,25 @@ async function toggleRead() {
     if (unread) await markTicketUnread(props.ticket.id)
     else await markTicketsRead([props.ticket.id])
     emit('read-changed', unread)
+  } catch (e) {
+    notifyError(e, 'Não foi possível alterar o estado de leitura.')
   } finally {
     busy.value = false
   }
 }
 
 async function remove() {
-  if (!confirm(`Apagar definitivamente o ticket T-${props.ticket.id} ("${props.ticket.title}")?\n\nApaga também as respostas e os anexos. Não é possível desfazer.`)) return
+  const ok = await confirmDialog(
+    `Apagar definitivamente o ticket T-${props.ticket.id} ("${props.ticket.title}")?\n\nApaga também as respostas e os anexos. Não é possível desfazer.`,
+    { ok: 'Apagar ticket', danger: true },
+  )
+  if (!ok) return
   busy.value = true
   try {
     await adminBulkActionTickets({ ids: [props.ticket.id], action: 'delete' })
     emit('deleted')
   } catch (e: any) {
-    alert(e?.response?.data?.detail || 'Não foi possível apagar o ticket.')
+    notifyError(e, 'Não foi possível apagar o ticket.')
   } finally {
     busy.value = false
   }

@@ -47,7 +47,7 @@ async def create_article(data: KnowledgeArticleCreate, db: AsyncSession = Depend
 async def update_article(article_id: int, data: KnowledgeArticleUpdate, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("knowledge.edit"))):
     article = (await db.execute(select(KnowledgeArticle).where(KnowledgeArticle.id == article_id))).scalar_one_or_none()
     if not article:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artigo não encontrado.")
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(article, key, value)
     article.updated_at = datetime.utcnow()
@@ -59,7 +59,7 @@ async def update_article(article_id: int, data: KnowledgeArticleUpdate, db: Asyn
 async def delete_article(article_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("knowledge.edit"))):
     article = (await db.execute(select(KnowledgeArticle).where(KnowledgeArticle.id == article_id))).scalar_one_or_none()
     if not article:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artigo não encontrado.")
     await db.delete(article)
     await db.commit()
 

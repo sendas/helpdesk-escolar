@@ -93,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmDialog, notifyError, errorMessage } from '../utils/feedback'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { closeSupport, getMySupport, getSupportStatus, markRead, startSupport, sendChatMessage, type ChatConversation, type ChatMessage, type SupportStatus } from '../api/chat'
@@ -179,16 +180,20 @@ async function send() {
     draft.value = ''
     scrollDown()
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || 'Não foi possível enviar a mensagem.'
+    error.value = errorMessage(e, 'Não foi possível enviar a mensagem.')
   } finally {
     sending.value = false
   }
 }
 
 async function endConversation() {
-  if (!conversation.value || !confirm('Terminar esta conversa de apoio?')) return
-  conversation.value = await closeSupport(conversation.value.id)
-  await load()
+  if (!conversation.value || !(await confirmDialog('Terminar esta conversa de apoio?', { ok: 'Terminar' }))) return
+  try {
+    conversation.value = await closeSupport(conversation.value.id)
+    await load()
+  } catch (e) {
+    notifyError(e, 'Não foi possível terminar a conversa.')
+  }
 }
 
 function typing() {

@@ -115,6 +115,10 @@ def has_perm(user: User, perm: str) -> bool:
     return perm in permissions_for(user)
 
 
+def all_role_keys() -> list[str]:
+    return list(_roles)
+
+
 def role_permissions(key: str) -> set[str]:
     return set(_roles.get(key, {}).get("permissions", set()))
 

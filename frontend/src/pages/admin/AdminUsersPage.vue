@@ -230,7 +230,7 @@
               </td>
               <td style="font-size:13px;color:var(--c-muted)">{{ u.email }}</td>
               <td>
-                <select class="hd-select compact" :value="u.effective_role_key ?? u.role" @change="changeRole(u, ($event.target as HTMLSelectElement).value)">
+                <select class="hd-select compact" :value="u.effective_role_key ?? u.role" @change="changeRole(u, $event.target as HTMLSelectElement)">
                   <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
                 </select>
               </td>
@@ -282,7 +282,7 @@
             <div class="user-card-grid">
               <label>
                 <span>Papel</span>
-                <select class="hd-select compact" :value="u.effective_role_key ?? u.role" @change="changeRole(u, ($event.target as HTMLSelectElement).value)">
+                <select class="hd-select compact" :value="u.effective_role_key ?? u.role" @change="changeRole(u, $event.target as HTMLSelectElement)">
                   <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
                 </select>
               </label>
@@ -410,6 +410,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmDialog, notifyError, notifySuccess, errorMessage } from '../../utils/feedback'
 import { ref, computed, onMounted } from 'vue'
 import { bulkUpdateUsers, createGroup, createUser, deleteGroup, getGroups, getUsers, importAzureUsers, updateGroupMembers, updateUser } from '../../api/users'
 import { getAzureSyncSettings, updateAzureSyncSettings } from '../../api/settings'
@@ -520,7 +521,7 @@ const groupCandidateUsers = computed(() => {
 
 
 onMounted(async () => {
-  await Promise.all([loadUsers(), loadGroups(), loadAzureSyncSettings(), getRoles().then((r) => { roles.value = r }).catch(() => {})])
+  await Promise.all([loadUsers(), loadGroups(), loadAzureSyncSettings(), getRoles().then((r) => { roles.value = r }).catch((e) => notifyError(e, 'Não foi possível carregar os papéis.'))])
 })
 
 async function loadUsers() {
@@ -598,7 +599,7 @@ async function addManualUser() {
     creatingManualUser.value = false
     closeCreateUserDialog()
   } catch (e: any) {
-    manualUserError.value = e?.response?.data?.detail || 'Não foi possível criar o utilizador.'
+    manualUserError.value = errorMessage(e, 'Não foi possível criar o utilizador.')
   } finally {
     creatingManualUser.value = false
   }
@@ -640,14 +641,24 @@ function selectGroup(id: number) {
 
 async function saveGroupMembers() {
   if (!selectedGroupId.value) return
-  const updated = await updateGroupMembers(selectedGroupId.value, groupMemberIds.value)
-  const idx = groups.value.findIndex(g => g.id === updated.id)
-  if (idx !== -1) groups.value[idx] = updated
+  try {
+    const updated = await updateGroupMembers(selectedGroupId.value, groupMemberIds.value)
+    const idx = groups.value.findIndex(g => g.id === updated.id)
+    if (idx !== -1) groups.value[idx] = updated
+    notifySuccess('Membros do grupo guardados.')
+  } catch (e) {
+    notifyError(e, 'Não foi possível guardar os membros do grupo.')
+  }
 }
 
 async function removeGroup(id: number) {
-  if (!window.confirm('Apagar este grupo?')) return
-  await deleteGroup(id)
+  if (!(await confirmDialog('Apagar este grupo? Os tickets deste grupo ficam sem grupo.', { ok: 'Apagar', danger: true }))) return
+  try {
+    await deleteGroup(id)
+  } catch (e) {
+    notifyError(e, 'Não foi possível apagar o grupo.')
+    return
+  }
   groups.value = groups.value.filter(g => g.id !== id)
   selectGroup(groups.value[0]?.id ?? 0)
   if (!groups.value.length) {
@@ -656,32 +667,43 @@ async function removeGroup(id: number) {
   }
 }
 
-async function changeRole(user: any, role: string) {
+async function changeRole(user: any, select: HTMLSelectElement) {
   try {
-    const updated = await updateUser(user.id, { role_key: role })
+    const updated = await updateUser(user.id, { role_key: select.value })
     replaceUser(updated)
-  } catch { /* ignore */ }
+    notifySuccess(`Papel de ${user.display_name} alterado.`)
+  } catch (e) {
+    // The select must show what is really saved
+    select.value = user.effective_role_key ?? user.role
+    notifyError(e, 'Não foi possível alterar o papel.')
+  }
 }
 
 async function toggleRoleLock(user: any) {
   try {
     const updated = await updateUser(user.id, { role_locked: !user.role_locked })
     replaceUser(updated)
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível alterar o bloqueio do papel.')
+  }
 }
 
 async function toggleActive(user: any) {
   try {
     const updated = await updateUser(user.id, { is_active: !user.is_active })
     replaceUser(updated)
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível ativar/desativar o utilizador.')
+  }
 }
 
 async function toggleTechnician(user: any) {
   try {
     const updated = await updateUser(user.id, { is_technician: !user.is_technician })
     replaceUser(updated)
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível alterar se recebe tickets.')
+  }
 }
 
 async function changeDepartment(user: any, department: string) {
@@ -690,7 +712,9 @@ async function changeDepartment(user: any, department: string) {
   try {
     const updated = await updateUser(user.id, { department: value })
     replaceUser(updated)
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível alterar o departamento.')
+  }
 }
 
 async function syncEntra() {
@@ -703,7 +727,7 @@ async function syncEntra() {
     await loadUsers()
     syncMessage.value = 'Sincronização concluída.'
   } catch (e: any) {
-    syncMessage.value = e?.response?.data?.detail || 'Não foi possível importar utilizadores do Entra ID.'
+    syncMessage.value = errorMessage(e, 'Não foi possível importar utilizadores do Entra ID.')
   } finally {
     syncing.value = false
   }
@@ -744,7 +768,9 @@ async function applyBulk(payload: any) {
   try {
     const updated = await bulkUpdateUsers({ ids: selectedIds.value, ...payload })
     updated.forEach(replaceUser)
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível aplicar a alteração aos utilizadores selecionados.')
+  }
 }
 
 function replaceUser(updated: any) {

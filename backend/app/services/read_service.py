@@ -48,10 +48,11 @@ async def unread_ids(db: AsyncSession, user: User, tickets) -> set[int]:
         v.ticket_id: v
         for v in (await db.execute(select(TicketView).where(TicketView.user_id == user.id, TicketView.ticket_id.in_(ids)))).scalars()
     }
+    from app.services.ticket_service import private_visible_to
     # Latest thing written by someone else that this user is allowed to see
     q = select(Comment.ticket_id, func.max(Comment.created_at)).where(
         Comment.ticket_id.in_(ids), Comment.author_id != user.id, Comment.deleted_at.is_(None),
-        (Comment.private_to_id.is_(None)) | (Comment.private_to_id == user.id),
+        private_visible_to(user.id),
     )
     if not has_perm(user, "tickets.manage"):
         q = q.where(Comment.is_internal.is_(False))

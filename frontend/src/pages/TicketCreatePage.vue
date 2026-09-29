@@ -258,6 +258,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from '../utils/feedback'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -359,7 +360,7 @@ async function onSubmit() {
       error.value = `Ticket criado, mas os seguintes anexos falharam: ${attachErrors.join(', ')}`
     }
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || 'Erro ao criar ticket'
+    error.value = errorMessage(e, 'Erro ao criar ticket')
   } finally {
     loading.value = false
   }

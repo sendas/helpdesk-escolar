@@ -24,6 +24,7 @@
 
 <script setup lang="ts">
 // Emoji reactions under a ticket reply or a chat message
+import { notifyError } from '../utils/feedback'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { REACTION_EMOJIS, toggleReaction, type ReactionSummary, type ReactionTarget } from '../api/reactions'
 
@@ -34,7 +35,9 @@ const open = ref(false)
 async function toggle(emoji: string) {
   try {
     emit('update', await toggleReaction(props.targetType, props.targetId, emoji))
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível guardar a reação.')
+  }
 }
 
 function closeOnOutside() { open.value = false }

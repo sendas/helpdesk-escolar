@@ -277,6 +277,8 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
         or any(w.id == user.id for w in ticket.watchers)
         or bool(ticket.group and any(m.id == user.id for m in ticket.group.members))
         or "tickets.manage" in permissions_for(user)
+        # The Direção sees every ticket and may answer private conversations
+        or (bool(msg.get("private")) and "tickets.view_all" in permissions_for(user))
     )
     from app.api.v1.settings import _read_settings
     provider = (_read_settings().get("support_provider_email") or "").strip().lower()
@@ -298,10 +300,13 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
         return False
 
     # Add comment from registered user
-    private_to_id = await _private_partner(db, ticket.id, user.id) if user and msg.get("private") else None
-    if user and msg.get("body") and private_to_id:
-        db.add(Comment(body=msg["body"], is_internal=False, ticket_id=ticket.id, author_id=user.id, private_to_id=private_to_id))
-        msg["private_to_id"] = private_to_id
+    partner_ids = await _private_partners(db, ticket.id, user.id) if user and msg.get("private") else []
+    if user and msg.get("body") and partner_ids:
+        partners = list((await db.execute(select(User).where(User.id.in_(partner_ids)))).scalars())
+        db.add(Comment(body=msg["body"], is_internal=False, ticket_id=ticket.id, author_id=user.id,
+                       private_to_id=partner_ids[0], private_recipients=partners))
+        msg["private_to_id"] = partner_ids[0]
+        msg["private_to_ids"] = partner_ids
     elif user and msg.get("private"):
         # Never turn a reply to a private message into a public one
         logger.info("Mail reply to private message ignored: no private conversation for %s on ticket #%s", msg["sender_email"], ticket.id)
@@ -501,8 +506,10 @@ def _html_to_text(body: str) -> str:
     return body.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
 
 
-async def _private_partner(db: AsyncSession, ticket_id: int, user_id: int) -> int | None:
-    """Who an emailed reply to a private message goes to: the last person in a private conversation with this user."""
+async def _private_partners(db: AsyncSession, ticket_id: int, user_id: int) -> list[int]:
+    """Who an emailed reply to a private message goes to: everyone else in the last private conversation this user
+    took part in on the ticket."""
+    from app.models.ticket import comment_private_recipients as cpr
     last = (
         await db.execute(
             select(Comment)
@@ -510,29 +517,35 @@ async def _private_partner(db: AsyncSession, ticket_id: int, user_id: int) -> in
                 Comment.ticket_id == ticket_id,
                 Comment.private_to_id.is_not(None),
                 Comment.deleted_at.is_(None),
-                (Comment.private_to_id == user_id) | (Comment.author_id == user_id),
+                (Comment.private_to_id == user_id) | (Comment.author_id == user_id)
+                | Comment.id.in_(select(cpr.c.comment_id).where(cpr.c.user_id == user_id)),
             )
             .order_by(Comment.created_at.desc())
             .limit(1)
         )
     ).scalar_one_or_none()
     if not last:
-        return None
-    return last.author_id if last.private_to_id == user_id else last.private_to_id
+        return []
+    return sorted(last.private_participants() - {user_id})
 
 
 async def _notify_private_partner(db: AsyncSession, msg: dict) -> None:
     ticket = await db.get(Ticket, msg["ticket_id"])
-    partner = await db.get(User, msg["private_to_id"])
-    sender = (await db.execute(select(User).where(User.email.ilike(msg["sender_email"])))).scalar_one_or_none()
-    if not ticket or not partner or not partner.email:
+    sender = (await db.execute(select(User).where(func.lower(User.email) == msg["sender_email"].lower()))).scalar_one_or_none()
+    people = (await db.execute(select(User).where(User.id.in_(msg.get("private_to_ids") or [msg["private_to_id"]])))).scalars().all()
+    if not ticket:
         return
-    await email_service.send_private_message(partner.email, {
-        "id": ticket.id,
-        "title": ticket.title,
-        "author": sender.display_name if sender else msg["sender_email"],
-        "comment": msg.get("body") or "",
-    })
+    names = ", ".join(p.display_name for p in people)
+    for partner in people:
+        if not partner.email:
+            continue
+        await email_service.send_private_message(partner.email, {
+            "id": ticket.id,
+            "title": ticket.title,
+            "author": sender.display_name if sender else msg["sender_email"],
+            "comment": msg.get("body") or "",
+            "recipients": names if len(people) > 1 else "",
+        })
 
 
 async def _notify_ticket_recipients(db: AsyncSession, ticket_id: int, sender_email: str) -> None:

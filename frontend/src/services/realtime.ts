@@ -12,6 +12,12 @@ const handlers = new Map<string, Set<Handler>>()
 let ws: WebSocket | null = null
 let token: string | null = null
 let lastSeq = 0
+// Identifies the server process: after a restart its sequence numbers start again from 1
+let serverBoot = ''
+let everConnected = false
+// Live events that arrive while missed events are still being fetched
+let catchingUp = false
+const heldBack: any[] = []
 let wsFailures = 0
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let retryTimer: ReturnType<typeof setTimeout> | null = null
@@ -83,15 +89,20 @@ function openSocket() {
       clearTimeout(openTimeout)
       wsFailures = 0
       stopPolling()
-      // Catch up on anything missed while reconnecting/polling
-      if (lastSeq > 0) catchUp()
+      const restarted = !!serverBoot && event.boot !== serverBoot
+      serverBoot = event.boot ?? ''
+      // Catch up on anything missed while reconnecting/polling; after a server restart the old numbers mean
+      // nothing, so start again from now (pages reload their data on "realtime.connected")
+      if (lastSeq > 0 && !restarted) catchUp()
       else lastSeq = event.seq
       realtimeStatus.value = 'live'
       flush()
-      emit({ type: 'realtime.connected' })
+      announceConnected()
       return
     }
-    if (event.type !== 'ping') emit(event)
+    if (event.type === 'ping') return
+    if (catchingUp) heldBack.push(event)
+    else emit(event)
   }
   socket.onclose = () => {
     clearTimeout(openTimeout)
@@ -115,28 +126,47 @@ function scheduleReconnect(ms: number) {
   retryTimer = setTimeout(openSocket, ms)
 }
 
+function announceConnected() {
+  // resumed: this tab was connected before, so it may have missed events and should reload what it shows
+  emit({ type: 'realtime.connected', resumed: everConnected })
+  everConnected = true
+}
+
 async function catchUp() {
+  catchingUp = true
   try {
-    const { data } = await api.get('/api/v1/realtime/poll', { params: { after: lastSeq } })
-    data.events.forEach(emit)
-  } catch { /* ignore */ }
+    const { data } = await api.get('/api/v1/realtime/poll', { params: { after: lastSeq, boot: serverBoot } })
+    if (data.reset) lastSeq = data.seq
+    else data.events.forEach(emit)
+  } catch { /* ignore */ } finally {
+    catchingUp = false
+    heldBack.splice(0).sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0)).forEach(emit)
+  }
 }
 
 function startPolling() {
   if (realtimeStatus.value === 'polling') return
   realtimeStatus.value = 'polling'
   flush()
+  let reachable = false
   const tick = async () => {
     if (realtimeStatus.value !== 'polling' || stopped) return
     try {
-      const { data } = await api.get('/api/v1/realtime/poll', { params: { after: lastSeq } })
-      if (lastSeq === 0) lastSeq = data.seq
-      else data.events.forEach(emit)
-    } catch { /* ignore */ }
+      const { data } = await api.get('/api/v1/realtime/poll', { params: { after: lastSeq, boot: serverBoot } })
+      if (data.boot) serverBoot = data.boot
+      if (lastSeq === 0 || data.reset) {
+        // First answer, or the server restarted: start again from now
+        lastSeq = data.seq
+      } else data.events.forEach(emit)
+      // The server answers (again): pages refresh what they show
+      if (!reachable || data.reset) announceConnected()
+      reachable = true
+    } catch {
+      reachable = false
+    }
     pollTimer = setTimeout(tick, POLL_MS)
   }
   tick()
-  emit({ type: 'realtime.connected' })
 }
 
 function stopPolling() {
@@ -144,12 +174,27 @@ function stopPolling() {
   pollTimer = null
 }
 
+// An iPad waking up or the network coming back: reconnect now instead of waiting for the next retry
+function reconnectSoon() {
+  if (stopped || document.visibilityState === 'hidden') return
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return
+  if (retryTimer) clearTimeout(retryTimer)
+  wsFailures = Math.min(wsFailures, 1)
+  openSocket()
+}
+let wakeListeners = false
+
 export function startRealtime(authToken: string) {
   if (!stopped && token === authToken) return
   stopRealtime()
   token = authToken
   stopped = false
   wsFailures = 0
+  if (!wakeListeners) {
+    wakeListeners = true
+    window.addEventListener('online', reconnectSoon)
+    document.addEventListener('visibilitychange', reconnectSoon)
+  }
   openSocket()
 }
 
@@ -160,6 +205,10 @@ export function stopRealtime() {
   ws?.close()
   ws = null
   lastSeq = 0
+  serverBoot = ''
+  everConnected = false
+  catchingUp = false
+  heldBack.length = 0
   sticky.clear()
   outbox.length = 0
   realtimeStatus.value = 'offline'

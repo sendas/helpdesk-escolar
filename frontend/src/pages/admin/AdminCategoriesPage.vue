@@ -247,6 +247,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmDialog, errorMessage } from '../../utils/feedback'
 import { ref, onMounted } from 'vue'
 import { Notify } from 'quasar'
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../../api/tickets'
@@ -357,7 +358,7 @@ async function onSave() {
     const err = e as { response?: { data?: { detail?: string } } }
     Notify.create({
       type: 'negative',
-      message: err?.response?.data?.detail || 'Erro ao guardar categoria',
+      message: errorMessage(err, 'Erro ao guardar categoria'),
     })
   } finally {
     saving.value = false
@@ -381,7 +382,7 @@ async function toggleWarning(cat: CategoryFull) {
 }
 
 async function onDelete(cat: CategoryFull) {
-  if (!window.confirm(`Eliminar a categoria "${cat.name}"? Esta ação não pode ser desfeita.`)) return
+  if (!(await confirmDialog(`Eliminar a categoria "${cat.name}"? Esta ação não pode ser desfeita.`, { ok: 'Eliminar', danger: true }))) return
   try {
     await deleteCategory(cat.id)
     categories.value = categories.value.filter(c => c.id !== cat.id)
@@ -390,7 +391,7 @@ async function onDelete(cat: CategoryFull) {
     const err = e as { response?: { data?: { detail?: string } } }
     Notify.create({
       type: 'negative',
-      message: err?.response?.data?.detail || 'Erro ao eliminar categoria',
+      message: errorMessage(err, 'Erro ao eliminar categoria'),
     })
   }
 }

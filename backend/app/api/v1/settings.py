@@ -40,6 +40,8 @@ DEFAULT_SETTINGS = {
     ),
     "no_access_contact_email": "helpdesk_aeeq@queiroz.pt",
     "ui_design": "modern",
+    # Dark mode look for everyone: "grey" (dark grey/blue) or "black" (true black, for OLED screens)
+    "dark_style": "grey",
     "demo_mode_enabled": False,
     "demo_profiles": ["teacher"],
     "demo_content_visible": False,
@@ -88,6 +90,10 @@ class NoAccessContactSettings(BaseModel):
 
 class DesignSettings(BaseModel):
     design: str = "modern"
+
+
+class DarkStyleSettings(BaseModel):
+    style: str = "grey"
 
 
 class DemoModeSettings(BaseModel):
@@ -191,6 +197,14 @@ async def update_design(payload: DesignSettings, _: User = Depends(require_perm(
     data["ui_design"] = payload.design
     _write_settings(data)
     return {"ui_design": data["ui_design"]}
+
+
+@router.put("/dark-style")
+async def update_dark_style(payload: DarkStyleSettings, _: User = Depends(require_perm("settings.manage"))):
+    if payload.style not in {"grey", "black"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Estilo de modo escuro inválido")
+    data = _update_settings({"dark_style": payload.style})
+    return {"dark_style": data["dark_style"]}
 
 
 @router.put("/demo-mode")

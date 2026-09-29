@@ -15,7 +15,12 @@
       </span>
     </div>
 
-    <div v-if="!ticket" style="padding:80px;text-align:center;color:var(--c-muted)">A carregar...</div>
+    <div v-if="!ticket && loadError" class="load-error">
+      <span class="material-icons">error_outline</span>
+      <div>{{ loadError }}</div>
+      <button class="hd-btn hd-btn-outline" type="button" @click="retryLoad">Tentar novamente</button>
+    </div>
+    <div v-else-if="!ticket" style="padding:80px;text-align:center;color:var(--c-muted)">A carregar...</div>
 
     <template v-else>
       <div class="ticket-header">
@@ -143,13 +148,13 @@
             </div>
           </div>
 
-          <!-- Comments (consecutive private messages between the same two people are grouped in one block) -->
-          <div v-for="b in commentBlocks" :key="b.key" :class="{ 'private-thread': b.partner }">
-          <div v-if="b.partner" class="private-thread-head">
+          <!-- Comments (consecutive private messages between the same people are grouped in one block) -->
+          <div v-for="b in commentBlocks" :key="b.key" :class="{ 'private-thread': b.others }">
+          <div v-if="b.others" class="private-thread-head">
             <span class="material-icons">lock</span>
-            <span>Conversa privada · você e {{ shortName(b.partner.display_name) }}</span>
-            <span class="private-thread-note">só vocês os dois veem</span>
-            <button class="msg-action" @click="replyPrivately(b.partner.id)">Responder em privado</button>
+            <span>Conversa privada · {{ namesList(b.others, true) }}</span>
+            <span class="private-thread-note">{{ b.others.length > 1 ? `só vocês os ${b.others.length + 1} veem` : 'só vocês os dois veem' }}</span>
+            <button class="msg-action" @click="replyPrivately(b.others.map((u: any) => u.id))">{{ b.others.length > 1 ? 'Responder a todos em privado' : 'Responder em privado' }}</button>
           </div>
           <div
             v-for="c in b.items"
@@ -193,7 +198,7 @@
           </div>
           </div>
 
-          <div v-if="!canReply" class="hd-card read-only-note">
+          <div v-if="!canReply && !privateOnly" class="hd-card read-only-note">
             <span class="material-icons">visibility</span>
             Está a consultar este ticket em modo de leitura — o seu papel permite ver todos os tickets, mas não responder nem alterá-los.
           </div>
@@ -202,22 +207,35 @@
             <div style="font-weight:600;font-size:14px;margin-bottom:12px">Responder</div>
             <div v-if="privateTargets.length" class="private-box" :class="{ off: !privateOn }">
               <div class="private-title">
-                <div class="hd-toggle-wrap" @click="togglePrivate">
+                <div v-if="!privateOnly" class="hd-toggle-wrap" @click="togglePrivate">
                   <div class="hd-toggle-track" :class="{ on: privateOn }">
                     <div class="hd-toggle-thumb"></div>
                   </div>
                 </div>
                 <span class="material-icons">lock</span>
                 Mensagem privada
-                <select v-if="privateOn" v-model="privateTo" class="hd-input private-select">
-                  <optgroup v-for="g in privateGroups" :key="g.label" :label="g.label">
-                    <option v-for="u in g.people" :key="u.id" :value="u.id">{{ shortName(u.display_name) }}{{ u.tag ? ' (' + u.tag + ')' : '' }}</option>
-                  </optgroup>
-                </select>
               </div>
-              <div v-if="privateOn" class="private-hint">
-                Só {{ privateTargetName }} e você veem esta mensagem. Mais ninguém a vê — nem os outros técnicos, nem os administradores.
-              </div>
+              <template v-if="privateOn">
+                <div class="private-people">
+                  <span v-for="u in privateChosen" :key="u.id" class="private-chip">
+                    {{ shortName(u.display_name) }}<small v-if="u.tag">{{ u.tag }}</small>
+                    <button type="button" :title="'Retirar ' + shortName(u.display_name)" @click="removePrivateTarget(u.id)"><span class="material-icons">close</span></button>
+                  </span>
+                  <select v-if="privateAvailableGroups.length" class="hd-input private-select" value="" @change="addPrivateTarget($event.target as HTMLSelectElement)">
+                    <option value="" disabled>{{ privateChosen.length ? '+ Adicionar pessoa' : 'Escolher destinatário…' }}</option>
+                    <optgroup v-for="g in privateAvailableGroups" :key="g.label" :label="g.label">
+                      <option v-for="u in g.people" :key="u.id" :value="u.id">{{ shortName(u.display_name) }}{{ u.tag ? ' (' + u.tag + ')' : '' }}</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div class="private-hint">
+                  <template v-if="privateChosen.length">
+                    Só {{ namesList(privateChosen, true) }} veem esta mensagem. Mais ninguém a vê — nem os outros técnicos, nem os administradores.
+                  </template>
+                  <template v-else>Escolha uma ou mais pessoas.</template>
+                  <template v-if="privateOnly"> O seu papel permite responder apenas em privado.</template>
+                </div>
+              </template>
             </div>
             <div v-if="auth.isStaff && !privateOn" class="quick-replies">
               <button
@@ -555,6 +573,7 @@ import { forgetSticky, onRealtime, sendRealtime } from '../services/realtime'
 import ReactionBar from '../components/ReactionBar.vue'
 import { getReactions, type ReactionSummary } from '../api/reactions'
 import PersonName from '../components/PersonName.vue'
+import { confirmDialog, errorMessage, notifyError } from '../utils/feedback'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -573,21 +592,33 @@ const canRemind = computed(() => {
   return auth.isStaff || t.assignee?.id === me || (t.assignees ?? []).some((a: any) => a.id === me)
 })
 
-// Private message: to someone assigned to the ticket, or back to whoever wrote to me privately
+// Private messages: to one or more people (someone in the ticket, a technician/admin or the Direção), or back to
+// everyone in a private conversation with me
 const privateOn = ref(false)
-const privateTo = ref<number | null>(null)
+const privateToIds = ref<number[]>([])
+function privatePeople(c: any): any[] {
+  const list = [c.author, ...(c.private_recipients?.length ? c.private_recipients : c.private_to ? [c.private_to] : [])]
+  const seen = new Set<number>()
+  return list.filter((u: any) => u && !seen.has(u.id) && seen.add(u.id))
+}
 const commentBlocks = computed(() => {
   const me = auth.user?.id
-  const blocks: { key: string; partner: any; items: any[] }[] = []
+  const blocks: { key: string; others: any[] | null; group: string; items: any[] }[] = []
   // In "Ver como docente" internal notes are hidden, as the server does for docentes
   for (const c of (ticket.value?.comments ?? []).filter((x: any) => !(auth.inPreview && x.is_internal)) as any[]) {
-    const partner = c.private_to ? (c.author.id === me ? c.private_to : c.author) : null
+    const others = c.private_to ? privatePeople(c).filter((u: any) => u.id !== me) : null
+    const group = others ? others.map((u: any) => u.id).sort((a: number, b: number) => a - b).join(',') : ''
     const last = blocks[blocks.length - 1]
-    if (partner && last?.partner?.id === partner.id) last.items.push(c)
-    else blocks.push({ key: `c${c.id}`, partner, items: [c] })
+    if (others && last?.others && last.group === group) last.items.push(c)
+    else blocks.push({ key: `c${c.id}`, others, group, items: [c] })
   }
   return blocks
 })
+// "Rui Técnico, Diana Diretora e você"
+function namesList(people: any[], withMe = false) {
+  const names = [...people.map((u: any) => shortName(u.display_name)), ...(withMe ? ['você'] : [])]
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}` : names[0] ?? ''
+}
 // Supervisors (tickets.view_all without tickets.manage) can open any ticket but only reply to their own
 const canReply = computed(() => {
   const me = auth.user?.id
@@ -597,13 +628,20 @@ const canReply = computed(() => {
     || [...(t.assignees ?? []), ...(t.watchers ?? [])].some((u: any) => u.id === me)
 })
 const staffPeople = ref<any[]>([])
+// The Direção (sees every ticket without managing them) writes in private only
+const isSupervisor = computed(() => auth.can('tickets.view_all') && !auth.isStaff)
 const canWritePrivate = computed(() => {
   const me = auth.user?.id
   const t: any = ticket.value
   if (!me || !t) return false
-  return auth.isStaff || t.assignee?.id === me || (t.assignees ?? []).some((a: any) => a.id === me)
+  return auth.isStaff || isSupervisor.value || t.assignee?.id === me || (t.assignees ?? []).some((a: any) => a.id === me)
 })
-// Grouped recipients: people in this ticket first, then every technician/admin
+const privateOnly = computed(() => !canReply.value && canWritePrivate.value)
+watch(privateOnly, (v) => { if (v) privateOn.value = true }, { immediate: true })
+function isStaffUser(u: any) {
+  return u.role === 'admin' || u.role === 'technician' || u.is_technician
+}
+// Grouped recipients: people in this ticket first, then the Direção and every technician/admin
 const privateGroups = computed(() => {
   const me = auth.user?.id
   const t: any = ticket.value
@@ -615,35 +653,49 @@ const privateGroups = computed(() => {
     add(t.creator, 'solicitante')
     ;(t.watchers ?? []).forEach((u: any) => add(u, 'seguidor'))
   }
-  ;(t.comments ?? []).forEach((c: any) => { if (c.private_to?.id === me) add(c.author, 'escreveu-lhe em privado') })
+  ;(t.comments ?? []).forEach((c: any) => {
+    if (c.private_to && privatePeople(c).some((u: any) => u.id === me)) privatePeople(c).forEach((u: any) => add(u, 'conversa privada'))
+  })
   const groups = [{ label: 'Neste ticket', people: [...inTicket.values()] }]
   if (canWritePrivate.value) {
-    groups.push({ label: 'Técnicos e administradores', people: staffPeople.value
-      .filter((u: any) => u.id !== me && !inTicket.has(u.id))
+    const rest = staffPeople.value.filter((u: any) => u.id !== me && !inTicket.has(u.id))
+    groups.push({ label: 'Direção', people: rest.filter((u: any) => !isStaffUser(u)).map((u: any) => ({ ...u, tag: u.role_label || 'Direção' })) })
+    groups.push({ label: 'Técnicos e administradores', people: rest.filter(isStaffUser)
       .map((u: any) => ({ ...u, tag: u.role_label || (u.role === 'admin' ? 'Administrador' : 'Técnico') })) })
   }
   return groups.filter((g) => g.people.length)
 })
 const privateTargets = computed(() => privateGroups.value.flatMap((g) => g.people))
+const privateChosen = computed(() => privateToIds.value.map((id) => privateTargets.value.find((u: any) => u.id === id)).filter(Boolean) as any[])
+const privateAvailableGroups = computed(() => privateGroups.value
+  .map((g) => ({ ...g, people: g.people.filter((u: any) => !privateToIds.value.includes(u.id)) }))
+  .filter((g) => g.people.length))
+function addPrivateTarget(select: HTMLSelectElement) {
+  const id = Number(select.value)
+  if (id && !privateToIds.value.includes(id)) privateToIds.value = [...privateToIds.value, id]
+  select.value = ''
+}
+function removePrivateTarget(id: number) {
+  privateToIds.value = privateToIds.value.filter((x) => x !== id)
+}
 async function loadStaffPeople() {
   if (staffPeople.value.length || !canWritePrivate.value) return
-  try { staffPeople.value = await searchUsers('', { staff_only: true, limit: 100 }) } catch { staffPeople.value = [] }
+  try { staffPeople.value = await searchUsers('', { private_targets: true, limit: 100 }) } catch { staffPeople.value = [] }
 }
 watch(canWritePrivate, (v) => { if (v) loadStaffPeople() }, { immediate: true })
-const privateTargetName = computed(() => shortName(privateTargets.value.find((u: any) => u.id === privateTo.value)?.display_name))
 function togglePrivate() {
   privateOn.value = !privateOn.value
   if (privateOn.value) {
     isInternal.value = false
     commentFile.value = null
-    if (!privateTargets.value.some((u: any) => u.id === privateTo.value)) privateTo.value = privateTargets.value[0]?.id ?? null
+    privateToIds.value = privateToIds.value.filter((id) => privateTargets.value.some((u: any) => u.id === id))
   }
 }
-function replyPrivately(userId: number) {
+function replyPrivately(userIds: number[]) {
   privateOn.value = true
   isInternal.value = false
   commentFile.value = null
-  privateTo.value = userId
+  privateToIds.value = [...userIds]
 }
 
 // Reminders saved on their own (without writing a reply)
@@ -699,7 +751,7 @@ async function persistReminder() {
     reminderState.value = 'saved'
   } catch (e: any) {
     reminderState.value = 'error'
-    reminderError.value = e?.response?.data?.detail || 'Não foi possível guardar o lembrete.'
+    reminderError.value = errorMessage(e, 'Não foi possível guardar o lembrete.')
   }
 }
 
@@ -885,12 +937,16 @@ function stopLive() {
 
 async function deleteTicket() {
   if (!ticket.value) return
-  if (!confirm(`Apagar definitivamente o ticket T-${ticket.value.id} ("${ticket.value.title}")?\n\nApaga também as respostas e os anexos. Não é possível desfazer.`)) return
+  const ok = await confirmDialog(
+    `Apagar definitivamente o ticket T-${ticket.value.id} ("${ticket.value.title}")?\n\nApaga também as respostas e os anexos. Não é possível desfazer.`,
+    { ok: 'Apagar ticket', danger: true },
+  )
+  if (!ok) return
   try {
     await adminBulkActionTickets({ ids: [ticket.value.id], action: 'delete' })
     router.push('/tickets')
   } catch (e: any) {
-    alert(e?.response?.data?.detail || 'Não foi possível apagar o ticket.')
+    notifyError(e, 'Não foi possível apagar o ticket.')
   }
 }
 
@@ -909,8 +965,12 @@ async function loadReactions() {
 
 async function markUnread() {
   if (!ticket.value) return
-  await markTicketUnread(ticket.value.id)
-  router.push('/tickets')
+  try {
+    await markTicketUnread(ticket.value.id)
+    router.push('/tickets')
+  } catch (e) {
+    notifyError(e, 'Não foi possível marcar como não lido.')
+  }
 }
 
 function onReplyTyping() {
@@ -918,15 +978,16 @@ function onReplyTyping() {
   const now = Date.now()
   if (now - lastTypingSent < 3000) return
   lastTypingSent = now
-  sendRealtime({ type: 'typing', ticket_id: ticket.value.id, private_to: privateOn.value ? privateTo.value : null, internal: isInternal.value })
+  sendRealtime({ type: 'typing', ticket_id: ticket.value.id, private_to_ids: privateOn.value ? privateToIds.value : [], internal: isInternal.value })
 }
 
 realtimeOffs.push(
-  onRealtime('ticket.changed', async (e) => {
-    if (e.ticket_id !== liveTicketId) return
-    await load()
-    loadImageBlobs()
-    loadReactions()
+  onRealtime('ticket.changed', (e) => { if (e.ticket_id === liveTicketId) reloadLiveSoon() }),
+  // Back online after a break (e.g. the server was updated): something may have changed meanwhile
+  onRealtime('realtime.connected', (e) => {
+    if (e.resumed && liveTicketId) reloadLiveSoon()
+    // Opened while the server was unreachable: try again now that it answers
+    else if (!ticket.value && loadError.value) retryLoad()
   }),
   onRealtime('reaction.changed', (e) => {
     if ((e.target_type === 'comment' || e.target_type === 'ticket') && e.ticket_id === liveTicketId) loadReactions()
@@ -940,20 +1001,61 @@ realtimeOffs.push(
   }),
 )
 
-onMounted(async () => {
-  await load()
+// Someone else changed the ticket: reload it, at most once every half second, without undoing what this person
+// is in the middle of (e.g. searching for a technician)
+let liveReloadTimer: ReturnType<typeof setTimeout> | null = null
+function reloadLiveSoon() {
+  if (liveReloadTimer) clearTimeout(liveReloadTimer)
+  liveReloadTimer = setTimeout(async () => {
+    try {
+      await load({ live: true })
+      loadImageBlobs()
+      loadReactions()
+    } catch { /* the next event or reconnection tries again */ }
+  }, 500)
+}
+
+const loadError = ref('')
+async function retryLoad() {
+  loadError.value = ''
+  await init()
+}
+
+async function firstLoad() {
+  try {
+    await load()
+  } catch (e: any) {
+    loadError.value = e?.response?.status === 404
+      ? 'Este ticket não existe ou foi apagado.'
+      : e?.response?.status === 403
+        ? 'Não tem acesso a este ticket.'
+        : errorMessage(e, 'Não foi possível abrir o ticket.')
+    return false
+  }
+  return true
+}
+
+onMounted(() => init())
+
+async function init() {
+  if (!(await firstLoad())) return
   loadReactions()
   loadReminders()
   if (ticket.value) startLive(ticket.value.id)
   loadImageBlobs()
   if (auth.isStaff) {
-    const [users, grps] = await Promise.all([getUsers(), getGroups()])
-    staffUsers.value = users.filter(isAssignableTechnician)
-    groups.value = grps
+    try {
+      const [users, grps] = await Promise.all([getUsers(), getGroups()])
+      staffUsers.value = users.filter(isAssignableTechnician)
+      groups.value = grps
+    } catch (e) {
+      notifyError(e, 'Não foi possível carregar a lista de técnicos e grupos.')
+    }
   }
-})
+}
 
 onUnmounted(() => {
+  if (liveReloadTimer) clearTimeout(liveReloadTimer)
   stopLive()
   realtimeOffs.forEach((off) => off())
   if (watcherSearchTimer) clearTimeout(watcherSearchTimer)
@@ -979,10 +1081,11 @@ watch(watcherSearch, value => {
   }, 250)
 })
 
-async function load() {
+async function load(opts: { live?: boolean } = {}) {
   const t = await getTicket(Number(route.params.id))
   ticket.value = t
-  assigneeSearch.value = ''
+  // A live reload keeps a technician search that is being typed
+  if (!opts.live) assigneeSearch.value = ''
   groupId.value = t.group?.id ? String(t.group.id) : ''
   ticketStatus.value = t.status
 }
@@ -1039,7 +1142,7 @@ async function saveContent() {
     })
     editingContent.value = false
   } catch (e: any) {
-    contentError.value = e?.response?.data?.detail || 'Erro ao guardar as alterações.'
+    contentError.value = errorMessage(e, 'Erro ao guardar as alterações.')
   } finally {
     savingContent.value = false
   }
@@ -1047,7 +1150,7 @@ async function saveContent() {
 
 async function onAddComment() {
   if (!newComment.value.trim() && !commentFile.value) return
-  if (privateOn.value && !privateTo.value) {
+  if (privateOn.value && !privateToIds.value.length) {
     commentError.value = 'Escolha a quem enviar a mensagem privada.'
     return
   }
@@ -1055,11 +1158,12 @@ async function onAddComment() {
   commentError.value = ''
   const newStatus = auth.isStaff && replyStatus.value && replyStatus.value !== ticket.value.status ? replyStatus.value : ''
   try {
-    const privateToId = privateOn.value ? privateTo.value : null
-    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value && !privateToId, null, privateToId)
+    const privateIds = privateOn.value ? privateToIds.value : []
+    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value && !privateIds.length, null, privateIds)
     newComment.value = ''
     isInternal.value = false
-    privateOn.value = false
+    privateOn.value = privateOnly.value
+    privateToIds.value = privateOnly.value ? privateIds : []
     if (commentFile.value) {
       await uploadTicketAttachment(ticket.value.id, commentFile.value)
       commentFile.value = null
@@ -1072,7 +1176,7 @@ async function onAddComment() {
     await load()
     loadReminders()
   } catch (e: any) {
-    commentError.value = e?.response?.data?.detail || 'Erro ao enviar resposta'
+    commentError.value = errorMessage(e, 'Erro ao enviar resposta')
   } finally {
     commenting.value = false
   }
@@ -1111,7 +1215,10 @@ async function onStatusChange() {
   try {
     await adminUpdateTicket(ticket.value.id, { status: ticketStatus.value })
     await load()
-  } catch { ticketStatus.value = ticket.value.status }
+  } catch (e) {
+    ticketStatus.value = ticket.value.status
+    notifyError(e, 'Não foi possível alterar o estado.')
+  }
 }
 
 async function saveAssignees(ids: number[]) {
@@ -1120,9 +1227,10 @@ async function saveAssignees(ids: number[]) {
     assigneeSearch.value = ''
     assigneeSearchOpen.value = false
     await load()
-  } catch {
+  } catch (e) {
     assigneeSearch.value = ''
     assigneeSearchOpen.value = false
+    notifyError(e, 'Não foi possível alterar os técnicos atribuídos.')
   }
 }
 
@@ -1139,8 +1247,9 @@ async function onGroupChange() {
   try {
     await adminUpdateTicket(ticket.value.id, { group_id: groupId.value ? Number(groupId.value) : null })
     await load()
-  } catch {
+  } catch (e) {
     groupId.value = ticket.value.group?.id ? String(ticket.value.group.id) : ''
+    notifyError(e, 'Não foi possível alterar o grupo.')
   }
 }
 
@@ -1152,6 +1261,8 @@ async function toggleEmailNotifications() {
     ticket.value = auth.isAdmin
       ? await adminUpdateTicket(ticket.value.id, payload)
       : await updateTicket(ticket.value.id, payload)
+  } catch (e) {
+    notifyError(e, 'Não foi possível alterar as notificações por email.')
   } finally {
     savingEmailPreference.value = false
   }
@@ -1174,15 +1285,23 @@ function cancelEditComment() {
 
 async function saveEditedComment(comment: any) {
   if (!editingCommentBody.value.trim()) return
-  await updateComment(ticket.value.id, comment.id, editingCommentBody.value)
-  cancelEditComment()
-  await load()
+  try {
+    await updateComment(ticket.value.id, comment.id, editingCommentBody.value)
+    cancelEditComment()
+    await load()
+  } catch (e) {
+    notifyError(e, 'Não foi possível guardar a alteração.')
+  }
 }
 
 async function onDeleteComment(comment: any) {
-  if (!confirm('Apagar esta resposta?')) return
-  await deleteComment(ticket.value.id, comment.id)
-  await load()
+  if (!(await confirmDialog('Apagar esta resposta?', { ok: 'Apagar', danger: true }))) return
+  try {
+    await deleteComment(ticket.value.id, comment.id)
+    await load()
+  } catch (e) {
+    notifyError(e, 'Não foi possível apagar a resposta.')
+  }
 }
 
 async function onAddWatcher() {
@@ -1191,6 +1310,8 @@ async function onAddWatcher() {
   try {
     ticket.value = await addWatcher(ticket.value.id, resolvedWatcherId.value)
     watcherSearch.value = ''
+  } catch (e) {
+    notifyError(e, 'Não foi possível adicionar o seguidor.')
   } finally {
     addingWatcher.value = false
   }
@@ -1202,13 +1323,19 @@ async function addWatcherCandidate(user: any) {
   try {
     ticket.value = await addWatcher(ticket.value.id, user.id)
     watcherSearch.value = ''
+  } catch (e) {
+    notifyError(e, 'Não foi possível adicionar o seguidor.')
   } finally {
     addingWatcher.value = false
   }
 }
 
 async function onRemoveWatcher(userId: number) {
-  ticket.value = await removeWatcher(ticket.value.id, userId)
+  try {
+    ticket.value = await removeWatcher(ticket.value.id, userId)
+  } catch (e) {
+    notifyError(e, 'Não foi possível remover o seguidor.')
+  }
 }
 
 async function onEscalateTicket() {
@@ -1216,7 +1343,7 @@ async function onEscalateTicket() {
   const msg = alreadyEscalated
     ? 'Reenviar este ticket à empresa de apoio (enviará novamente o email de escalamento)?'
     : 'Reportar este ticket à empresa de apoio informático configurada?'
-  if (!confirm(msg)) return
+  if (!(await confirmDialog(msg, { ok: alreadyEscalated ? 'Reenviar' : 'Reportar' }))) return
   escalating.value = true
   escalationMessage.value = ''
   escalationError.value = false
@@ -1227,7 +1354,7 @@ async function onEscalateTicket() {
       : 'Ticket reportado e email enviado à empresa de apoio.'
   } catch (error: any) {
     escalationError.value = true
-    escalationMessage.value = error?.response?.data?.detail || 'Não foi possível reportar o ticket. Verifica o email da empresa de apoio nas configurações.'
+    escalationMessage.value = errorMessage(error, 'Não foi possível reportar o ticket. Verifica o email da empresa de apoio nas configurações.')
   } finally {
     escalating.value = false
   }
@@ -1238,13 +1365,15 @@ async function onDeescalate() {
   deescalating.value = true
   try {
     ticket.value = await deescalateTicket(ticket.value.id)
+  } catch (e) {
+    notifyError(e, 'Não foi possível retirar o reporte.')
   } finally {
     deescalating.value = false
   }
 }
 
 async function forwardCommentToProvider(comment: any) {
-  if (!confirm('Reenviar esta resposta à empresa de apoio?')) return
+  if (!(await confirmDialog('Reenviar esta resposta à empresa de apoio?', { ok: 'Reenviar' }))) return
   sendingCommentId.value = comment.id
   escalationMessage.value = ''
   escalationError.value = false
@@ -1253,7 +1382,7 @@ async function forwardCommentToProvider(comment: any) {
     escalationMessage.value = 'Resposta enviada à empresa de apoio.'
   } catch (error: any) {
     escalationError.value = true
-    escalationMessage.value = error?.response?.data?.detail || 'Não foi possível reenviar. Verifique as configurações de email.'
+    escalationMessage.value = errorMessage(error, 'Não foi possível reenviar. Verifique as configurações de email.')
   } finally {
     sendingCommentId.value = null
   }
@@ -1286,6 +1415,8 @@ function formatSize(size: number) {
 </script>
 
 <style scoped>
+.load-error { padding: 64px 16px; text-align: center; color: var(--c-muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.load-error .material-icons { font-size: 40px; color: #DC2626; }
 .escalated-badge {
   display: inline-flex;
   align-items: center;
@@ -1858,6 +1989,13 @@ function formatSize(size: number) {
 .private-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--c-text); }
 .private-title .material-icons { font-size: 17px; color: #7C3AED; }
 .private-select { width: auto; max-width: 340px; padding: 5px 10px; font-size: 13px; }
+.private-people { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.private-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 4px 3px 10px; border-radius: 999px; background: rgba(124, 58, 237, .12); color: #5B21B6; font-size: 12.5px; font-weight: 700; }
+.private-chip small { font-weight: 500; opacity: .75; }
+.private-chip button { display: inline-flex; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 50%; padding: 2px; }
+.private-chip button:hover { background: rgba(124, 58, 237, .18); }
+.private-chip .material-icons { font-size: 14px; }
+.dark .private-chip { background: rgba(167, 139, 250, .2); color: #DDD6FE; }
 .private-hint { font-size: 12px; color: var(--c-muted); margin-top: 8px; }
 .reminder-tag {
   display: inline-flex; align-items: center; gap: 3px;

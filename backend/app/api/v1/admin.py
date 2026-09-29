@@ -54,7 +54,7 @@ async def create_routing_rule(data: TicketRoutingRuleCreate, db: AsyncSession = 
 async def update_routing_rule(rule_id: int, data: TicketRoutingRuleUpdate, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     rule = (await db.execute(select(TicketRoutingRule).where(TicketRoutingRule.id == rule_id))).scalar_one_or_none()
     if not rule:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routing rule not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Regra de encaminhamento não encontrada.")
     if "assignee_id" in data.model_fields_set:
         await _validate_routing_assignee(db, data.assignee_id)
     for key, value in data.model_dump(exclude_unset=True).items():
@@ -73,7 +73,7 @@ async def update_routing_rule(rule_id: int, data: TicketRoutingRuleUpdate, db: A
 async def delete_routing_rule(rule_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
     rule = (await db.execute(select(TicketRoutingRule).where(TicketRoutingRule.id == rule_id))).scalar_one_or_none()
     if not rule:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Routing rule not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Regra de encaminhamento não encontrada.")
     await db.delete(rule)
     await db.commit()
 
@@ -196,7 +196,7 @@ async def admin_bulk_action_tickets(
     if not data.ids:
         return {"affected": 0}
     if data.action not in {"archive", "delete"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported bulk action")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ação não suportada.")
 
     result = await db.execute(
         select(Ticket)
@@ -234,7 +234,7 @@ async def admin_update_ticket(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
 
     prev_assignee_ids = _ticket_assignee_ids(ticket)
     only_email_preference = data.model_fields_set == {"creator_email_notifications"}

@@ -61,6 +61,8 @@ async def search_users(
     limit: int = Query(20, ge=1, le=100),
     technicians_only: bool = Query(False),
     staff_only: bool = Query(False),
+    # Staff plus the Direção (people who see every ticket): who a private message can be sent to
+    private_targets: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -70,6 +72,12 @@ async def search_users(
         query = query.where(or_(User.role == UserRole.TECHNICIAN, User.is_technician.is_(True)))
     if staff_only:
         query = query.where(or_(User.role.in_([UserRole.TECHNICIAN, UserRole.ADMIN]), User.is_technician.is_(True)))
+    if private_targets:
+        supervisor_keys = [k for k in permissions.all_role_keys() if "tickets.view_all" in permissions.role_permissions(k)]
+        query = query.where(or_(
+            User.role.in_([UserRole.TECHNICIAN, UserRole.ADMIN]), User.is_technician.is_(True),
+            User.role_key.in_(supervisor_keys or [""]),
+        ))
     if term:
         like = f"%{term}%"
         query = query.where(
@@ -159,10 +167,10 @@ async def create_helpdesk_group(
 ):
     name = data.name.strip()
     if not name:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group name is required")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Dê um nome ao grupo.")
     exists = await db.execute(select(HelpdeskGroup).where(HelpdeskGroup.name == name))
     if exists.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Group already exists")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Já existe um grupo com esse nome.")
     group = HelpdeskGroup(name=name, description=(data.description or "").strip() or None)
     db.add(group)
     await db.commit()
@@ -184,11 +192,11 @@ async def update_helpdesk_group(
     )
     group = result.scalar_one_or_none()
     if not group:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
     if data.name is not None:
         name = data.name.strip()
         if not name:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group name is required")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Dê um nome ao grupo.")
         group.name = name
     if data.description is not None:
         group.description = data.description.strip() or None
@@ -211,7 +219,7 @@ async def update_helpdesk_group_members(
     )
     group = result.scalar_one_or_none()
     if not group:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
     members = []
     if data.user_ids:
         members = (await db.execute(select(User).where(User.id.in_(data.user_ids)))).scalars().all()
@@ -238,7 +246,7 @@ async def delete_helpdesk_group(
     )
     group = result.scalar_one_or_none()
     if not group:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo não encontrado.")
     group.members = []
     await db_maintenance.detach(db, "helpdesk_groups", group.id)
     await db.delete(group)
@@ -286,7 +294,7 @@ async def update_user(
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilizador não encontrado.")
     if data.role_key:
         _apply_role_key(user, data.role_key)
     if data.role is not None:

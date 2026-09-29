@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from '../utils/feedback'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { updateMyPreferences } from '../api/users'
@@ -56,7 +57,7 @@ async function save() {
     emit('changed', auth.user?.hidden_category_ids ?? [])
     open.value = false
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || 'Não foi possível guardar.'
+    error.value = errorMessage(e, 'Não foi possível guardar.')
   } finally {
     saving.value = false
   }

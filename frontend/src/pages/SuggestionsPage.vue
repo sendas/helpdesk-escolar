@@ -45,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from '../utils/feedback'
 import { ref } from 'vue'
 import { api } from '../boot/axios'
 
@@ -63,7 +64,7 @@ async function submit() {
     sent.value = true
     text.value = ''
   } catch (err: any) {
-    error.value = err?.response?.data?.detail || 'Erro ao enviar a sugestão. Tente novamente.'
+    error.value = errorMessage(err, 'Erro ao enviar a sugestão. Tente novamente.')
   } finally {
     loading.value = false
   }

@@ -30,7 +30,7 @@ async def update_school(school_id: int, data: SchoolCreate, db: AsyncSession = D
     result = await db.execute(select(School).where(School.id == school_id))
     school = result.scalar_one_or_none()
     if not school:
-        raise HTTPException(status_code=404, detail="School not found")
+        raise HTTPException(status_code=404, detail="Escola não encontrada.")
     for k, v in data.model_dump().items():
         setattr(school, k, v)
     await db.commit()
@@ -43,7 +43,7 @@ async def delete_school(school_id: int, db: AsyncSession = Depends(get_db), _: U
     result = await db.execute(select(School).where(School.id == school_id))
     school = result.scalar_one_or_none()
     if not school:
-        raise HTTPException(status_code=404, detail="School not found")
+        raise HTTPException(status_code=404, detail="Escola não encontrada.")
     await db_maintenance.detach(db, "schools", school.id)
     await db.delete(school)
     await db.commit()

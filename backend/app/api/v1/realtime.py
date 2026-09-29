@@ -19,6 +19,7 @@ class ClientMessage(BaseModel):
     ticket_id: int | None = None
     conversation_id: int | None = None
     private_to: int | None = None
+    private_to_ids: list[int] = []
     internal: bool = False
 
 
@@ -41,14 +42,15 @@ async def handle_client_message(db: AsyncSession, user: User, msg: ClientMessage
         realtime.leave_ticket(user.id, msg.ticket_id)
     elif msg.type == "typing" and msg.ticket_id in allowed_tickets:
         viewers = realtime.ticket_viewers(msg.ticket_id) - {user.id}
-        if msg.private_to:
-            viewers &= {msg.private_to}
+        private = set(msg.private_to_ids) | ({msg.private_to} if msg.private_to else set())
+        if private:
+            viewers &= private
         elif msg.internal:
             rows = (await db.execute(select(User).where(User.id.in_(viewers or {0})))).scalars().all()
             viewers = {u.id for u in rows if "tickets.manage" in permissions_for(u)}
         realtime.publish(viewers, {
             "type": "ticket.typing", "ticket_id": msg.ticket_id,
-            "user": {"id": user.id, "name": user.display_name}, "private": bool(msg.private_to),
+            "user": {"id": user.id, "name": user.display_name}, "private": bool(msg.private_to or msg.private_to_ids),
         })
     elif msg.type == "chat.typing" and msg.conversation_id:
         from app.services import chat_service
@@ -75,7 +77,7 @@ async def websocket(ws: WebSocket, token: str = Query("")):
     realtime.remember_name(user.id, user.display_name)
     queue = realtime.register(user.id)
     allowed_tickets: set[int] = set()
-    await ws.send_json({"type": "hello", "seq": realtime.current_seq()})
+    await ws.send_json({"type": "hello", "seq": realtime.current_seq(), "boot": realtime.BOOT_ID})
 
     async def sender():
         while True:
@@ -112,13 +114,14 @@ _poll_allowed: dict[int, set[int]] = {}
 
 
 @router.get("/poll")
-async def poll(after: int = Query(0, ge=0), current_user: User = Depends(get_current_user)):
+async def poll(after: int = Query(0, ge=0), boot: str = "", current_user: User = Depends(get_current_user)):
     realtime.remember_name(current_user.id, current_user.display_name)
     realtime.mark_polled(current_user.id)
-    if after == 0:
-        return {"seq": realtime.current_seq(), "events": []}
+    if after == 0 or (boot and boot != realtime.BOOT_ID):
+        # New client, or the server restarted since this client's last poll: start again from now
+        return {"seq": realtime.current_seq(), "events": [], "boot": realtime.BOOT_ID, "reset": after != 0}
     events = realtime.events_after(current_user.id, after)
-    return {"seq": events[-1]["seq"] if events else after, "events": events}
+    return {"seq": events[-1]["seq"] if events else after, "events": events, "boot": realtime.BOOT_ID}
 
 
 @router.post("/send", status_code=204)

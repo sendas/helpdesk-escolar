@@ -42,7 +42,7 @@ async def update_category(
     result = await db.execute(select(Category).where(Category.id == category_id))
     category = result.scalar_one_or_none()
     if not category:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Categoria não encontrada.")
 
     for key, value in data.model_dump(exclude_unset=True).items():
         if isinstance(value, str):
@@ -63,7 +63,7 @@ async def delete_category(
     result = await db.execute(select(Category).where(Category.id == category_id))
     category = result.scalar_one_or_none()
     if not category:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Categoria não encontrada.")
     in_use = await db_maintenance.category_ticket_count(db, category.id)
     if in_use:
         raise HTTPException(

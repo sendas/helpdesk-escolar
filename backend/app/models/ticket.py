@@ -37,6 +37,16 @@ ticket_assignees = Table(
 )
 
 
+# Private message to several people: everyone listed here (and the author) sees it. Comment.private_to_id keeps the
+# first recipient and marks the comment as private.
+comment_private_recipients = Table(
+    "comment_private_recipients",
+    Base.metadata,
+    Column("comment_id", ForeignKey("comments.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True),
+)
+
+
 class Ticket(Base):
     __tablename__ = "tickets"
 
@@ -103,6 +113,13 @@ class Comment(Base):
     ticket: Mapped["Ticket"] = relationship("Ticket", back_populates="comments")
     author: Mapped["User"] = relationship("User", back_populates="comments", foreign_keys=[author_id])
     private_to: Mapped["User"] = relationship("User", foreign_keys=[private_to_id], lazy="selectin")
+    private_recipients: Mapped[list["User"]] = relationship("User", secondary=comment_private_recipients, lazy="selectin")
+
+    def private_participants(self) -> set[int]:
+        """Everyone who sees this private message (empty set for a normal comment)."""
+        if not self.private_to_id:
+            return set()
+        return {self.author_id, self.private_to_id, *(u.id for u in self.private_recipients)}
 
 
 class TicketEvent(Base):

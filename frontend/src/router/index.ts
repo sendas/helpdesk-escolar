@@ -21,7 +21,8 @@ const routes = [
       { path: 'dashboard', component: () => import('../pages/DashboardPage.vue') },
       { path: 'tickets', component: () => import('../pages/TicketListPage.vue') },
       { path: 'tickets/new', component: () => import('../pages/TicketCreatePage.vue') },
-      { path: 'tickets/:id', component: () => import('../pages/TicketDetailPage.vue') },
+      // remount: going from one ticket to another (e.g. a link in the support chat) loads the new ticket
+      { path: 'tickets/:id', meta: { remount: true }, component: () => import('../pages/TicketDetailPage.vue') },
       { path: 'knowledge', component: () => import('../pages/KnowledgePage.vue') },
       { path: 'version', component: () => import('../pages/VersionPage.vue') },
       { path: 'about', component: () => import('../pages/AboutPage.vue') },
@@ -69,6 +70,22 @@ export default route(function () {
       return '/dashboard'
     }
   })
+
+  // After a deploy the old page files are gone: a tab left open would fail to change page. Reload it (once).
+  const isChunkError = (err: any) => /dynamically imported module|Importing a module script failed|Loading chunk|Unable to preload CSS/i.test(String(err?.message ?? err))
+  const reloadOnce = (path: string) => {
+    try {
+      if (sessionStorage.getItem('hd-chunk-reload') === path) return
+      sessionStorage.setItem('hd-chunk-reload', path)
+    } catch { /* private mode: reload anyway */ }
+    window.location.assign(path)
+  }
+  router.onError((err, to) => { if (isChunkError(err)) reloadOnce(to.fullPath) })
+  window.addEventListener('vite:preloadError', (event) => {
+    event.preventDefault()
+    reloadOnce(window.location.pathname + window.location.search)
+  })
+  router.afterEach(() => { try { sessionStorage.removeItem('hd-chunk-reload') } catch { /* ignore */ } })
 
   return router
 })

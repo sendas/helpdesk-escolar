@@ -126,7 +126,7 @@ async def authenticate_manual_user(db: AsyncSession, username_or_email: str, pas
 @router.get("/azure-login")
 async def azure_login(request: Request):
     if not settings.azure_ad_enabled or not settings.azure_client_id:
-        raise HTTPException(status_code=400, detail="Azure AD not configured")
+        raise HTTPException(status_code=400, detail="A entrada com Microsoft não está configurada.")
     state = secrets.token_urlsafe(16)
     request.session["oauth_state"] = state
     url = azure_auth.get_azure_login_url(state)
@@ -141,10 +141,10 @@ async def azure_callback(
     db: AsyncSession = Depends(get_db),
 ):
     if state != request.session.get("oauth_state"):
-        raise HTTPException(status_code=400, detail="State mismatch")
+        raise HTTPException(status_code=400, detail="O pedido de entrada expirou. Tente entrar novamente.")
     user_info = await azure_auth.exchange_code_for_user(code)
     if not user_info:
-        raise HTTPException(status_code=401, detail="Azure authentication failed")
+        raise HTTPException(status_code=401, detail="A autenticação Microsoft falhou. Tente novamente.")
     user = await get_or_create_user(db, user_info)
     token = jwt_service.create_access_token({"sub": str(user.id), "role": user.role})
     return RedirectResponse(f"{settings.frontend_url}/auth/callback#token={token}")

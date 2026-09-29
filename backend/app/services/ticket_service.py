@@ -164,6 +164,17 @@ async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
     return result.scalar_one_or_none()
 
 
+def private_visible_to(user_id: int):
+    """SQL condition: the comment is not private, or this user is its author or one of its recipients."""
+    from app.models.ticket import comment_private_recipients as cpr
+    return or_(
+        Comment.private_to_id.is_(None),
+        Comment.author_id == user_id,
+        Comment.private_to_id == user_id,
+        Comment.id.in_(select(cpr.c.comment_id).where(cpr.c.user_id == user_id)),
+    )
+
+
 def search_condition(search: str, user: User):
     """Search by ticket number (12, T-12, #12), subject, description, requester, school, category and the
     replies the user may see — ignoring accents and capitals."""
@@ -175,7 +186,7 @@ def search_condition(search: str, user: User):
     fold = func.hd_fold
     visible_comment = and_(
         fold(Comment.body).like(term), Comment.deleted_at.is_(None),
-        or_(Comment.private_to_id.is_(None), Comment.private_to_id == user.id, Comment.author_id == user.id),
+        private_visible_to(user.id),
     )
     if not is_staff_user(user):
         visible_comment = and_(visible_comment, Comment.is_internal.is_(False))
@@ -316,7 +327,7 @@ async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) ->
     return await get_ticket(db, ticket.id)
 
 
-async def add_comment(db: AsyncSession, ticket: Ticket, data: CommentCreate, author: User) -> Comment:
+async def add_comment(db: AsyncSession, ticket: Ticket, data: CommentCreate, author: User, private_recipients: list[User] | None = None) -> Comment:
     remind_at = None
     if data.remind_at:
         remind_at = data.remind_at
@@ -328,7 +339,8 @@ async def add_comment(db: AsyncSession, ticket: Ticket, data: CommentCreate, aut
         ticket_id=ticket.id,
         author_id=author.id,
         remind_at=remind_at,
-        private_to_id=data.private_to_id,
+        private_to_id=(private_recipients[0].id if private_recipients else None),
+        private_recipients=list(private_recipients or []),
     )
     db.add(comment)
     ticket.updated_at = datetime.utcnow()

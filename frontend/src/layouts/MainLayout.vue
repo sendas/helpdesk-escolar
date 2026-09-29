@@ -91,13 +91,15 @@
         </template>
       </nav>
 
-      <div class="hd-sidebar-user" @click="auth.logout()">
+      <div class="hd-sidebar-user">
         <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="32" />
         <div class="hd-sidebar-user-text">
           <div class="hd-sidebar-user-name"><PersonName :name="auth.user?.display_name" /></div>
           <div class="hd-sidebar-user-role">{{ roleLabel }}</div>
         </div>
-        <span class="material-icons" style="font-size:16px;color:var(--c-muted);margin-left:auto">logout</span>
+        <button type="button" class="hd-logout-btn" title="Terminar sessão" aria-label="Terminar sessão" @click="askLogout">
+          <span class="material-icons">logout</span>
+        </button>
       </div>
       <router-link class="app-version-link" to="/version" @click="mobileMenuOpen = false">
         {{ versionLabelText }}
@@ -243,7 +245,9 @@
 
       <!-- Page content -->
       <main class="app-content">
-        <router-view />
+        <router-view v-slot="{ Component, route: current }">
+          <component :is="Component" :key="current.meta.remount ? current.path : undefined" />
+        </router-view>
         <SupportWidget v-if="showSupportWidget" />
         <div style="height:env(safe-area-inset-bottom,0px)"></div>
       </main>
@@ -264,6 +268,8 @@ import { usePushNotifications } from '../composables/usePushNotifications'
 import SupportWidget from '../components/SupportWidget.vue'
 import PersonName from '../components/PersonName.vue'
 import { shortName } from '../utils/names'
+import { confirmDialog } from '../utils/feedback'
+import { applyDarkStyle } from '../utils/darkStyle'
 import { onRealtime, startRealtime } from '../services/realtime'
 import { getChatUnread, getSupportQueue } from '../api/chat'
 import { loadSupportStatus, openSupportChat, supportStatus } from '../utils/supportChat'
@@ -365,6 +371,10 @@ function debounced(fn: () => void, ms = 1000) {
   return () => { if (t) clearTimeout(t); t = setTimeout(fn, ms) }
 }
 const refreshCountsSoon = debounced(refreshCounts)
+
+async function askLogout() {
+  if (await confirmDialog('Terminar a sessão neste dispositivo?', { ok: 'Terminar sessão' })) auth.logout()
+}
 const refreshChatSoon = debounced(refreshChatBadges, 600)
 const realtimeOffs: Array<() => void> = []
 let supportTimer: ReturnType<typeof setInterval> | null = null
@@ -379,9 +389,12 @@ onMounted(async () => {
     onRealtime('chat.read', refreshChatSoon),
     onRealtime('chat.conversation', refreshChatSoon),
     onRealtime('support.queue', refreshChatSoon),
+    // Reconnected after a break (e.g. the server was updated): counters may be out of date
+    onRealtime('realtime.connected', (e) => { if (e.resumed) { refreshCountsSoon(); refreshChatSoon() } }),
   )
   try {
     settings.value = await getPublicSettings()
+    applyDarkStyle(settings.value.dark_style)
     applyFavicon(settings.value.favicon_url || settings.value.logo_url)
   } catch { /* ignore */ }
   refreshCounts()

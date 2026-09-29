@@ -76,39 +76,61 @@ def _assigned_ids(ticket) -> set[int]:
     return {uid for uid in [ticket.assignee_id, *(a.id for a in getattr(ticket, "assignees", []))] if uid}
 
 
-async def _private_message_recipient(db: AsyncSession, ticket, sender: User, recipient_id: int) -> User:
-    """Staff and people assigned to the ticket can write privately to any technician/admin or to anyone in the ticket
-    (requester, assignees, followers). Anyone can answer privately whoever wrote to them privately."""
-    if recipient_id == sender.id:
+MAX_PRIVATE_RECIPIENTS = 20
+
+
+def _is_staff(user: User) -> bool:
+    return user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or user.is_technician
+
+
+async def _private_message_recipients(db: AsyncSession, ticket, sender: User, recipient_ids: list[int]) -> list[User]:
+    """Who a private message may go to.
+    - Staff, people assigned to the ticket and the Direção (anyone who can see every ticket) can write privately to
+      technicians/admins, to the Direção and to anyone in the ticket (requester, assignees, followers).
+    - Anyone can answer everyone who is in a private conversation with them on this ticket."""
+    ids = list(dict.fromkeys(i for i in recipient_ids if i))
+    if not ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha a quem enviar a mensagem privada.")
+    if sender.id in ids:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não pode enviar uma mensagem privada a si próprio.")
-    recipient = await db.get(User, recipient_id)
-    if not recipient or not recipient.is_active:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilizador não encontrado.")
+    if len(ids) > MAX_PRIVATE_RECIPIENTS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"No máximo {MAX_PRIVATE_RECIPIENTS} pessoas por mensagem privada.")
+    users = {u.id: u for u in (await db.execute(select(User).where(User.id.in_(ids)))).scalars()}
     assigned = _assigned_ids(ticket)
-    sender_can_write = sender.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or sender.is_technician or sender.id in assigned
+    sender_can_write = _is_staff(sender) or sender.id in assigned or has_perm(sender, "tickets.view_all")
     in_ticket = {ticket.creator_id, *assigned, *(w.id for w in ticket.watchers)}
-    recipient_is_staff = recipient.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or recipient.is_technician
-    allowed = sender_can_write and (recipient_is_staff or recipient.id in in_ticket)
-    if not allowed:
-        previous = await db.execute(
-            select(Comment.id).where(
-                Comment.ticket_id == ticket.id,
-                Comment.author_id == recipient_id,
-                Comment.private_to_id == sender.id,
-                Comment.deleted_at.is_(None),
-            ).limit(1)
-        )
-        allowed = previous.scalar_one_or_none() is not None
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Só pode enviar mensagens privadas a técnicos, administradores ou pessoas deste ticket (solicitante, responsáveis e seguidores).",
-        )
-    return recipient
+    # People already in a private conversation with the sender on this ticket
+    partners: set[int] = set()
+    for c in getattr(ticket, "comments", []):
+        if c.deleted_at is None and c.private_to_id:
+            people = c.private_participants()
+            if sender.id in people:
+                partners |= people
+    recipients: list[User] = []
+    for rid in ids:
+        recipient = users.get(rid)
+        if not recipient or not recipient.is_active:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilizador não encontrado.")
+        allowed = rid in partners or (sender_can_write and (
+            _is_staff(recipient) or rid in in_ticket or has_perm(recipient, "tickets.view_all")
+        ))
+        if not allowed and not sender_can_write:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Só pode escrever em privado a quem já lhe escreveu em privado neste ticket ({recipient.display_name} ainda não o fez).",
+            )
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Não pode enviar uma mensagem privada a {recipient.display_name}: só a técnicos, administradores, "
+                       "à Direção ou a pessoas deste ticket (solicitante, responsáveis e seguidores).",
+            )
+        recipients.append(recipient)
+    return recipients
 
 
 def _private_comment_visible(comment: Comment, user: User) -> bool:
-    return comment.private_to_id is None or user.id in (comment.author_id, comment.private_to_id)
+    return comment.private_to_id is None or user.id in comment.private_participants()
 
 
 def _can_access_ticket(ticket, user: User, *, allow_watcher: bool = True) -> bool:
@@ -184,7 +206,7 @@ async def list_my_reminders(ticket_id: int, current_user: User = Depends(get_cur
 async def create_reminder(ticket_id: int, data: ReminderCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not _can_set_reminder(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só administradores, técnicos e responsáveis pelo ticket podem criar lembretes.")
     when = _utc_naive(data.remind_at)
@@ -200,7 +222,7 @@ async def set_my_reminder(ticket_id: int, data: ReminderCreate, current_user: Us
     """The "Lembrar-me deste ticket" switch: one pending reminder per person and ticket, saved as soon as it changes."""
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not _can_set_reminder(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só administradores, técnicos e responsáveis pelo ticket podem criar lembretes.")
     when = _utc_naive(data.remind_at)
@@ -262,7 +284,7 @@ async def mark_tickets_read(data: ReadMarks, current_user: User = Depends(get_cu
 async def mark_ticket_unread(ticket_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket or not (_can_access_ticket(ticket, current_user) or has_perm(current_user, "tickets.view_all")):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     await read_service.mark_unread(db, current_user.id, ticket_id)
 
 
@@ -395,9 +417,9 @@ async def upload_attachment(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not _can_access_ticket(ticket, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     content = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ficheiro demasiado grande. Máximo: 10 MB.")
@@ -442,19 +464,19 @@ async def download_attachment(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not _can_access_ticket(ticket, current_user) and not has_perm(current_user, "tickets.view_all"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
 
     attachment = (
         await db.execute(select(Attachment).where(Attachment.id == attachment_id, Attachment.ticket_id == ticket_id))
     ).scalar_one_or_none()
     if not attachment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anexo não encontrado.")
 
     path = os.path.join(UPLOAD_DIR, attachment.stored_name)
     if not os.path.exists(path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment file not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="O ficheiro do anexo já não existe no servidor.")
     # Never let the browser run a stored file as a page: images may show inline, everything else downloads
     inline = attachment.content_type in {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"}
     return FileResponse(
@@ -474,12 +496,12 @@ async def get_ticket(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not _can_access_ticket(ticket, current_user) and not has_perm(current_user, "tickets.view_all"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     hide_demo = ticket_service.hides_demo_content(current_user)
     if hide_demo and ticket.creator and ticket.creator.auth_provider == "demo":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     data = TicketRead.model_validate(ticket)
     await read_service.mark_read(db, current_user.id, [ticket.id])
     if hide_demo:
@@ -496,9 +518,9 @@ async def update_ticket(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not _can_access_ticket(ticket, current_user, allow_watcher=False):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     # Without "Gerir tickets", people may only change their own email preference; status, priority and
     # assignment are the support team's job (the API used to accept them from anyone linked to the ticket)
     if not has_perm(current_user, "tickets.manage"):
@@ -548,11 +570,11 @@ async def escalate_ticket(
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
 
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
 
     app_settings = _read_settings()
     provider_email = (app_settings.get("support_provider_email") or "").strip()
@@ -591,10 +613,10 @@ async def deescalate_ticket(
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not any(e.event_type == "escalated" for e in ticket.events):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket não está escalado")
     app_settings = _read_settings()
@@ -613,10 +635,10 @@ async def escalate_comment(
     db: AsyncSession = Depends(get_db),
 ):
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     if not ticket.is_escalated:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket não está reportado à empresa de apoio")
     result = await db.execute(select(Comment).where(Comment.id == comment_id, Comment.ticket_id == ticket_id, Comment.deleted_at.is_(None)))
@@ -656,11 +678,11 @@ async def add_watcher(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     is_creator = ticket.creator_id == current_user.id
     is_staff = current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or current_user.is_technician
     if not is_creator and not is_staff:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     person = await db.get(User, data.user_id)
     if not person:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilizador não encontrado")
@@ -687,11 +709,11 @@ async def remove_watcher(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     is_creator = ticket.creator_id == current_user.id
     is_staff = current_user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or current_user.is_technician
     if not is_creator and not is_staff:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     person = next((w for w in ticket.watchers if w.id == user_id), None)
     if person:
         ticket.watchers.remove(person)
@@ -716,9 +738,11 @@ async def add_comment(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
-    if not _can_access_ticket(ticket, current_user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
+    private_ids = list(data.private_to_ids or ([data.private_to_id] if data.private_to_id else []))
+    # The Direção sees every ticket but only writes in private conversations
+    if not _can_access_ticket(ticket, current_user) and not (private_ids and has_perm(current_user, "tickets.view_all")):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician:
         data.is_internal = False
     if data.remind_at is not None:
@@ -727,22 +751,25 @@ async def add_comment(
         when = data.remind_at if data.remind_at.tzinfo else data.remind_at.replace(tzinfo=timezone.utc)
         if when <= datetime.now(timezone.utc):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha uma data e hora no futuro para o lembrete.")
-    private_to = None
-    if data.private_to_id is not None:
-        private_to = await _private_message_recipient(db, ticket, current_user, data.private_to_id)
+    private_recipients: list[User] = []
+    if private_ids:
+        private_recipients = await _private_message_recipients(db, ticket, current_user, private_ids)
         data.is_internal = False
-    comment = await ticket_service.add_comment(db, ticket, data, current_user)
+    comment = await ticket_service.add_comment(db, ticket, data, current_user, private_recipients)
 
-    if private_to:
-        if private_to.email:
-            await email_service.send_private_message(private_to.email, {
-                "id": ticket.id,
-                "title": ticket.title,
-                "author": current_user.display_name,
-                "comment": data.body,
-            })
+    if private_recipients:
+        others = ", ".join(u.display_name for u in private_recipients)
+        for person in private_recipients:
+            if person.email:
+                await email_service.send_private_message(person.email, {
+                    "id": ticket.id,
+                    "title": ticket.title,
+                    "author": current_user.display_name,
+                    "comment": data.body,
+                    "recipients": others if len(private_recipients) > 1 else "",
+                })
         asyncio.create_task(push_service.send_push_to_users_bg(
-            {private_to.id},
+            {u.id for u in private_recipients},
             f"Mensagem privada: {ticket.title}",
             f"{current_user.display_name}: {data.body[:80]}",
             f"/tickets/{ticket.id}",
@@ -829,17 +856,17 @@ async def update_comment(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     result = await db.execute(select(Comment).where(Comment.id == comment_id, Comment.ticket_id == ticket_id, Comment.deleted_at.is_(None)))
     comment = result.scalar_one_or_none()
     if not comment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resposta não encontrada.")
     if not _private_comment_visible(comment, current_user):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resposta não encontrada.")
     if comment.private_to_id and comment.author_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só o autor pode alterar uma mensagem privada.")
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician and comment.author_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     comment.ticket = ticket
     updated = await ticket_service.update_comment(db, comment, data.body)
     if not comment.is_internal and not comment.private_to_id:
@@ -867,17 +894,17 @@ async def delete_comment(
 ):
     ticket = await ticket_service.get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
     result = await db.execute(select(Comment).where(Comment.id == comment_id, Comment.ticket_id == ticket_id, Comment.deleted_at.is_(None)))
     comment = result.scalar_one_or_none()
     if not comment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resposta não encontrada.")
     if not _private_comment_visible(comment, current_user):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resposta não encontrada.")
     if comment.private_to_id and comment.author_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só o autor pode alterar uma mensagem privada.")
     if current_user.role not in {UserRole.ADMIN, UserRole.TECHNICIAN} and not current_user.is_technician and comment.author_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     comment.ticket = ticket
     await ticket_service.delete_comment(db, comment)
 

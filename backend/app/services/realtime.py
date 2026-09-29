@@ -9,6 +9,7 @@ but only ever go to members of that conversation.
 """
 import asyncio
 import itertools
+import uuid
 import time
 from collections import defaultdict, deque
 
@@ -18,6 +19,8 @@ POLL_ONLINE_TTL = 25      # a polling client counts as online for this long afte
 VIEW_TTL = 40             # a "viewing this ticket" mark expires unless refreshed
 
 _seq = itertools.count(1)
+# Changes on every server start: sequence numbers start again at 1, so browsers must reset theirs
+BOOT_ID = uuid.uuid4().hex[:12]
 _buffers: dict[int, deque] = defaultdict(lambda: deque(maxlen=BUFFER_SIZE))
 _sockets: dict[int, set] = defaultdict(set)          # user_id -> set[asyncio.Queue]
 _poll_seen: dict[int, float] = {}                    # user_id -> last poll time

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { loginLdap as apiLoginLdap, getAzureLoginUrl, loginDemo as apiLoginDemo } from '../api/auth'
 import { getMe } from '../api/users'
+import { applyCachedDarkStyle } from '../utils/darkStyle'
 
 interface User {
   id: number
@@ -53,6 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function applyDark() {
     document.documentElement.classList.toggle('dark', isDark.value)
+    applyCachedDarkStyle()
   }
 
   function setDark(enabled: boolean) {
@@ -98,11 +100,29 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = '/dashboard'
   }
 
+  let retryTimer: ReturnType<typeof setTimeout> | null = null
+
+  // Only an answer saying the session is not valid ends it. A timeout, the server restarting during an update or
+  // an iPad waking up without network keeps the session and tries again.
   async function fetchMe() {
-    try {
-      user.value = (await getMe()) as User
-    } catch {
-      logout()
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        user.value = (await getMe()) as User
+        return
+      } catch (e: any) {
+        const status = e?.response?.status
+        if (status === 401 || status === 403) {
+          logout()
+          return
+        }
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
+      }
+    }
+    if (!retryTimer) {
+      retryTimer = setTimeout(() => {
+        retryTimer = null
+        if (token.value && !user.value) fetchMe()
+      }, 10000)
     }
   }
 

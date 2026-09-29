@@ -68,6 +68,25 @@
           </div>
           <p v-if="designError" class="set-err">{{ designError }}</p>
         </section>
+        <section class="set-card">
+          <div class="set-row">
+            <div>
+              <div class="set-card-title">Modo escuro</div>
+              <div class="set-desc">
+                Como fica a aplicação para quem ativa o modo escuro (botão <span class="material-icons" style="font-size:14px;vertical-align:-2px">dark_mode</span> no topo).
+                O <strong>preto puro</strong> (true black) usa fundo totalmente preto: mais contraste e poupa bateria em ecrãs OLED (iPhone, alguns iPad e Android).
+              </div>
+            </div>
+            <div class="design-choice" role="radiogroup" aria-label="Estilo do modo escuro">
+              <button type="button" :class="{ selected: darkStyle === 'grey' }" @click="changeDarkStyle('grey')">Cinzento escuro</button>
+              <button type="button" :class="{ selected: darkStyle === 'black' }" @click="changeDarkStyle('black')">Preto puro</button>
+            </div>
+          </div>
+          <div class="dark-previews">
+            <div class="dark-preview grey" :class="{ selected: darkStyle === 'grey' }"><span></span><span></span><span></span></div>
+            <div class="dark-preview black" :class="{ selected: darkStyle === 'black' }"><span></span><span></span><span></span></div>
+          </div>
+        </section>
       </template>
 
       <!-- ───────── Tickets ───────── -->
@@ -469,10 +488,12 @@
 </template>
 
 <script setup lang="ts">
+import { confirmDialog, errorMessage, notifyError } from '../../utils/feedback'
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createCategory, createKnowledgeArticle, createRoutingRule, createSchool as apiCreateSchool, deleteCategory as apiDeleteCategory, deleteKnowledgeArticle, deleteRoutingRule, updateKnowledgeArticle, deleteSchool as apiDeleteSchool, getCategories, getKnowledgeArticles, getRoutingRules, getSchools, updateCategory as apiUpdateCategory, testSmtp, testPush as apiTestPush } from '../../api/tickets'
-import { getPublicSettings, updateDemoModeSettings, updateDesignSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
+import { applyDarkStyle, type DarkStyle } from '../../utils/darkStyle'
+import { getPublicSettings, updateDarkStyle, updateDemoModeSettings, updateDesignSettings, updateFeatureSettings, updateLoginNoticeSettings, updateNoAccessContactSettings, updateSettings } from '../../api/settings'
 import { setUiDesign, type UiDesign } from '../../composables/useUiDesign'
 import { api } from '../../boot/axios'
 import SupportChatSettings from '../../components/SupportChatSettings.vue'
@@ -487,7 +508,7 @@ const supportEnabled = ref(false)
 const teamsConfigured = ref(false)
 const navGroups = computed(() => [
   { label: 'Geral', items: [
-    { key: 'organizacao', label: 'Organização e aspeto', icon: 'apartment', desc: 'Nome, logotipo e design do Agrupamento.' },
+    { key: 'organizacao', label: 'Organização e aspeto', icon: 'apartment', desc: 'Nome, logotipo, design e modo escuro.' },
   ] },
   { label: 'Tickets', items: [
     { key: 'categorias', label: 'Categorias e prazos', icon: 'category', desc: 'Categorias dos pedidos, tempos de resposta e emails de aviso.' },
@@ -559,6 +580,20 @@ const demoProfileOptions = [
   { role: 'teacher', label: 'Docente' },
 ]
 const uiDesign = ref<UiDesign>('modern')
+const darkStyle = ref<DarkStyle>('grey')
+async function changeDarkStyle(style: DarkStyle) {
+  if (style === darkStyle.value) return
+  const previous = darkStyle.value
+  darkStyle.value = style
+  applyDarkStyle(style)
+  try {
+    await updateDarkStyle(style)
+  } catch (e) {
+    darkStyle.value = previous
+    applyDarkStyle(previous)
+    notifyError(e, 'Não foi possível guardar o estilo do modo escuro.')
+  }
+}
 const designError = ref('')
 const noAccessContactEmail = ref('')
 const noAccessContactSaved = ref(false)
@@ -590,6 +625,7 @@ onMounted(async () => {
     loginNoticeText.value = settings.login_notice_text || ''
     noAccessContactEmail.value = settings.no_access_contact_email || ''
     uiDesign.value = settings.ui_design === 'classic' ? 'classic' : 'modern'
+    darkStyle.value = settings.dark_style === 'black' ? 'black' : 'grey'
     demoEnabled.value = settings.demo_mode_enabled === true
     demoContentVisible.value = settings.demo_content_visible === true
     demoProfiles.value = settings.demo_profiles?.length ? settings.demo_profiles : ['teacher']
@@ -627,19 +663,29 @@ async function saveGeneral() {
     logoFile.value = null
     saved.value = true
     setTimeout(() => { saved.value = false }, 3000)
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível guardar as configurações.')
+  }
 }
 
 async function toggleKnowledge() {
   const next = !knowledgeEnabled.value
-  const saved = await updateFeatureSettings({ knowledge_enabled: next, category_warnings_enabled: categoryWarningsEnabled.value })
-  knowledgeEnabled.value = saved.knowledge_enabled
+  try {
+    const saved = await updateFeatureSettings({ knowledge_enabled: next, category_warnings_enabled: categoryWarningsEnabled.value })
+    knowledgeEnabled.value = saved.knowledge_enabled
+  } catch (e) {
+    notifyError(e, 'Não foi possível alterar a base de conhecimento.')
+  }
 }
 
 async function toggleCategoryWarnings() {
   const next = !categoryWarningsEnabled.value
-  const saved = await updateFeatureSettings({ knowledge_enabled: knowledgeEnabled.value, category_warnings_enabled: next })
-  categoryWarningsEnabled.value = saved.category_warnings_enabled
+  try {
+    const saved = await updateFeatureSettings({ knowledge_enabled: knowledgeEnabled.value, category_warnings_enabled: next })
+    categoryWarningsEnabled.value = saved.category_warnings_enabled
+  } catch (e) {
+    notifyError(e, 'Não foi possível alterar os avisos das categorias.')
+  }
 }
 
 async function toggleLoginNotice() {
@@ -650,7 +696,7 @@ async function toggleLoginNotice() {
     loginNoticeEnabled.value = saved.login_notice_enabled
     loginNoticeText.value = saved.login_notice_text
   } catch (e: any) {
-    loginNoticeError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+    loginNoticeError.value = errorMessage(e, 'Erro ao gravar.')
   }
 }
 
@@ -664,7 +710,7 @@ async function saveLoginNotice() {
     loginNoticeSaved.value = true
     setTimeout(() => { loginNoticeSaved.value = false }, 3000)
   } catch (e: any) {
-    loginNoticeError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+    loginNoticeError.value = errorMessage(e, 'Erro ao gravar.')
   }
 }
 
@@ -676,7 +722,7 @@ async function saveDemoMode(enabled: boolean, profiles: string[], contentVisible
     demoProfiles.value = saved.demo_profiles
     demoContentVisible.value = saved.demo_content_visible === true
   } catch (e: any) {
-    demoError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+    demoError.value = errorMessage(e, 'Erro ao gravar.')
   }
 }
 
@@ -707,7 +753,7 @@ async function changeDesign(design: UiDesign) {
     uiDesign.value = saved.ui_design
     setUiDesign(saved.ui_design)
   } catch (e: any) {
-    designError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+    designError.value = errorMessage(e, 'Erro ao gravar.')
   }
 }
 
@@ -720,7 +766,7 @@ async function saveNoAccessContact() {
     noAccessContactSaved.value = true
     setTimeout(() => { noAccessContactSaved.value = false }, 3000)
   } catch (e: any) {
-    noAccessContactError.value = e?.response?.data?.detail || 'Erro ao gravar. O servidor pode não ter esta funcionalidade ainda (é preciso atualizar o backend).'
+    noAccessContactError.value = errorMessage(e, 'Erro ao gravar.')
   }
 }
 
@@ -733,7 +779,7 @@ async function testSmtpNow() {
     smtpTestResult.value = `Email enviado para ${r.sent_to}`
   } catch (e: any) {
     smtpTestOk.value = false
-    smtpTestResult.value = e?.response?.data?.detail || 'Erro ao enviar email de teste'
+    smtpTestResult.value = errorMessage(e, 'Erro ao enviar email de teste')
   } finally {
     testingSmtp.value = false
   }
@@ -748,7 +794,7 @@ async function testPushNow() {
     pushTestResult.value = 'Notificação enviada!'
   } catch (e: any) {
     pushTestOk.value = false
-    pushTestResult.value = e?.response?.data?.detail || 'Erro ao enviar notificação push'
+    pushTestResult.value = errorMessage(e, 'Erro ao enviar notificação push')
   } finally {
     testingPush.value = false
   }
@@ -764,7 +810,9 @@ async function saveEmailSettings() {
     await api.put('/api/v1/settings/suggestion-emails', { emails })
     savedEmail.value = true
     setTimeout(() => { savedEmail.value = false }, 3000)
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível guardar os emails.')
+  }
 }
 
 
@@ -774,7 +822,9 @@ async function createCat() {
     categories.value.push(cat)
     showNewCat.value = false
     newCat.value = { name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 48 }
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível criar a categoria.')
+  }
 }
 
 async function saveCategoryEmail(cat: any) {
@@ -782,16 +832,18 @@ async function saveCategoryEmail(cat: any) {
     const updated = await apiUpdateCategory(cat.id, { email_to: cat.email_to || '' })
     const idx = categories.value.findIndex(c => c.id === cat.id)
     if (idx !== -1) categories.value[idx] = { ...categories.value[idx], ...updated }
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível guardar o email da categoria.')
+  }
 }
 
 async function deleteCategory(id: number) {
-  if (!confirm('Eliminar esta categoria?')) return
+  if (!(await confirmDialog('Eliminar esta categoria?', { ok: 'Eliminar', danger: true }))) return
   try {
     await apiDeleteCategory(id)
     categories.value = categories.value.filter(c => c.id !== id)
-  } catch (e: any) {
-    alert(e?.response?.data?.detail || 'Não foi possível eliminar a categoria.')
+  } catch (e) {
+    notifyError(e, 'Não foi possível eliminar a categoria.')
   }
 }
 
@@ -801,33 +853,48 @@ async function createSchool() {
     schools.value.push(school)
     showNewSchool.value = false
     newSchool.value = { name: '', short_name: '', address: '' }
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível criar a escola.')
+  }
 }
 
 async function deleteSchool(id: number) {
-  if (!confirm('Eliminar esta escola?')) return
+  if (!(await confirmDialog('Eliminar esta escola? Os tickets desta escola ficam sem escola.', { ok: 'Eliminar', danger: true }))) return
   try {
     await apiDeleteSchool(id)
     schools.value = schools.value.filter(s => s.id !== id)
-  } catch { /* ignore */ }
+  } catch (e) {
+    notifyError(e, 'Não foi possível eliminar a escola.')
+  }
 }
 
 async function addRoute() {
-  const route = await createRoutingRule({
-    category_id: newRoute.value.category_id ? Number(newRoute.value.category_id) : null,
-    school_id: newRoute.value.school_id ? Number(newRoute.value.school_id) : null,
-    group_id: newRoute.value.group_id ? Number(newRoute.value.group_id) : null,
-    assignee_id: newRoute.value.assignee_id ? Number(newRoute.value.assignee_id) : null,
-    priority: Number(newRoute.value.priority) || 100,
-  })
+  let route
+  try {
+    route = await createRoutingRule({
+      category_id: newRoute.value.category_id ? Number(newRoute.value.category_id) : null,
+      school_id: newRoute.value.school_id ? Number(newRoute.value.school_id) : null,
+      group_id: newRoute.value.group_id ? Number(newRoute.value.group_id) : null,
+      assignee_id: newRoute.value.assignee_id ? Number(newRoute.value.assignee_id) : null,
+      priority: Number(newRoute.value.priority) || 100,
+    })
+  } catch (e) {
+    notifyError(e, 'Não foi possível criar a regra.')
+    return
+  }
   routingRules.value.push(route)
   routingRules.value.sort((a, b) => a.priority - b.priority)
   newRoute.value = { category_id: '', school_id: '', group_id: '', assignee_id: '', priority: 100 }
 }
 
 async function removeRoute(id: number) {
-  if (!confirm('Eliminar esta regra?')) return
-  await deleteRoutingRule(id)
+  if (!(await confirmDialog('Eliminar esta regra?', { ok: 'Eliminar', danger: true }))) return
+  try {
+    await deleteRoutingRule(id)
+  } catch (e) {
+    notifyError(e, 'Não foi possível eliminar a regra.')
+    return
+  }
   routingRules.value = routingRules.value.filter(r => r.id !== id)
 }
 
@@ -840,12 +907,17 @@ async function addArticle() {
     category_id: newArticle.value.category_id ? Number(newArticle.value.category_id) : null,
     is_published: newArticle.value.is_published,
   }
-  if (editingArticleId.value) {
-    const updated = await updateKnowledgeArticle(editingArticleId.value, payload)
-    const idx = articles.value.findIndex(a => a.id === updated.id)
-    if (idx !== -1) articles.value[idx] = updated
-  } else {
-    articles.value.unshift(await createKnowledgeArticle(payload))
+  try {
+    if (editingArticleId.value) {
+      const updated = await updateKnowledgeArticle(editingArticleId.value, payload)
+      const idx = articles.value.findIndex(a => a.id === updated.id)
+      if (idx !== -1) articles.value[idx] = updated
+    } else {
+      articles.value.unshift(await createKnowledgeArticle(payload))
+    }
+  } catch (e) {
+    notifyError(e, 'Não foi possível guardar o artigo.')
+    return
   }
   cancelEditArticle()
 }
@@ -866,8 +938,13 @@ function cancelEditArticle() {
 }
 
 async function removeArticle(id: number) {
-  if (!confirm('Eliminar este artigo?')) return
-  await deleteKnowledgeArticle(id)
+  if (!(await confirmDialog('Eliminar este artigo?', { ok: 'Eliminar', danger: true }))) return
+  try {
+    await deleteKnowledgeArticle(id)
+  } catch (e) {
+    notifyError(e, 'Não foi possível eliminar o artigo.')
+    return
+  }
   articles.value = articles.value.filter(a => a.id !== id)
 }
 
@@ -947,6 +1024,15 @@ async function removeArticle(id: number) {
   line-height: 1.45;
 }
 .dark .demo-warning { color: #FCD34D; }
+.dark-previews { display: flex; gap: 12px; margin-top: 14px; }
+.dark-preview { width: 120px; height: 72px; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; border: 2px solid transparent; }
+.dark-preview.selected { border-color: var(--c-primary); }
+.dark-preview span { display: block; height: 10px; border-radius: 4px; }
+.dark-preview.grey { background: #0D111A; }
+.dark-preview.grey span { background: #171C29; border: 1px solid #293247; }
+.dark-preview.black { background: #000; }
+.dark-preview.black span { background: #0B0B0C; border: 1px solid #232428; }
+.dark-preview span:first-child { width: 60%; background: #6D7DFF; border: 0; }
 .design-choice {
   display: inline-flex;
   overflow: hidden;

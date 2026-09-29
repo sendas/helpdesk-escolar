@@ -176,6 +176,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from '../utils/feedback'
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { getPublicSettings } from '../api/settings'
@@ -244,7 +245,7 @@ async function onAdLogin() {
   } catch (e: any) {
     error.value = e?.code === 'ECONNABORTED'
       ? 'Tempo de autenticação esgotado. Tente novamente.'
-      : e?.response?.data?.detail || 'Erro de autenticação'
+      : errorMessage(e, 'Erro de autenticação')
   } finally {
     loading.value = false
   }
@@ -276,7 +277,7 @@ async function submitContactForm() {
     })
     contactSent.value = true
   } catch (e: any) {
-    contactError.value = e?.response?.data?.detail || 'Não foi possível enviar a mensagem. Tente novamente.'
+    contactError.value = errorMessage(e, 'Não foi possível enviar a mensagem. Tente novamente.')
   } finally {
     contactSending.value = false
   }

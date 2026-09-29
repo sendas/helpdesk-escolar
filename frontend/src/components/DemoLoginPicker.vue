@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from '../utils/feedback'
 import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
@@ -48,7 +49,7 @@ async function enter() {
   try {
     await auth.loginDemo(role.value)
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || 'Não foi possível entrar em modo demo.'
+    error.value = errorMessage(e, 'Não foi possível entrar em modo demo.')
   } finally {
     loading.value = false
   }

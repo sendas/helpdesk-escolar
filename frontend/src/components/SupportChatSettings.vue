@@ -59,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from '../utils/feedback'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getPublicSettings, updateSupportChatSettings } from '../api/settings'
 import { realtimeStatus } from '../services/realtime'
@@ -114,7 +115,7 @@ async function save(showSaved = true) {
     emit('changed')
     return true
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || 'Erro ao guardar.'
+    error.value = errorMessage(e, 'Erro ao guardar.')
     return false
   } finally {
     saving.value = false

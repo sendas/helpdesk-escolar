@@ -1,8 +1,30 @@
-export const APP_VERSION = '2.5.0'
+export const APP_VERSION = '2.6.0'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '11:45'
+export const APP_VERSION_TIME = '13:30'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.6.0',
+    date: '2026-09-29',
+    time: '13:30',
+    title: 'Mensagens privadas a várias pessoas, preto puro e menos falhas silenciosas',
+    changes: [
+      'Mensagens privadas a várias pessoas ao mesmo tempo: escolha um ou mais destinatários. A conversa aparece num bloco próprio e "Responder a todos em privado" responde a todo o grupo. Só o autor e os destinatários a veem.',
+      'A Direção pode receber mensagens privadas (aparece num grupo próprio na lista) e responder-lhes em privado, também por email.',
+      'Modo escuro "preto puro" (true black): em Configurações → Organização e aspeto, escolha entre cinzento escuro e preto puro. Aplica-se a quem ativar o modo escuro.',
+      'Depois de cada atualização do servidor, as páginas abertas voltam a receber mensagens em tempo real sem ser preciso recarregar (e atualizam o que mostram).',
+      'Password errada no login: a mensagem de erro fica visível (a página já não recarrega).',
+      'Uma falha momentânea de rede ou o servidor a reiniciar já não termina a sessão.',
+      'Clicar no próprio nome na barra lateral já não termina a sessão; o botão de sair pede confirmação.',
+      'Abrir outro ticket a partir de um ticket (ex.: link no chat) mostra de facto o novo ticket.',
+      'Uma resposta de outra pessoa já não apaga a pesquisa de técnico que estava a escrever.',
+      '"Os meus tickets" mostra quantos tickets há e tem o botão "Carregar mais" (antes só apareciam os primeiros 50).',
+      'Quando uma ação falha (mudar papel, apagar, guardar configurações…) aparece uma mensagem de erro, em vez de parecer que resultou. As confirmações usam janelas da aplicação, também no modo escuro.',
+      'Depois de uma atualização, um separador antigo que já não encontra as páginas recarrega sozinho.',
+      'Corrigido: a página de cópias de segurança mostrava o OneDrive sempre como desligado.',
+      'Mensagens de erro do servidor que estavam em inglês passam a estar em português.',
+    ],
+  },
   {
     version: '2.5.0',
     date: '2026-09-29',

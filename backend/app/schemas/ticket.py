@@ -54,6 +54,8 @@ class CommentCreate(BaseModel):
     is_internal: bool = False
     remind_at: datetime | None = None
     private_to_id: int | None = None
+    # Private message to several people (private_to_id alone still works)
+    private_to_ids: list[int] = []
 
 
 class CommentRead(BaseModel):
@@ -69,6 +71,7 @@ class CommentRead(BaseModel):
     reminder_sent_at: datetime | None = None
     author: UserRead
     private_to: UserRead | None = None
+    private_recipients: list[UserRead] = []
 
     @model_validator(mode="after")
     def _private_reminder(self):
@@ -135,7 +138,7 @@ class TicketRead(BaseModel):
         is_staff = current_viewer_is_staff.get()
         self.comments = [
             c for c in self.comments
-            if (c.private_to is None or viewer in (c.author.id, c.private_to.id))
+            if (c.private_to is None or viewer in {c.author.id, c.private_to.id, *(u.id for u in c.private_recipients)})
             and (not c.is_internal or is_staff)
         ]
         return self

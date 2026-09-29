@@ -157,6 +157,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmDialog, notifyError } from '../utils/feedback'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -382,28 +383,42 @@ async function startGroup() {
 }
 
 async function toggleAvailability() {
-  available.value = await setSupportAvailability(!available.value)
+  try {
+    available.value = await setSupportAvailability(!available.value)
+  } catch (e) {
+    notifyError(e, 'Não foi possível alterar a disponibilidade.')
+  }
 }
 async function accept() {
   if (!current.value) return
   try {
     await acceptSupport(current.value.id)
   } catch (e: any) {
-    alert(e?.response?.data?.detail || 'Não foi possível aceitar.')
+    notifyError(e, 'Não foi possível aceitar.')
   }
   await loadLists()
   select(current.value.id)
 }
 async function convert() {
-  if (!current.value || !confirm('Converter esta conversa num ticket? A conversa é copiada para o ticket.')) return
-  const ticketId = await convertSupport(current.value.id)
+  if (!current.value || !(await confirmDialog('Converter esta conversa num ticket? A conversa é copiada para o ticket.', { ok: 'Converter' }))) return
+  let ticketId
+  try {
+    ticketId = await convertSupport(current.value.id)
+  } catch (e) {
+    notifyError(e, 'Não foi possível converter a conversa.')
+    return
+  }
   await loadLists()
   await select(current.value.id)
-  if (ticketId && confirm(`Criado o ticket T-${ticketId}. Abrir agora?`)) router.push(`/tickets/${ticketId}`)
+  if (ticketId && (await confirmDialog(`Criado o ticket T-${ticketId}. Abrir agora?`, { ok: 'Abrir', cancel: 'Ficar aqui' }))) router.push(`/tickets/${ticketId}`)
 }
 async function endSupport() {
-  if (!current.value || !confirm('Terminar esta conversa de apoio?')) return
-  await closeSupport(current.value.id)
+  if (!current.value || !(await confirmDialog('Terminar esta conversa de apoio?', { ok: 'Terminar' }))) return
+  try {
+    await closeSupport(current.value.id)
+  } catch (e) {
+    notifyError(e, 'Não foi possível terminar a conversa.')
+  }
   await loadLists()
   select(current.value.id)
 }

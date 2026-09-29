@@ -14,6 +14,7 @@ export interface PublicSettings {
   login_notice_text?: string
   no_access_contact_email?: string
   ui_design?: 'modern' | 'classic'
+  dark_style?: 'grey' | 'black'
   demo_mode_enabled?: boolean
   demo_profiles?: string[]
   demo_content_visible?: boolean
@@ -58,6 +59,11 @@ export async function updateFeatureSettings(payload: { knowledge_enabled: boolea
 
 export async function updateLoginNoticeSettings(payload: { enabled: boolean; text: string }) {
   const { data } = await api.put<{ login_notice_enabled: boolean; login_notice_text: string }>('/api/v1/settings/login-notice', payload)
+  return data
+}
+
+export async function updateDarkStyle(style: 'grey' | 'black') {
+  const { data } = await api.put<{ dark_style: 'grey' | 'black' }>('/api/v1/settings/dark-style', { style })
   return data
 }
 

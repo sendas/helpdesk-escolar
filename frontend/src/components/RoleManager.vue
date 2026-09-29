@@ -57,6 +57,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmDialog, errorMessage } from '../utils/feedback'
 import { defineComponent, h, onMounted, ref, type PropType } from 'vue'
 import { createRole, deleteRole, getPermissionCatalog, getRoles, updateRole, type Permission, type Role } from '../api/roles'
 
@@ -145,7 +146,7 @@ async function run(action: () => Promise<unknown>) {
     await load()
     return true
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || 'Não foi possível guardar o papel.'
+    error.value = errorMessage(e, 'Não foi possível guardar o papel.')
     return false
   } finally {
     saving.value = false
@@ -161,7 +162,7 @@ async function saveEdit(role: Role) {
 }
 
 async function remove(role: Role) {
-  if (!confirm(`Apagar o papel "${role.label}"?`)) return
+  if (!(await confirmDialog(`Apagar o papel "${role.label}"?`, { ok: 'Apagar', danger: true }))) return
   await run(() => deleteRole(role.key))
 }
 

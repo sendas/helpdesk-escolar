@@ -49,6 +49,7 @@
 </template>
 
 <script setup lang="ts">
+import { errorMessage } from '../utils/feedback'
 import { computed, onMounted, ref } from 'vue'
 import { getCategories, getKnowledgeArticles, updateKnowledgeArticle, type Category, type KnowledgeArticle } from '../api/tickets'
 import { useAuthStore } from '../stores/auth'
@@ -84,7 +85,7 @@ async function saveEdit() {
     }
     editing.value = null
   } catch (err: any) {
-    editError.value = err?.response?.data?.detail || 'Não foi possível guardar o artigo.'
+    editError.value = errorMessage(err, 'Não foi possível guardar o artigo.')
   } finally {
     saving.value = false
   }

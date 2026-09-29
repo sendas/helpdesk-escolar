@@ -247,6 +247,7 @@
 </template>
 
 <script setup lang="ts">
+import { confirmDialog, errorMessage } from '../../utils/feedback'
 import { computed, onMounted, ref } from 'vue'
 import { downloadBackup, downloadFullBackup, getAdminStats, getBackupConfig, getBackupHistory, restoreBackup, restoreFullZip, runServerBackup, saveFullBackupToDisk, testOneDrive as apiTestOneDrive, updateBackupConfig } from '../../api/tickets'
 import type { BackupHistoryEntry } from '../../api/tickets'
@@ -266,7 +267,10 @@ const restoreError = ref(false)
 const restoreCounts = ref<Record<string, number> | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const stats = ref({ tickets: '—', users: '—', categories: '—' })
-const config = ref({ enabled: false, interval_hours: 24, directory: '/app/data/backups', retention: 14, secondary_directory: '', full_zip_enabled: false, full_zip_retention: 7 })
+const config = ref({
+  enabled: false, interval_hours: 24, directory: '/app/data/backups', retention: 14, secondary_directory: '', full_zip_enabled: false, full_zip_retention: 7,
+  onedrive_enabled: false, onedrive_user: '', onedrive_folder: 'Backups/Helpdesk', onedrive_retention: 14,
+})
 const history = ref<BackupHistoryEntry[]>([])
 
 onMounted(async () => {
@@ -281,6 +285,10 @@ onMounted(async () => {
       secondary_directory: cfg.secondary_directory || '',
       full_zip_enabled: !!cfg.full_zip_enabled,
       full_zip_retention: Number(cfg.full_zip_retention || 7),
+      onedrive_enabled: !!cfg.onedrive_enabled,
+      onedrive_user: cfg.onedrive_user || '',
+      onedrive_folder: cfg.onedrive_folder || 'Backups/Helpdesk',
+      onedrive_retention: Number(cfg.onedrive_retention || 14),
     }
   } catch {
     showMessage('Não foi possível carregar a configuração de backup.', true)
@@ -383,7 +391,7 @@ async function testOneDrive() {
     odResult.value = `Ligação OK — ficheiro de teste criado em ${r.folder} (${r.user})`
   } catch (e: any) {
     odOk.value = false
-    odResult.value = e?.response?.data?.detail ?? 'Erro ao ligar ao OneDrive'
+    odResult.value = errorMessage(e, 'Erro ao ligar ao OneDrive')
   } finally {
     testingOD.value = false
   }
@@ -417,8 +425,9 @@ function onDrop(e: DragEvent) {
 async function doRestore() {
   if (!restoreFile.value) return
   const typeLabel = isZipFile.value ? 'ZIP completo (base de dados + anexos + configurações)' : 'JSON (registos da base de dados)'
-  const confirmed = window.confirm(
-    `ATENÇÃO: os dados atuais serão substituídos pelos do ficheiro.\n\nTipo: ${typeLabel}\n\nTens a certeza?`
+  const confirmed = await confirmDialog(
+    `Os dados atuais serão substituídos pelos do ficheiro.\n\nTipo: ${typeLabel}`,
+    { title: 'Restaurar cópia de segurança', ok: 'Restaurar', danger: true },
   )
   if (!confirmed) return
   restoring.value = true
@@ -430,7 +439,7 @@ async function doRestore() {
     restoreError.value = false
     await loadHistory()
   } catch (e: any) {
-    restoreResult.value = e?.response?.data?.detail ?? 'Erro ao restaurar dados.'
+    restoreResult.value = errorMessage(e, 'Erro ao restaurar dados.')
     restoreError.value = true
   } finally {
     restoring.value = false

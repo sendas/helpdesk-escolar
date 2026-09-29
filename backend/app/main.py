@@ -76,6 +76,12 @@ async def _add_missing_columns(conn) -> None:
     if "private_to_id" not in existing_c:
         await conn.execute(text("ALTER TABLE comments ADD COLUMN private_to_id INTEGER REFERENCES users(id)"))
 
+    # 7b. Private messages to several people: existing ones get their single recipient in the new table
+    await conn.execute(text("""
+        INSERT OR IGNORE INTO comment_private_recipients (comment_id, user_id)
+        SELECT id, private_to_id FROM comments WHERE private_to_id IS NOT NULL
+    """))
+
     # 8. Editable papel per user
     rows_u2 = await conn.execute(text("PRAGMA table_info(users)"))
     if "role_key" not in {row[1] for row in rows_u2}:

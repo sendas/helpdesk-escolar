@@ -9,7 +9,7 @@
     <div class="hd-card">
       <div class="list-toolbar">
         <input class="hd-input list-search" v-model="searchQuery" placeholder="Pesquisar tickets..." @input="debouncedLoad" />
-        <select class="hd-select list-filter" v-model="filterStatus" @change="load">
+        <select class="hd-select list-filter" v-model="filterStatus" @change="load()">
           <option value="">Todos os estados</option>
           <option v-for="o in statusOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
           <template v-if="auth.isStaff">
@@ -17,7 +17,7 @@
             <option value="fora_prazo">Fora do prazo</option>
           </template>
         </select>
-        <select class="hd-select list-filter" v-model="filterCat" @change="load">
+        <select class="hd-select list-filter" v-model="filterCat" @change="load()">
           <option value="">Todas as categorias</option>
           <option v-for="c in visibleCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
@@ -34,6 +34,11 @@
       </div>
 
       <div v-if="loading" style="padding:48px;text-align:center;color:var(--c-muted)">A carregar...</div>
+      <div v-else-if="loadError" class="list-error">
+        <span class="material-icons">error_outline</span>
+        <span>{{ loadError }}</span>
+        <button class="hd-btn hd-btn-outline" type="button" @click="load()">Tentar novamente</button>
+      </div>
       <template v-else>
         <div class="tcards">
           <TicketCard v-for="t in activeTickets" :key="'c' + t.id" :ticket="t" @read-changed="(u) => (t.is_unread = u)" @deleted="removeTicket(t.id)" />
@@ -113,6 +118,14 @@
             </tr>
           </tbody>
         </table>
+
+        <div v-if="total > tickets.length" class="load-more">
+          <span>A mostrar {{ tickets.length }} de {{ total }} tickets</span>
+          <button class="hd-btn hd-btn-outline" type="button" :disabled="loadingMore" @click="loadMore">
+            <span class="material-icons">{{ loadingMore ? 'hourglass_empty' : 'expand_more' }}</span>
+            {{ loadingMore ? 'A carregar...' : 'Carregar mais' }}
+          </button>
+        </div>
       </template>
     </div>
   </div>
@@ -131,6 +144,7 @@ import ReminderChip from '../components/ReminderChip.vue'
 import TicketCard from '../components/TicketCard.vue'
 import TicketActions from '../components/TicketActions.vue'
 import { schoolInitials } from '../utils/names'
+import { errorMessage, notifyError } from '../utils/feedback'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -138,6 +152,12 @@ const auth = useAuthStore()
 const tickets = ref<any[]>([])
 const categories = ref<any[]>([])
 const loading = ref(false)
+const loadError = ref('')
+const loadingMore = ref(false)
+const total = ref(0)
+const PAGE_SIZE = 50
+// How many pages of 50 are on screen ("Carregar mais"); live refreshes reload all of them
+const pagesLoaded = ref(1)
 const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 const searchQuery = ref('')
@@ -163,7 +183,7 @@ async function markAllRead() {
   const ids = tickets.value.filter(t => t.is_unread).map(t => t.id)
   tickets.value = tickets.value.map(t => ({ ...t, is_unread: false }))
   onlyUnread.value = false
-  await markTicketsRead(ids).catch(() => load(true))
+  await markTicketsRead(ids).catch((e) => { notifyError(e, 'Não foi possível marcar como lidos.'); load(true) })
 }
 
 
@@ -190,7 +210,11 @@ function refreshSoon() {
   if (refreshTimer) clearTimeout(refreshTimer)
   refreshTimer = setTimeout(() => load(true), 1000)
 }
-const realtimeOffs = [onRealtime('ticket.changed', refreshSoon), onRealtime('tickets.changed', refreshSoon)]
+const realtimeOffs = [
+  onRealtime('ticket.changed', refreshSoon),
+  onRealtime('tickets.changed', refreshSoon),
+  onRealtime('realtime.connected', (e) => { if (e.resumed) refreshSoon() }),
+]
 onBeforeUnmount(() => { realtimeOffs.forEach((off) => off()); if (refreshTimer) clearTimeout(refreshTimer) })
 
 // The search box at the top of every page opens this list with ?q=...
@@ -208,7 +232,7 @@ onMounted(async () => {
   else if (q === 'resolvidos') filterStatus.value = 'concluidos'
   else if (q === 'a_expirar' && auth.isStaff) filterStatus.value = 'a_expirar'
   else if (q === 'fora_prazo' && auth.isStaff) filterStatus.value = 'fora_prazo'
-  categories.value = await getCategories()
+  try { categories.value = await getCategories() } catch { categories.value = [] }
   await load()
 })
 
@@ -222,20 +246,54 @@ function debouncedLoad() {
   _searchTimer = setTimeout(load, 350)
 }
 
-async function load(quiet = false) {
-  if (!quiet) loading.value = true
-  try {
-    const p: any = { page: 1, size: 50 }
-    if (filterStatus.value === 'fora_prazo') p.overdue = true
+function listParams() {
+  const p: any = {}
+  if (filterStatus.value === 'fora_prazo') p.overdue = true
     else if (filterStatus.value === 'a_expirar') p.expiring = true
     else if (STATUS_GROUPS[filterStatus.value]) p.status_in = STATUS_GROUPS[filterStatus.value]
     else if (filterStatus.value) p.status = filterStatus.value
     if (hiddenIds.value.length) p.exclude_category_ids = hiddenIds.value
     if (filterCat.value) p.category_id = filterCat.value
-    if (searchQuery.value.trim()) p.search = searchQuery.value.trim()
-    const d = await getTickets(p)
-    tickets.value = d.items
+  if (searchQuery.value.trim()) p.search = searchQuery.value.trim()
+  return p
+}
+
+function uniqueById(items: any[]) {
+  const seen = new Set<number>()
+  return items.filter((t) => !seen.has(t.id) && seen.add(t.id))
+}
+
+async function load(quiet = false) {
+  if (!quiet) {
+    loading.value = true
+    pagesLoaded.value = 1
+  }
+  try {
+    const p = listParams()
+    const pages = await Promise.all(
+      Array.from({ length: pagesLoaded.value }, (_, i) => getTickets({ ...p, page: i + 1, size: PAGE_SIZE })),
+    )
+    tickets.value = uniqueById(pages.flatMap((d) => d.items))
+    total.value = pages[0]?.total ?? tickets.value.length
+    loadError.value = ''
+  } catch (e) {
+    // A failed quiet refresh keeps the list on screen
+    if (!quiet) loadError.value = errorMessage(e, 'Não foi possível carregar os tickets.')
   } finally { loading.value = false }
+}
+
+async function loadMore() {
+  loadingMore.value = true
+  try {
+    const d = await getTickets({ ...listParams(), page: pagesLoaded.value + 1, size: PAGE_SIZE })
+    tickets.value = uniqueById([...tickets.value, ...d.items])
+    total.value = d.total
+    pagesLoaded.value += 1
+  } catch (e) {
+    notifyError(e, 'Não foi possível carregar mais tickets.')
+  } finally {
+    loadingMore.value = false
+  }
 }
 
 function isAutoClosed(t: any) {
@@ -249,6 +307,9 @@ function statusLabel(s: string) {
 </script>
 
 <style scoped>
+.list-error { padding: 40px 16px; text-align: center; color: var(--c-muted); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.list-error .material-icons { font-size: 36px; color: #DC2626; }
+.load-more { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; padding: 16px; border-top: 1px solid var(--c-border); color: var(--c-muted); font-size: 13px; }
 /* Fixed column widths (colgroup): the table can never be wider than the page */
 .list-table { width: 100%; table-layout: fixed; }
 .cell-title { overflow-wrap: anywhere; }
