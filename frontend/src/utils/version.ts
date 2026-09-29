@@ -1,8 +1,24 @@
-export const APP_VERSION = '2.7.1'
+export const APP_VERSION = '2.8.0'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '12:38'
+export const APP_VERSION_TIME = '15:12'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.8.0',
+    date: '2026-09-29',
+    time: '15:12',
+    title: 'Menos emails e empresa de apoio com a conversa toda',
+    changes: [
+      'Empresa de apoio: ao reportar um ticket, o email leva a descrição e toda a conversa pública trocada até aí (sem notas internas nem mensagens privadas), e a lista de anexos. Cada nova resposta ou reenvio também leva o histórico.',
+      'A empresa de apoio deixa de receber um email a cada alteração (ex.: prioridade): recebe as respostas e o fecho do pedido.',
+      'Mudanças de estado: só o requerente é avisado, e só quando o pedido fica a aguardar a resposta dele, é resolvido ou fechado. A equipa deixa de receber estes emails (pode ligá-los nas suas preferências).',
+      'Responder e mudar o estado ao mesmo tempo gera um só email, com a resposta e o novo estado.',
+      'Mudar a prioridade ou o grupo deixa de enviar emails; só quem passa a ser responsável é avisado. Ações em massa só avisam o requerente quando o ticket é resolvido ou fechado.',
+      'Ninguém recebe aviso das suas próprias ações. Editar uma resposta ou anexar um ficheiro deixa de reenviar emails.',
+      'Nova página "As minhas notificações" (clique no seu nome na barra lateral, ou no sino): escolha o que recebe por email e como notificação — tickets atribuídos, respostas, mensagens privadas, mudanças de estado, lembretes e chat.',
+      'Os assuntos dos emails passam a estar em português (antes terminavam em "Commented", "Updated"…).',
+    ],
+  },
   {
     version: '2.7.1',
     date: '2026-09-29',

@@ -81,7 +81,7 @@ async def _push_offline(user_ids: set[int], title: str, body: str, url: str) -> 
     offline = {u for u in user_ids if not realtime.is_online(u)}
     if offline:
         from app.services import push_service
-        asyncio.create_task(push_service.send_push_to_users_bg(offline, title, body[:120], url))
+        asyncio.create_task(push_service.send_push_to_users_bg(offline, title, body[:120], url, kind="chat"))
 
 
 async def post_message(db: AsyncSession, conv: ChatConversation, author: User | None, body: str, system: bool = False) -> ChatMessage:

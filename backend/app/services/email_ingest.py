@@ -234,7 +234,7 @@ async def _import_messages(db: AsyncSession, messages: list[dict]) -> dict:
         if msg.get("processed") and msg.get("private_to_id"):
             await _notify_private_partner(db, msg)
         elif msg.get("processed") and not msg.get("private"):
-            await _notify_ticket_recipients(db, msg["ticket_id"], msg["sender_email"])
+            await _notify_ticket_recipients(db, msg)
     return {"processed": processed, "skipped": skipped}
 
 
@@ -318,6 +318,7 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
     if status_action:
         try:
             new_status = TicketStatus(status_action)
+            msg["old_status"] = ticket.status.value
             old_status = ticket.status.value
             ticket.status = new_status
             ticket.closed_via_email = True
@@ -548,43 +549,16 @@ async def _notify_private_partner(db: AsyncSession, msg: dict) -> None:
         })
 
 
-async def _notify_ticket_recipients(db: AsyncSession, ticket_id: int, sender_email: str) -> None:
-    result = await db.execute(
-        select(Ticket)
-        .where(Ticket.id == ticket_id)
-        .options(
-            selectinload(Ticket.creator),
-            selectinload(Ticket.assignee),
-            selectinload(Ticket.assignees),
-            selectinload(Ticket.watchers),
-            selectinload(Ticket.group).selectinload(HelpdeskGroup.members),
-        )
-    )
-    ticket = result.scalar_one_or_none()
+async def _notify_ticket_recipients(db: AsyncSession, msg: dict) -> None:
+    """A reply (and/or a state change) that arrived by email: the same notifications as in the app."""
+    from app.services import notifications, ticket_service
+    ticket = await ticket_service.get_ticket(db, msg["ticket_id"])
     if not ticket:
         return
-
-    sender = sender_email.lower()
-    recipients: set[str] = set()
-    if ticket.creator_email_notifications and ticket.creator.email:
-        recipients.add(ticket.creator.email.lower())
-    if ticket.assignee and ticket.assignee.email:
-        recipients.add(ticket.assignee.email.lower())
-    for assignee in getattr(ticket, "assignees", []):
-        if assignee.email:
-            recipients.add(assignee.email.lower())
-    for watcher in ticket.watchers:
-        if watcher.email:
-            recipients.add(watcher.email.lower())
-    if ticket.group:
-        for member in ticket.group.members:
-            if member.email:
-                recipients.add(member.email.lower())
-    recipients.discard(sender)
-
-    for recipient in recipients:
-        await email_service.send_ticket_notification(
-            recipient,
-            "updated",
-            {"id": ticket.id, "title": ticket.title, "status": ticket.status.value, "message": "Foi recebida uma nova resposta por email."},
-        )
+    sender = (await db.execute(select(User).where(func.lower(User.email) == msg["sender_email"].lower()))).scalar_one_or_none()
+    new_status = TicketStatus(msg["status_action"]) if msg.get("status_action") else None
+    if msg.get("body") and sender is not None:
+        await notifications.notify_reply(ticket, sender, msg["body"], new_status)
+    elif new_status is not None and msg.get("old_status"):
+        # e.g. the support company closing the ticket from its own mailbox
+        await notifications.notify_status(ticket, sender, TicketStatus(msg["old_status"]), new_status)

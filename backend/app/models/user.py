@@ -32,6 +32,8 @@ class User(Base):
     # Papel atribuído manualmente (chave em roles.key); vazio = papel por omissão do "role" base
     role_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
     hidden_category_ids: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Personal notification choices (JSON, only what differs from the defaults: see services/notification_prefs.py)
+    notification_prefs: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

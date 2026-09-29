@@ -1203,7 +1203,10 @@ async function onAddComment() {
   const newStatus = auth.isStaff && replyStatus.value && replyStatus.value !== ticket.value.status ? replyStatus.value : ''
   try {
     const privateIds = privateOn.value ? privateToIds.value : []
-    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', isInternal.value && !privateIds.length, null, privateIds)
+    const internal = isInternal.value && !privateIds.length
+    // A public reply carries the new state itself: the requester gets one email with both
+    const statusWithReply = newStatus && !internal && !privateIds.length ? newStatus : null
+    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', internal, null, privateIds, statusWithReply)
     newComment.value = ''
     isInternal.value = false
     privateOn.value = privateOnly.value
@@ -1213,7 +1216,7 @@ async function onAddComment() {
       commentFile.value = null
       if (commentFileInput.value) commentFileInput.value.value = ''
     }
-    if (newStatus) {
+    if (newStatus && !statusWithReply) {
       await adminUpdateTicket(ticket.value.id, { status: newStatus })
     }
     replyStatus.value = ''

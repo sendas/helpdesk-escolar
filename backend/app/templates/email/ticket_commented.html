@@ -11,7 +11,8 @@
       <tr><td style="padding:8px; font-weight:bold; width:30%">Ticket #</td><td style="padding:8px">{{ id }}</td></tr>
       <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Título</td><td style="padding:8px">{{ title }}</td></tr>
       <tr><td style="padding:8px; font-weight:bold">Autor</td><td style="padding:8px">{{ author }}</td></tr>
-      <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Resposta</td><td style="padding:8px">{{ comment }}</td></tr>
+      <tr style="background:#f5f5f5"><td style="padding:8px; font-weight:bold">Resposta</td><td style="padding:8px;white-space:pre-wrap">{{ comment }}</td></tr>
+      {% if new_status %}<tr><td style="padding:8px; font-weight:bold">Estado</td><td style="padding:8px"><strong>{{ new_status }}</strong></td></tr>{% endif %}
     </table>
     {% if ticket_url %}
     <p style="margin:24px 0 10px">

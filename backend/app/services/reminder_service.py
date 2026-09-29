@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.ticket import Comment, Ticket, TicketReminder
 from app.services import email_service, push_service
+from app.services.notification_prefs import wants
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ async def send_due_reminders(db: AsyncSession) -> int:
             logger.warning("Lembrete da nota %s ignorado: ticket ou autor já não existe", comment.id)
             continue
         try:
-            if author.email:
+            if author.email and wants(author, "reminders", "email"):
                 await email_service.send_reminder(author.email, {
                     "id": ticket.id,
                     "title": ticket.title,
@@ -48,7 +49,8 @@ async def send_due_reminders(db: AsyncSession) -> int:
                     "note_is_private": bool(comment.private_to_id),
                     "note_created_at": comment.created_at,
                 })
-            await push_service.send_push_to_users_bg(
+            if wants(author, "reminders", "push"):
+                await push_service.send_push_to_users_bg(
                 {author.id},
                 f"Lembrete · Ticket #{ticket.id}",
                 comment.body[:140],
@@ -73,7 +75,7 @@ async def send_due_reminders(db: AsyncSession) -> int:
             logger.warning("Lembrete %s ignorado: ticket ou utilizador já não existe", reminder.id)
             continue
         try:
-            if user.email:
+            if user.email and wants(user, "reminders", "email"):
                 await email_service.send_reminder(user.email, {
                     "id": ticket.id,
                     "title": ticket.title,
@@ -82,7 +84,8 @@ async def send_due_reminders(db: AsyncSession) -> int:
                     "note_is_reminder": True,
                     "note_created_at": reminder.created_at,
                 })
-            await push_service.send_push_to_users_bg(
+            if wants(user, "reminders", "push"):
+                await push_service.send_push_to_users_bg(
                 {user.id}, f"Lembrete · Ticket #{ticket.id}", (reminder.note or ticket.title)[:140], f"/tickets/{ticket.id}",
             )
             sent += 1

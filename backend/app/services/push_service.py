@@ -133,8 +133,8 @@ async def send_push_to_users(db: AsyncSession, user_ids: set[int], title: str, b
         await db.commit()
 
 
-async def send_push_to_users_bg(user_ids: set[int], title: str, body: str, url: str = "/") -> None:
-    """Fire-and-forget: creates its own DB session."""
+async def send_push_to_users_bg(user_ids: set[int], title: str, body: str, url: str = "/", kind: str | None = None) -> None:
+    """Fire-and-forget: creates its own DB session. `kind` (see notification_prefs): skip people who turned it off."""
     from app.database import AsyncSessionLocal
     from app.services.email_service import _is_hidden_demo_action
 
@@ -143,6 +143,14 @@ async def send_push_to_users_bg(user_ids: set[int], title: str, body: str, url: 
 
     try:
         async with AsyncSessionLocal() as db:
+            if kind:
+                from sqlalchemy import select as _select
+                from app.models.user import User
+                from app.services.notification_prefs import wants
+                users = (await db.execute(_select(User).where(User.id.in_(user_ids or {0})))).scalars().all()
+                user_ids = {u.id for u in users if wants(u, kind, "push")}
+                if not user_ids:
+                    return
             await send_push_to_users(db, user_ids, title, body, url)
     except Exception as exc:
         logger.warning("Background push error: %s", exc)

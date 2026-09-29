@@ -1,24 +1,22 @@
 <!doctype html>
 <html lang="pt">
-<body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
-  <h2 style="margin:0 0 12px">Pedido escalado para {{ provider }}</h2>
-  <p>Foi escalado um pedido de suporte do helpdesk escolar.</p>
+<body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;max-width:680px">
+  <h2 style="margin:0 0 12px">Pedido de suporte para {{ provider }}</h2>
+  <p>Foi-lhe encaminhado um pedido de suporte do helpdesk escolar, com a conversa trocada até agora.</p>
   <p>
     <strong>Ticket:</strong> #{{ id }} - {{ title }}<br>
     <strong>Solicitante:</strong> {{ requester }} &lt;{{ requester_email }}&gt;<br>
-    <strong>Escola:</strong> {{ school or "Nao indicada" }}<br>
+    <strong>Escola:</strong> {{ school or "Não indicada" }}<br>
     <strong>Categoria:</strong> {{ category }}<br>
     <strong>Prioridade:</strong> {{ priority }}<br>
-    <strong>Escalado por:</strong> {{ escalated_by }}
+    <strong>Estado:</strong> {{ status }}<br>
+    <strong>Encaminhado por:</strong> {{ escalated_by }}
   </p>
   <div style="border:1px solid #E5E7EB;border-radius:8px;padding:14px;margin:16px 0;background:#F9FAFB">
-    <strong>Descricao do pedido</strong>
+    <strong>Descrição do pedido</strong>
     <p style="white-space:pre-wrap;margin:8px 0 0">{{ description }}</p>
   </div>
-  <p>
-    <a href="{{ ticket_url }}" style="display:inline-block;background:#3D52D5;color:#fff;text-decoration:none;padding:10px 14px;border-radius:6px">
-      Abrir ticket
-    </a>
-  </p>
+  {% include "_conversation.html" %}
+  <p style="margin-top:20px;color:#374151;font-size:13px">Pode responder a este email; a resposta fica registada no ticket.</p>
 </body>
 </html>

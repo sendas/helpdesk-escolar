@@ -131,6 +131,11 @@ async def _add_missing_columns(conn) -> None:
     ):
         await conn.execute(text(f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({cols})"))
 
+    # 7e. Personal notification preferences
+    rows_u3 = await conn.execute(text("PRAGMA table_info(users)"))
+    if "notification_prefs" not in {row[1] for row in rows_u3}:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN notification_prefs VARCHAR(2000)"))
+
     # 8. Editable papel per user
     rows_u2 = await conn.execute(text("PRAGMA table_info(users)"))
     if "role_key" not in {row[1] for row in rows_u2}:

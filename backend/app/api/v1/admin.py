@@ -13,7 +13,7 @@ from app.models.group import HelpdeskGroup
 from app.models.ticket import Ticket, Comment, TicketEvent, TicketRoutingRule, TicketStatus
 from app.models.access_log import AccessLog
 from app.schemas.ticket import TicketBulkAction, TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets, TicketRoutingRuleCreate, TicketRoutingRuleRead, TicketRoutingRuleUpdate
-from app.services import ticket_service, email_service, email_ingest, backup_service, db_maintenance
+from app.services import ticket_service, email_service, email_ingest, backup_service, db_maintenance, notifications
 from app.api.v1.settings import _read_settings
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -131,7 +131,7 @@ async def admin_list_tickets(
 async def admin_bulk_update_tickets(
     data: TicketBulkUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_staff),
+    actor: User = Depends(require_staff),
 ):
     if not data.ids:
         return []
@@ -156,6 +156,7 @@ async def admin_bulk_update_tickets(
     only_email_preference = data.model_fields_set == {"ids", "creator_email_notifications"}
     for ticket in tickets:
         prev_assignee_ids = _ticket_assignee_ids(ticket)
+        old_status = ticket.status
         try:
             updated = await ticket_service.update_ticket(db, ticket, data)
         except ticket_service.TicketValidationError as exc:
@@ -163,27 +164,12 @@ async def admin_bulk_update_tickets(
         updated_tickets.append(updated)
         if only_email_preference:
             continue
-        if updated.creator_email_notifications:
-            await email_service.send_ticket_notification(
-                updated.creator.email, "updated",
-                {"id": updated.id, "title": updated.title, "status": updated.status.value},
-            )
-        for watcher in updated.watchers:
-            if watcher.email:
-                await email_service.send_ticket_notification(
-                    watcher.email,
-                    "updated",
-                    {"id": updated.id, "title": updated.title, "status": updated.status.value},
-                )
-        await _notify_new_assignees(updated, prev_assignee_ids)
-        if "group_id" in data.model_fields_set and data.group_id and updated.group:
-            for member in updated.group.members:
-                if member.email:
-                    await email_service.send_ticket_notification(
-                        member.email,
-                        "assigned",
-                        {"id": updated.id, "title": updated.title, "assignee": updated.group.name},
-                    )
+        # Bulk changes: the requester only hears about resolved/closed; new assignees are told
+        if updated.status != old_status:
+            await notifications.notify_status(updated, actor, old_status, updated.status, bulk=True)
+        new_people = [u for u in updated.assignees if u.id not in prev_assignee_ids]
+        if new_people:
+            await notifications.notify_assigned(updated, new_people, actor)
     return updated_tickets
 
 
@@ -239,53 +225,15 @@ async def admin_update_ticket(
     prev_assignee_ids = _ticket_assignee_ids(ticket)
     only_email_preference = data.model_fields_set == {"creator_email_notifications"}
     content_changed = bool(data.model_fields_set & {"title", "description"})
+    old_status = ticket.status
     try:
         updated = await ticket_service.update_ticket(db, ticket, data)
     except ticket_service.TicketValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    if only_email_preference:
-        return updated
-
-    notif_type = "content_updated" if content_changed else "updated"
-    base_payload = {"id": updated.id, "title": updated.title, "status": updated.status.value}
-    if content_changed:
-        base_payload["editor"] = current_staff.display_name
-
-    if updated.creator_email_notifications:
-        await email_service.send_ticket_notification(updated.creator.email, notif_type, base_payload)
-    for watcher in updated.watchers:
-        if watcher.email:
-            await email_service.send_ticket_notification(watcher.email, notif_type, base_payload)
-    await _notify_new_assignees(updated, prev_assignee_ids)
-    if "group_id" in data.model_fields_set and data.group_id and updated.group:
-        for member in updated.group.members:
-            if member.email:
-                await email_service.send_ticket_notification(
-                    member.email,
-                    "assigned",
-                    {"id": updated.id, "title": updated.title, "assignee": updated.group.name},
-                )
-
-    if updated.is_escalated:
-        app_settings = _read_settings()
-        provider_email = (app_settings.get("support_provider_email") or "").strip()
-        provider_name = (app_settings.get("support_provider_name") or "Empresa de apoio").strip()
-        if provider_email:
-            await email_service.send_ticket_notification(
-                provider_email,
-                "supplier_updated",
-                {
-                    "id": updated.id,
-                    "title": updated.title,
-                    "status": updated.status.value,
-                    "priority": updated.priority.value,
-                    "description": updated.description,
-                    "editor": current_staff.display_name,
-                    "provider": provider_name,
-                },
-            )
-
+    if not only_email_preference:
+        from app.api.v1.tickets import notify_ticket_changes
+        await notify_ticket_changes(updated, current_staff, old_status, prev_assignee_ids, content_changed)
     return updated
 
 
@@ -305,18 +253,6 @@ def _ticket_assignee_ids(ticket: Ticket) -> set[int]:
     ids = {ticket.assignee_id} if ticket.assignee_id else set()
     ids.update(user.id for user in getattr(ticket, "assignees", []))
     return ids
-
-
-async def _notify_new_assignees(ticket: Ticket, previous_ids: set[int]) -> None:
-    users = list(ticket.assignees or ([] if not ticket.assignee else [ticket.assignee]))
-    for assignee in users:
-        if assignee.id in previous_ids or not assignee.email:
-            continue
-        await email_service.send_ticket_notification(
-            assignee.email,
-            "assigned",
-            {"id": ticket.id, "title": ticket.title, "assignee": assignee.display_name},
-        )
 
 
 @router.post("/mail/sync")

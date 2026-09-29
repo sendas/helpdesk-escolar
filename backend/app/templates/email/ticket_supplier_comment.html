@@ -1,20 +1,17 @@
 <!doctype html>
 <html lang="pt">
-<body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
-  <h2 style="margin:0 0 12px">Nova resposta no pedido escalado #{{ id }}</h2>
-  <p>Foi adicionada uma nova resposta ao pedido de suporte que foi escalado para {{ provider }}.</p>
-  <p>
-    <strong>Ticket:</strong> #{{ id }} - {{ title }}<br>
-    <strong>Autor:</strong> {{ author }}
-  </p>
-  <div style="border:1px solid #E5E7EB;border-radius:8px;padding:14px;margin:16px 0;background:#F9FAFB">
-    <strong>Resposta</strong>
+<body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;max-width:680px">
+  <h2 style="margin:0 0 12px">Nova mensagem no pedido #{{ id }}</h2>
+  <p><strong>Ticket:</strong> #{{ id }} - {{ title }}<br><strong>Estado:</strong> {{ status }}</p>
+  <div style="border:1px solid #C7D2FE;border-radius:8px;padding:14px;margin:16px 0;background:#EEF2FF">
+    <strong>{{ author }} escreveu:</strong>
     <p style="white-space:pre-wrap;margin:8px 0 0">{{ comment }}</p>
   </div>
-  <p>
-    <a href="{{ ticket_url }}" style="display:inline-block;background:#3D52D5;color:#fff;text-decoration:none;padding:10px 14px;border-radius:6px">
-      Abrir ticket
-    </a>
-  </p>
+  <div style="border:1px solid #E5E7EB;border-radius:8px;padding:14px;margin:16px 0;background:#F9FAFB">
+    <strong>Descrição do pedido</strong>
+    <p style="white-space:pre-wrap;margin:8px 0 0">{{ description }}</p>
+  </div>
+  {% include "_conversation.html" %}
+  <p style="margin-top:20px;color:#374151;font-size:13px">Pode responder a este email; a resposta fica registada no ticket.</p>
 </body>
 </html>

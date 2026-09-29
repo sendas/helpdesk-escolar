@@ -24,6 +24,7 @@ const routes = [
       // remount: going from one ticket to another (e.g. a link in the support chat) loads the new ticket
       { path: 'tickets/:id', meta: { remount: true }, component: () => import('../pages/TicketDetailPage.vue') },
       { path: 'knowledge', component: () => import('../pages/KnowledgePage.vue') },
+      { path: 'notificacoes', component: () => import('../pages/NotificationSettingsPage.vue') },
       { path: 'version', component: () => import('../pages/VersionPage.vue') },
       { path: 'about', component: () => import('../pages/AboutPage.vue') },
       { path: 'suggestions', component: () => import('../pages/SuggestionsPage.vue') },

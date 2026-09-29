@@ -1,23 +1,9 @@
 <!doctype html>
 <html lang="pt">
-<body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5">
-  <h2 style="margin:0 0 12px">Atualização do pedido escalado #{{ id }}</h2>
-  <p>O pedido de suporte escalado para {{ provider }} foi atualizado por <strong>{{ editor }}</strong>.</p>
-  <p>
-    <strong>Ticket:</strong> #{{ id }} - {{ title }}<br>
-    <strong>Estado:</strong> {{ status }}<br>
-    <strong>Prioridade:</strong> {{ priority }}
-  </p>
-  {% if description %}
-  <div style="border:1px solid #E5E7EB;border-radius:8px;padding:14px;margin:16px 0;background:#F9FAFB">
-    <strong>Descrição atual do pedido</strong>
-    <p style="white-space:pre-wrap;margin:8px 0 0">{{ description }}</p>
-  </div>
-  {% endif %}
-  <p>
-    <a href="{{ ticket_url }}" style="display:inline-block;background:#3D52D5;color:#fff;text-decoration:none;padding:10px 14px;border-radius:6px">
-      Abrir ticket
-    </a>
-  </p>
+<body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;max-width:680px">
+  <h2 style="margin:0 0 12px">Pedido #{{ id }}: {{ status }}</h2>
+  <p>O pedido encaminhado para {{ provider }} passou a <strong>{{ status }}</strong> ({{ editor }}).</p>
+  <p><strong>Ticket:</strong> #{{ id }} - {{ title }}</p>
+  {% include "_conversation.html" %}
 </body>
 </html>

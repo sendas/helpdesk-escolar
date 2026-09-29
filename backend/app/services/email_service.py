@@ -186,6 +186,13 @@ async def send_ticket_notification(to_email: str, event: str, ticket_data: dict)
     _flush_tasks[key] = asyncio.create_task(_debounced_flush(key, to_email))
 
 
+async def send_ticket_email_now(to_email: str, event: str, ticket_data: dict) -> None:
+    """Right away, never merged into a digest (emails that carry their own full context, e.g. to the support company)."""
+    if not settings.mail_server or _is_hidden_demo_action():
+        return
+    await _send_single(to_email, event, _normalize_ticket_data(ticket_data))
+
+
 async def _debounced_flush(key: tuple[str, int], to_email: str) -> None:
     try:
         await asyncio.sleep(_DIGEST_WINDOW_SECONDS)
@@ -211,7 +218,7 @@ async def _send_single(to_email: str, event: str, ticket_data: dict) -> None:
 
     try:
         message = MessageSchema(
-            subject=f"[Ticket #{ticket_data.get('id')}] {ticket_data.get('title')} - {event.replace('_', ' ').title()}",
+            subject=f"[Ticket #{ticket_data.get('id')}] {ticket_data.get('title')} — {_subject_label(event, ticket_data)}",
             recipients=[to_email],
             body=html_body,
             subtype=MessageType.html,
@@ -224,13 +231,36 @@ async def _send_single(to_email: str, event: str, ticket_data: dict) -> None:
         logger.warning("Email notification failed to %s for ticket %s (%s): %s", to_email, ticket_data.get("id"), event, exc)
 
 
+_SUBJECTS = {
+    "created": "Pedido recebido",
+    "commented": "Nova resposta",
+    "updated": "Estado atualizado",
+    "content_updated": "Pedido alterado",
+    "assigned": "Atribuído a si",
+    "escalated": "Pedido de suporte",
+    "supplier_comment": "Nova mensagem",
+    "supplier_updated": "Pedido concluído",
+}
+
+
+def _subject_label(event: str, data: dict) -> str:
+    if event == "updated" and data.get("status"):
+        return f"Estado: {data['status']}"
+    if event == "commented" and data.get("new_status"):
+        return f"Nova resposta · {data['new_status']}"
+    if event == "supplier_updated" and data.get("status"):
+        return f"Estado: {data['status']}"
+    return _SUBJECTS.get(event, "Atualização")
+
+
 def _event_summary_line(event: str, data: dict) -> str:
     if event in ("commented", "supplier_comment"):
         author = data.get("author") or data.get("provider_name") or ""
         comment = (data.get("comment") or "").strip().replace("\n", " ")
         if len(comment) > 240:
             comment = comment[:240] + "…"
-        return f"Resposta de {author}: {comment}" if author else f"Resposta: {comment}"
+        line = f"Resposta de {author}: {comment}" if author else f"Resposta: {comment}"
+        return line + (f" (estado: {data['new_status']})" if data.get("new_status") else "")
     if event == "content_updated":
         editor = data.get("editor")
         return f"Assunto/descrição alterados{' por ' + editor if editor else ''}"

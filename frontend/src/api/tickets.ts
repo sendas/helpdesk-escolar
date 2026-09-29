@@ -175,8 +175,8 @@ export async function markTicketUnread(id: number) {
   await api.post(`/api/v1/tickets/${id}/unread`)
 }
 
-export async function addComment(ticketId: number, body: string, is_internal = false, remind_at: string | null = null, private_to_ids: number[] = []) {
-  const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal, remind_at, private_to_ids })
+export async function addComment(ticketId: number, body: string, is_internal = false, remind_at: string | null = null, private_to_ids: number[] = [], new_status: string | null = null) {
+  const { data } = await api.post<Comment>(`/api/v1/tickets/${ticketId}/comments`, { body, is_internal, remind_at, private_to_ids, new_status })
   return data
 }
 

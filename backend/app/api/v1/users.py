@@ -46,6 +46,23 @@ async def update_my_preferences(
     return _me(current_user)
 
 
+@router.get("/me/notifications")
+async def get_my_notifications(current_user: User = Depends(get_current_user)):
+    """What this person is told about, by email and by notification (see services/notification_prefs)."""
+    from app.services import notification_prefs
+    return {"kinds": notification_prefs.catalog(), "prefs": notification_prefs.get_prefs(current_user),
+            "defaults": notification_prefs.defaults(current_user)}
+
+
+@router.put("/me/notifications")
+async def update_my_notifications(payload: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.services import notification_prefs
+    user = await db.get(User, current_user.id)
+    prefs = notification_prefs.set_prefs(user, payload.get("prefs") or {})
+    await db.commit()
+    return {"kinds": notification_prefs.catalog(), "prefs": prefs, "defaults": notification_prefs.defaults(user)}
+
+
 @router.get("", response_model=list[UserRead])
 async def list_users(
     db: AsyncSession = Depends(get_db),

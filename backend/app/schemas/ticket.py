@@ -56,6 +56,8 @@ class CommentCreate(BaseModel):
     private_to_id: int | None = None
     # Private message to several people (private_to_id alone still works)
     private_to_ids: list[int] = []
+    # The support team can change the state together with the reply (one email instead of two)
+    new_status: TicketStatus | None = None
 
 
 class CommentRead(BaseModel):

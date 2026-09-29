@@ -92,11 +92,13 @@
       </nav>
 
       <div class="hd-sidebar-user">
-        <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="32" />
-        <div class="hd-sidebar-user-text">
-          <div class="hd-sidebar-user-name"><PersonName :name="auth.user?.display_name" /></div>
-          <div class="hd-sidebar-user-role">{{ roleLabel }}</div>
-        </div>
+        <router-link class="hd-sidebar-user-link" to="/notificacoes" title="As minhas notificações" @click="mobileMenuOpen = false">
+          <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="32" />
+          <div class="hd-sidebar-user-text">
+            <div class="hd-sidebar-user-name"><PersonName :name="auth.user?.display_name" /></div>
+            <div class="hd-sidebar-user-role">{{ roleLabel }}</div>
+          </div>
+        </router-link>
         <button type="button" class="hd-logout-btn" title="Terminar sessão" aria-label="Terminar sessão" @click="askLogout">
           <span class="material-icons">logout</span>
         </button>
@@ -160,6 +162,9 @@
                 </div>
               </router-link>
               <div v-if="!notificationCount" class="notif-empty">Sem notificações novas.</div>
+              <router-link class="notif-item notif-settings-link" to="/notificacoes" @click="showNotifications = false">
+                <span class="material-icons" style="font-size:16px">tune</span> O que recebo por email e notificação
+              </router-link>
               <div class="notif-push">
                 <template v-if="push.needsHttps">
                   <span class="notif-push-label notif-push-blocked">
@@ -310,6 +315,7 @@ const titleMap: Record<string, string> = {
   '/tickets': 'Os meus tickets',
   '/tickets/new': 'Novo pedido',
   '/knowledge': 'Base de conhecimento',
+  '/notificacoes': 'As minhas notificações',
   '/version': 'Versão / Atualizações',
   '/about': 'Sobre',
   '/suggestions': 'Sugestões',

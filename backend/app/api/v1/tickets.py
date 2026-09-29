@@ -17,6 +17,8 @@ from app.services import ticket_service, email_service, push_service, read_servi
 from app.api.v1.settings import _read_settings
 from app.config import settings
 from app.services.permissions import has_perm
+from app.services import notifications
+from app.services.notification_prefs import wants
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -326,28 +328,13 @@ async def create_ticket(
         )
         notified.add(ticket.category.email_to.lower())
     assigned_users = list(ticket.assignees or ([] if not ticket.assignee else [ticket.assignee]))
-    for assignee in assigned_users:
-        if not assignee.email:
-            continue
-        await email_service.send_ticket_notification(
-            assignee.email,
-            "assigned",
-            {"id": ticket.id, "title": ticket.title, "assignee": assignee.display_name},
-        )
-        notified.add(assignee.email.lower())
+    await notifications.notify_assigned(ticket, assigned_users, current_user)
     if ticket.group:
-        for member in ticket.group.members:
-            email = member.email.lower() if member.email else ""
-            if email and email not in notified:
-                await email_service.send_ticket_notification(
-                    member.email,
-                    "assigned",
-                    {"id": ticket.id, "title": ticket.title, "assignee": ticket.group.name},
-                )
-                notified.add(email)
+        already = {u.id for u in assigned_users}
+        await notifications.notify_assigned(ticket, [m for m in ticket.group.members if m.id not in already], current_user, label=ticket.group.name)
     for watcher in ticket.watchers:
         email = watcher.email.lower() if watcher.email else ""
-        if email and email not in notified:
+        if email and email not in notified and watcher.id != current_user.id:
             await email_service.send_ticket_notification(
                 watcher.email,
                 "updated",
@@ -364,46 +351,10 @@ async def create_ticket(
         app_settings = _read_settings()
         provider_email = (app_settings.get("support_provider_email") or "").strip()
         provider_name = (app_settings.get("support_provider_name") or "Fornecedor externo").strip()
-        if provider_email and settings.mail_server:
-            await email_service.send_ticket_notification(
-                provider_email,
-                "escalated",
-                {
-                    "id": ticket.id,
-                    "title": ticket.title,
-                    "description": ticket.description,
-                    "requester": ticket.creator.display_name,
-                    "requester_email": ticket.creator.email,
-                    "category": ticket.category.name,
-                    "priority": ticket.priority.value,
-                    "school": ticket.school.name if ticket.school else "",
-                    "provider": provider_name,
-                    "escalated_by": current_user.display_name,
-                },
-            )
+        if await notifications.send_to_provider(ticket, "escalated", {"escalated_by": current_user.display_name}):
             ticket.is_escalated = True
             db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated", message=f"Ticket escalado para {provider_name} ({provider_email}) na criação"))
             await db.commit()
-
-    # Push notifications for ticket creation
-    push_user_ids: set[int] = set()
-    if ticket.assignee_id:
-        push_user_ids.add(ticket.assignee_id)
-    for assignee in ticket.assignees:
-        push_user_ids.add(assignee.id)
-    if ticket.group:
-        for m in ticket.group.members:
-            push_user_ids.add(m.id)
-    for w in ticket.watchers:
-        push_user_ids.add(w.id)
-    push_user_ids.discard(current_user.id)
-    if push_user_ids:
-        asyncio.create_task(push_service.send_push_to_users_bg(
-            push_user_ids,
-            f"Novo ticket: {ticket.title}",
-            f"Pedido de {current_user.display_name}",
-            f"/tickets/{ticket.id}",
-        ))
 
     return ticket
 
@@ -446,12 +397,6 @@ async def upload_attachment(
     db.add(TicketEvent(ticket_id=ticket_id, actor_id=current_user.id, event_type="attachment_added", message=f"Anexo adicionado: {attachment.original_name}"))
     await db.commit()
     await db.refresh(attachment)
-    for recipient in _ticket_update_recipients(ticket, current_user):
-        await email_service.send_ticket_notification(
-            recipient,
-            "updated",
-            {"id": ticket.id, "title": ticket.title, "status": ticket.status.value},
-        )
     return attachment
 
 
@@ -533,33 +478,11 @@ async def update_ticket(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só administradores podem editar o conteúdo do ticket")
     only_email_preference = data.model_fields_set == {"creator_email_notifications"}
     content_changed = bool(data.model_fields_set & content_fields)
+    old_status = ticket.status
+    previous_assignees = _assigned_ids(ticket)
     updated = await ticket_service.update_ticket(db, ticket, data)
     if not only_email_preference:
-        notif_type = "content_updated" if content_changed else "updated"
-        payload: dict = {"id": updated.id, "title": updated.title, "status": updated.status.value}
-        if content_changed:
-            payload["editor"] = current_user.display_name
-        for recipient in _ticket_update_recipients(updated, current_user):
-            await email_service.send_ticket_notification(recipient, notif_type, payload)
-        # Auto-notify support company on any update when ticket is escalated
-        if updated.is_escalated:
-            app_settings = _read_settings()
-            provider_email = (app_settings.get("support_provider_email") or "").strip()
-            provider_name = (app_settings.get("support_provider_name") or "Empresa de apoio").strip()
-            if provider_email and settings.mail_server:
-                await email_service.send_ticket_notification(
-                    provider_email,
-                    "supplier_updated",
-                    {
-                        "id": updated.id,
-                        "title": updated.title,
-                        "status": updated.status.value,
-                        "priority": updated.priority.value,
-                        "description": updated.description,
-                        "editor": current_user.display_name,
-                        "provider": provider_name,
-                    },
-                )
+        await notify_ticket_changes(updated, current_user, old_status, previous_assignees, content_changed)
     return updated
 
 
@@ -584,22 +507,8 @@ async def escalate_ticket(
     if not settings.mail_server:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envio de email não configurado")
 
-    await email_service.send_ticket_notification(
-        provider_email,
-        "escalated",
-        {
-            "id": ticket.id,
-            "title": ticket.title,
-            "description": ticket.description,
-            "requester": ticket.creator.display_name,
-            "requester_email": ticket.creator.email,
-            "category": ticket.category.name,
-            "priority": ticket.priority.value,
-            "school": ticket.school.name if ticket.school else "",
-            "provider": provider_name,
-            "escalated_by": current_user.display_name,
-        },
-    )
+    # Everything the support company needs: the request and the public conversation so far
+    await notifications.send_to_provider(ticket, "escalated", {"escalated_by": current_user.display_name})
     ticket.is_escalated = True
     db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated", message=f"Ticket escalado para {provider_name} ({provider_email})"))
     await db.commit()
@@ -656,17 +565,9 @@ async def escalate_comment(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envio de email não configurado")
     author = await db.get(User, comment.author_id)
     author_name = author.display_name if author else "Desconhecido"
-    await email_service.send_ticket_notification(
-        provider_email,
-        "supplier_comment",
-        {
-            "id": ticket.id,
-            "title": ticket.title,
-            "author": author_name,
-            "comment": comment.body,
-            "provider": provider_name,
-        },
-    )
+    # The reply, with the conversation before it (the company may not have seen the earlier messages)
+    await notifications.send_to_provider(ticket, "supplier_comment", {"author": author_name, "comment": comment.body},
+                                         exclude_comment_id=comment.id)
 
 
 @router.post("/{ticket_id}/watchers", response_model=TicketRead)
@@ -751,6 +652,11 @@ async def add_comment(
         when = data.remind_at if data.remind_at.tzinfo else data.remind_at.replace(tzinfo=timezone.utc)
         if when <= datetime.now(timezone.utc):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escolha uma data e hora no futuro para o lembrete.")
+    new_status = None
+    if data.new_status is not None and not private_ids and not data.is_internal:
+        if not has_perm(current_user, "tickets.manage"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só a equipa de apoio pode alterar o estado do ticket.")
+        new_status = data.new_status if data.new_status != ticket.status else None
     private_recipients: list[User] = []
     if private_ids:
         private_recipients = await _private_message_recipients(db, ticket, current_user, private_ids)
@@ -760,7 +666,7 @@ async def add_comment(
     if private_recipients:
         others = ", ".join(u.display_name for u in private_recipients)
         for person in private_recipients:
-            if person.email:
+            if person.email and wants(person, "private", "email"):
                 await email_service.send_private_message(person.email, {
                     "id": ticket.id,
                     "title": ticket.title,
@@ -769,7 +675,7 @@ async def add_comment(
                     "recipients": others if len(private_recipients) > 1 else "",
                 })
         asyncio.create_task(push_service.send_push_to_users_bg(
-            {u.id for u in private_recipients},
+            {u.id for u in private_recipients if wants(u, "private", "push")},
             f"Mensagem privada: {ticket.title}",
             f"{current_user.display_name}: {data.body[:80]}",
             f"/tickets/{ticket.id}",
@@ -793,56 +699,21 @@ async def add_comment(
         ))
         await db.commit()
 
+    if new_status is not None:
+        ticket.status = new_status
+        db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="updated",
+                           message=f"Estado alterado para {ticket_service._STATUS_PT.get(new_status.value, new_status.value)}"))
+        await db.commit()
+        ticket = await ticket_service.get_ticket(db, ticket_id)
+
     if current_user.id == ticket.creator_id and not data.is_internal:
         from app.services import teams_service
         teams_service.requester_reply(ticket, data.body)
     if not data.is_internal:
-        recipients = _ticket_update_recipients(ticket, current_user)
-        for recipient in recipients:
-            await email_service.send_ticket_notification(
-                recipient,
-                "commented",
-                {
-                    "id": ticket.id,
-                    "title": ticket.title,
-                    "author": current_user.display_name,
-                    "comment": data.body,
-                },
-            )
-        # Auto-forward comments to support company when ticket is escalated
-        if ticket.is_escalated:
-            app_settings = _read_settings()
-            provider_email = (app_settings.get("support_provider_email") or "").strip()
-            provider_name = (app_settings.get("support_provider_name") or "Empresa de apoio").strip()
-            if provider_email and settings.mail_server:
-                await email_service.send_ticket_notification(
-                    provider_email,
-                    "supplier_comment",
-                    {
-                        "id": ticket.id,
-                        "title": ticket.title,
-                        "author": current_user.display_name,
-                        "comment": data.body,
-                        "provider": provider_name,
-                    },
-                )
-        push_ids = {
-            uid for uid in [
-                ticket.creator_id,
-                ticket.assignee_id,
-                *(a.id for a in ticket.assignees),
-                *(m.id for m in (ticket.group.members if ticket.group else [])),
-                *(w.id for w in ticket.watchers),
-            ]
-            if uid and uid != current_user.id
-        }
-        if push_ids:
-            asyncio.create_task(push_service.send_push_to_users_bg(
-                push_ids,
-                f"Nova resposta: {ticket.title}",
-                f"{current_user.display_name}: {data.body[:80]}",
-                f"/tickets/{ticket.id}",
-            ))
+        # One email per person with the reply and, if it changed, the new state
+        await notifications.notify_reply(ticket, current_user, data.body, new_status, comment_id=comment.id)
+        if new_status is not None and ticket.is_escalated and new_status in notifications.DONE_STATES:
+            await notifications.send_to_provider(ticket, "supplier_updated", {"editor": current_user.display_name})
     return comment
 
 
@@ -869,19 +740,6 @@ async def update_comment(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     comment.ticket = ticket
     updated = await ticket_service.update_comment(db, comment, data.body)
-    if not comment.is_internal and not comment.private_to_id:
-        recipients = _ticket_update_recipients(ticket, current_user)
-        for recipient in recipients:
-            await email_service.send_ticket_notification(
-                recipient,
-                "commented",
-                {
-                    "id": ticket.id,
-                    "title": ticket.title,
-                    "author": current_user.display_name,
-                    "comment": data.body,
-                },
-            )
     return updated
 
 
@@ -907,6 +765,20 @@ async def delete_comment(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     comment.ticket = ticket
     await ticket_service.delete_comment(db, comment)
+
+
+async def notify_ticket_changes(ticket, actor: User, old_status, previous_assignees: set[int], content_changed: bool = False) -> None:
+    """After a ticket was edited (state, priority, group, assignees, content): who is told, see services/notifications."""
+    if ticket.status != old_status:
+        await notifications.notify_status(ticket, actor, old_status, ticket.status)
+    new_people = [u for u in [*getattr(ticket, "assignees", []), *([ticket.assignee] if ticket.assignee else [])]
+                  if u.id not in previous_assignees]
+    if new_people:
+        await notifications.notify_assigned(ticket, list({u.id: u for u in new_people}.values()), actor)
+    if content_changed:
+        payload = {"id": ticket.id, "title": ticket.title, "status": ticket.status.value, "editor": actor.display_name}
+        for recipient in _ticket_update_recipients(ticket, actor):
+            await email_service.send_ticket_notification(recipient, "content_updated", payload)
 
 
 def _ticket_update_recipients(ticket, current_user: User) -> set[str]:
