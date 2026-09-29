@@ -22,11 +22,14 @@ Sem este push, o servidor de produção nunca recebe o código novo.
 ### Comandos de deploy no servidor:
 ```bash
 cd /mnt/cache/appdata/helpdesk
-cp data/tickets.db data/tickets.db.bak-$(date +%Y%m%d-%H%M)  # backup antes de atualizar
+docker compose -f docker-compose.unraid.yml exec -T backend python -m app.snapshot  # cópia consistente → data/tickets.db.bak-AAAAMMDD-HHMM
 git pull
 docker compose -f docker-compose.unraid.yml build --no-cache frontend backend
 docker compose -f docker-compose.unraid.yml up -d
 ```
+
+> A base de dados usa SQLite em modo WAL (desde v2.5.0): **não** copiar `tickets.db` com `cp` com a app a correr — usar `python -m app.snapshot` como acima.
+> Além disso, a cada arranque o backend guarda uma cópia em `data/snapshots/` (mantém as 5 últimas).
 
 > **IMPORTANTE**: O compose tem dois serviços separados — `frontend` e `backend`.
 > Sempre rebuildar **ambos** com `build --no-cache frontend backend`.

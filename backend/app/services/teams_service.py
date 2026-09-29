@@ -123,7 +123,7 @@ async def notify_overdue(db) -> None:
         return
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
-    from app.api.v1.settings import _read_settings, _write_settings
+    from app.api.v1.settings import _read_settings, _update_settings
     from app.models.ticket import Ticket, TicketStatus
     from app.services.ticket_service import is_overdue
     rows = (
@@ -141,5 +141,5 @@ async def notify_overdue(db) -> None:
         for t in new[:20]:
             await post(build_card(f"⏰ T-{t.id} passou o tempo de resposta: {t.title}", "", _ticket_facts(t), _ticket_url(t.id), "Abrir ticket", accent="attention"))
     open_ids = {t.id for t in rows}
-    data["teams_overdue_notified"] = sorted((done & open_ids) | {t.id for t in new})
-    _write_settings(data)
+    # Only this key is written, over the file as it is now: the posts above can take a while
+    _update_settings({"teams_overdue_notified": sorted((done & open_ids) | {t.id for t in new})})

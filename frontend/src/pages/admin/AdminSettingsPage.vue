@@ -790,7 +790,9 @@ async function deleteCategory(id: number) {
   try {
     await apiDeleteCategory(id)
     categories.value = categories.value.filter(c => c.id !== id)
-  } catch { /* ignore */ }
+  } catch (e: any) {
+    alert(e?.response?.data?.detail || 'Não foi possível eliminar a categoria.')
+  }
 }
 
 async function createSchool() {

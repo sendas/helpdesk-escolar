@@ -58,6 +58,13 @@ async def sync_inbound_replies(db: AsyncSession, limit: int = 25, force: bool = 
 
     logger.info("Mail reply sync fetched %s candidate message(s) via %s (force=%s)", len(messages), provider, force)
     result = await _import_messages(db, messages)
+    # Only now, with the replies saved, are the messages marked as read: if the import failed they are tried again
+    # on the next round (Message-IDs already imported are skipped)
+    handled = [m for m in messages if not m.get("failed")]
+    if provider == "graph":
+        await _mark_graph_messages_read([m["graph_id"] for m in handled if m.get("graph_id")])
+    elif not force:
+        await asyncio.to_thread(_mark_imap_seen, [m["imap_id"] for m in handled if m.get("imap_id")])
     result["provider"] = provider
     return result
 
@@ -113,11 +120,24 @@ async def _fetch_graph_unread_messages(limit: int, force: bool = False) -> list[
         for raw in raw_messages:
             item = _parse_graph_message(raw)
             if item:
+                item["graph_id"] = raw["id"]
                 results.append(item)
-                await _mark_graph_message_read(client, mailbox, raw["id"], headers)
             else:
                 logger.info("Graph mail message ignored: subject does not contain ticket marker")
         return results
+
+
+async def _mark_graph_messages_read(ids: list[str]) -> None:
+    if not ids:
+        return
+    mailbox = (settings.graph_mail_user or settings.imap_username or settings.mail_username or settings.mail_from).strip()
+    token = await asyncio.to_thread(_get_graph_token)
+    if not token or not mailbox:
+        return
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    async with httpx.AsyncClient(timeout=20) as client:
+        for message_id in ids:
+            await _mark_graph_message_read(client, mailbox, message_id, headers)
 
 
 def _get_graph_token() -> str | None:
@@ -187,13 +207,21 @@ async def _import_messages(db: AsyncSession, messages: list[dict]) -> dict:
     skipped = 0
 
     for msg in messages:
-        processed_one = await _import_message(db, msg)
+        try:
+            processed_one = await _import_message(db, msg)
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            msg["failed"] = True
+            msg["processed"] = False
+            logger.exception("Mail reply import failed for ticket #%s (%s)", msg.get("ticket_id"), msg.get("message_id"))
+            skipped += 1
+            continue
         if processed_one:
             processed += 1
         else:
             skipped += 1
 
-    await db.commit()
     for msg in messages:
         if msg.get("processed"):
             from app.services.realtime_hooks import notify_ticket
@@ -340,7 +368,8 @@ def _fetch_unseen_messages(limit: int, force: bool = False) -> list[dict]:
         ids = all_ids[-limit:]
         logger.info("IMAP search found %s message(s) (criteria=%s), checking last %s", len(all_ids), search_criteria, len(ids))
         for msg_id in ids:
-            status, fetched = client.fetch(msg_id, "(RFC822)")
+            # PEEK: fetching must not mark the message as read yet (see sync_inbound_replies)
+            status, fetched = client.fetch(msg_id, "(BODY.PEEK[])")
             if status != "OK" or not fetched:
                 logger.warning("IMAP fetch failed for message id %s with status %s", msg_id, status)
                 continue
@@ -348,15 +377,36 @@ def _fetch_unseen_messages(limit: int, force: bool = False) -> list[dict]:
             parsed = email.message_from_bytes(raw)
             item = _parse_reply(parsed)
             if item:
+                item["imap_id"] = msg_id
                 results.append(item)
-                if not force:
-                    client.store(msg_id, "+FLAGS", "\\Seen")
             else:
                 logger.info("IMAP message ignored: no ticket marker found")
         return results
     except Exception:
         logger.exception("IMAP reply sync failed")
         return []
+    finally:
+        try:
+            client.logout()
+        except Exception:
+            pass
+
+
+def _mark_imap_seen(ids: list[bytes]) -> None:
+    if not ids:
+        return
+    username = settings.imap_username or settings.mail_username
+    password = settings.imap_password or settings.mail_password
+    client_cls = imaplib.IMAP4_SSL if settings.imap_ssl else imaplib.IMAP4
+    client = client_cls(settings.imap_server, settings.imap_port)
+    try:
+        client.login(username, password)
+        if client.select(settings.imap_folder)[0] != "OK":
+            return
+        for msg_id in ids:
+            client.store(msg_id, "+FLAGS", "\\Seen")
+    except Exception:
+        logger.exception("IMAP: não foi possível marcar as mensagens como lidas")
     finally:
         try:
             client.logout()

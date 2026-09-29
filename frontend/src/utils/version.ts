@@ -1,8 +1,26 @@
-export const APP_VERSION = '2.4.0'
+export const APP_VERSION = '2.5.0'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '11:00'
+export const APP_VERSION_TIME = '11:45'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.5.0',
+    date: '2026-09-29',
+    time: '11:45',
+    title: 'Dados mais seguros e fiáveis',
+    changes: [
+      'Apagar um ticket apaga também tudo o que lhe pertence (lembretes, reações, marcas de lido, anexos no disco). Corrigido: apagar um ticket com um lembrete pendente fazia parar todos os lembretes.',
+      'Os lembretes são enviados um a um: um lembrete com problema já não impede os outros, e nenhum é enviado duas vezes.',
+      'Cópias de segurança: o JSON passa a incluir todas as tabelas (papéis, grupos, chat, histórico, base de conhecimento…). O restauro do ZIP repõe a base de dados inteira, exatamente como estava, e guarda antes uma cópia da atual.',
+      'A cópia da base de dados no ZIP é feita de forma consistente, mesmo com a aplicação em uso. O ZIP deixa de incluir palavras-passe e chaves.',
+      'A cada arranque do servidor é guardada automaticamente uma cópia da base de dados (as 5 últimas ficam em data/snapshots).',
+      'Base de dados em modo WAL: menos esperas e sem erros "database is locked" nas horas de maior uso. As regras de integridade passam a ser aplicadas.',
+      'Falhas nos processos automáticos (backups, emails, lembretes, sincronização) ficam registadas; um backup automático que falhe aparece no "Registo de cópias".',
+      'As configurações são gravadas de forma segura (nunca ficam a meio) e um aviso do Teams já não desfaz alterações feitas ao mesmo tempo.',
+      'Respostas por email só são marcadas como lidas depois de guardadas: se algo falhar, são importadas na ronda seguinte.',
+      'Apagar uma categoria com tickets mostra uma mensagem clara em vez de dar erro. Apagar grupos ou escolas em uso deixa de deixar ligações partidas.',
+    ],
+  },
   {
     version: '2.4.0',
     date: '2026-09-29',

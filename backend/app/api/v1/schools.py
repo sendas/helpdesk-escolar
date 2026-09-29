@@ -5,6 +5,7 @@ from app.api.deps import get_db, get_current_user, require_admin, require_perm
 from app.models.school import School
 from app.models.user import User
 from app.schemas.school import SchoolCreate, SchoolRead
+from app.services import db_maintenance
 
 router = APIRouter(prefix="/schools", tags=["schools"])
 
@@ -43,5 +44,6 @@ async def delete_school(school_id: int, db: AsyncSession = Depends(get_db), _: U
     school = result.scalar_one_or_none()
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
+    await db_maintenance.detach(db, "schools", school.id)
     await db.delete(school)
     await db.commit()

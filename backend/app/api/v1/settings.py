@@ -1,11 +1,17 @@
+import copy
 import json
+import logging
 import os
+import threading
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from app.api.deps import require_admin, require_perm
 from app.models.user import User
 from app.config import settings as app_config
+from app.services.jsonfile import write_json_atomic
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -308,21 +314,47 @@ def apply_settings_migrations() -> None:
         _write_settings(data)
 
 
+_settings_cache: tuple[tuple[int, int], dict] | None = None
+_settings_lock = threading.Lock()
+
+
 def _read_settings() -> dict:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    if not os.path.exists(SETTINGS_FILE):
-        return dict(DEFAULT_SETTINGS)
+    """Current settings (a fresh copy the caller may change). The file is only parsed again when it changes."""
+    global _settings_cache
     try:
-        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-            return {**DEFAULT_SETTINGS, **json.load(f)}
-    except (OSError, json.JSONDecodeError):
+        st = os.stat(SETTINGS_FILE)
+    except FileNotFoundError:
         return dict(DEFAULT_SETTINGS)
+    key = (st.st_mtime_ns, st.st_size)
+    cached = _settings_cache
+    if cached is None or cached[0] != key:
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                saved = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            logger.exception("app_settings.json ilegível; a usar as configurações por omissão")
+            return dict(DEFAULT_SETTINGS)
+        cached = (key, saved if isinstance(saved, dict) else {})
+        _settings_cache = cached
+    return copy.deepcopy({**DEFAULT_SETTINGS, **cached[1]})
 
 
 def _write_settings(data: dict) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    global _settings_cache
+    with _settings_lock:
+        write_json_atomic(SETTINGS_FILE, data)
+        _settings_cache = None
+
+
+def _update_settings(changes: dict) -> dict:
+    """Change only some keys, on top of what is on disk right now (so a slow task never undoes an admin's change)."""
+    with _settings_lock:
+        data = _read_settings()
+        data.update(changes)
+        write_json_atomic(SETTINGS_FILE, data)
+        global _settings_cache
+        _settings_cache = None
+    return data
 
 
 def _normalize_ou_list(value) -> list[str]:

@@ -77,12 +77,8 @@
             <span class="full-badge"><span class="material-icons" style="font-size:13px">storage</span> Base de dados</span>
             <span class="full-badge"><span class="material-icons" style="font-size:13px">attach_file</span> Anexos</span>
             <span class="full-badge"><span class="material-icons" style="font-size:13px">settings</span> Configurações</span>
-            <span class="full-badge"><span class="material-icons" style="font-size:13px">key</span> .env</span>
           </div>
-          <div class="secret-warning">
-            <span class="material-icons" style="font-size:16px;flex-shrink:0">warning</span>
-            <span>O ZIP inclui o ficheiro <strong>.env</strong> com credenciais sensíveis (senhas, chaves JWT, secrets do Azure/LDAP). Será pedida confirmação antes do download.</span>
-          </div>
+          <p class="field-hint">A base de dados é copiada de forma consistente, mesmo com a aplicação em uso. As palavras-passe e chaves (app.env) não são incluídas.</p>
           <div class="full-actions">
             <button class="hd-btn hd-btn-primary full" :disabled="downloadingFull" @click="doDownloadFull">
               <span class="material-icons">{{ downloadingFull ? 'hourglass_empty' : 'download' }}</span>
@@ -100,7 +96,7 @@
             <span class="material-icons">download</span>
             Exportar dados (JSON)
           </div>
-          <p class="card-copy">Apenas tickets, utilizadores e categorias, sem ficheiros anexados.</p>
+          <p class="card-copy">Todos os registos (tickets, respostas, utilizadores, papéis, grupos, chat, base de conhecimento…), sem os ficheiros anexados.</p>
           <div class="stats-row">
             <div><strong>{{ stats.tickets }}</strong><span>Tickets</span></div>
             <div><strong>{{ stats.users }}</strong><span>Utilizadores</span></div>
@@ -184,10 +180,9 @@
       <div v-if="restoreFile && !restoreResult" class="restore-confirm-box">
         <span class="material-icons" style="color:#dc2626;font-size:20px;flex-shrink:0">warning</span>
         <div>
-          <strong>Atenção: esta operação é irreversível.</strong><br>
-          Todos os dados atuais (tickets, comentários, utilizadores, categorias<span v-if="isZipFile">, anexos</span>) serão <strong>apagados</strong> e substituídos pelo conteúdo do ficheiro selecionado.
-          <span v-if="isZipFile"> O ZIP também repõe os ficheiros anexados e as configurações da aplicação.</span>
-          Faz uma cópia de segurança antes de continuar.
+          <strong>Atenção: os dados atuais serão substituídos.</strong><br>
+          <template v-if="isZipFile">A base de dados inteira volta ao estado do ZIP, e são repostos os ficheiros anexados e as configurações. Antes de restaurar, o servidor guarda uma cópia da base de dados atual em <code>data/snapshots</code>.</template>
+          <template v-else>Todos os registos atuais são substituídos pelos do ficheiro. Se alguma coisa falhar, nada é alterado.</template>
         </div>
         <button class="hd-btn hd-btn-danger" :disabled="restoring" @click="doRestore">
           <span class="material-icons">{{ restoring ? 'hourglass_empty' : 'restore' }}</span>
@@ -230,6 +225,10 @@
               <span v-for="loc in entry.locations" :key="loc" class="log-loc">
                 <span class="material-icons" style="font-size:13px;vertical-align:middle">folder</span> {{ loc }}
               </span>
+            </div>
+            <div v-if="entry.error" class="log-sec-error">
+              <span class="material-icons" style="font-size:13px;vertical-align:middle">error</span>
+              {{ entry.error }}
             </div>
             <div v-if="entry.secondary_error" class="log-sec-error">
               <span class="material-icons" style="font-size:13px;vertical-align:middle">warning</span>
@@ -342,11 +341,6 @@ async function doDownloadBackup() {
 }
 
 async function doDownloadFull() {
-  const confirmed = window.confirm(
-    'Este ZIP inclui o ficheiro .env com credenciais sensíveis\n(senhas, chaves JWT, secrets do Azure/LDAP).\n\n' +
-    'Confirmas que vais guardar este ficheiro num local seguro\ne não o partilhar por canais não cifrados (email, Teams, etc.)?'
-  )
-  if (!confirmed) return
   downloadingFull.value = true
   try {
     await downloadFullBackup()
@@ -424,7 +418,7 @@ async function doRestore() {
   if (!restoreFile.value) return
   const typeLabel = isZipFile.value ? 'ZIP completo (base de dados + anexos + configurações)' : 'JSON (registos da base de dados)'
   const confirmed = window.confirm(
-    `ATENÇÃO: Todos os dados atuais serão apagados permanentemente.\n\nTipo: ${typeLabel}\n\nEsta operação não pode ser desfeita. Tens a certeza?`
+    `ATENÇÃO: os dados atuais serão substituídos pelos do ficheiro.\n\nTipo: ${typeLabel}\n\nTens a certeza?`
   )
   if (!confirmed) return
   restoring.value = true
@@ -445,8 +439,14 @@ async function doRestore() {
 
 const RESTORE_LABELS: Record<string, string> = {
   schools: 'Escolas', users: 'Utilizadores', categories: 'Categorias',
-  tickets: 'Tickets', comments: 'Comentários', attachments: 'Registos de anexos',
-  upload_files: 'Ficheiros restaurados',
+  tickets: 'Tickets', comments: 'Respostas', attachments: 'Registos de anexos',
+  upload_files: 'Ficheiros restaurados', ticket_events: 'Histórico dos tickets', ticket_watchers: 'Observadores',
+  ticket_assignees: 'Técnicos atribuídos', ticket_reminders: 'Lembretes', ticket_views: 'Marcas de lido',
+  helpdesk_groups: 'Grupos', helpdesk_group_members: 'Membros de grupos', roles: 'Papéis',
+  knowledge_articles: 'Artigos da base de conhecimento', chat_conversations: 'Conversas', chat_messages: 'Mensagens de chat',
+  chat_members: 'Participantes de conversas', reactions: 'Reações', suggestions: 'Sugestões',
+  ticket_routing_rules: 'Regras de encaminhamento', push_subscriptions: 'Subscrições de notificações',
+  processed_emails: 'Emails importados', support_agent_status: 'Estado do apoio ao vivo',
 }
 
 function restoreLabel(key: string) {
@@ -550,20 +550,6 @@ function formatDate(iso: string) {
   font-size: 13px;
 }
 .status-line.error { color: #dc2626; }
-.secret-warning {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  background: #FEF3C7;
-  border: 1px solid #FCD34D;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
-  color: #92400e;
-  margin-bottom: 12px;
-}
-:root.dark .secret-warning { background: #422006; border-color: #92400e; color: #FDE68A; }
-.secret-warning .material-icons { color: #D97706; }
 .restore-confirm-box {
   display: flex;
   align-items: flex-start;

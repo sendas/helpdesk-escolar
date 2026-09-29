@@ -119,6 +119,8 @@ async def ensure_defaults(db: AsyncSession) -> None:
             await db.execute(select(Ticket.id).where(Ticket.category_id == old_support.id).limit(1))
         ).scalar_one_or_none()
         if has_tickets is None:
+            from app.services.db_maintenance import detach
+            await detach(db, "categories", old_support.id)
             await db.delete(old_support)
 
     for data in DEFAULT_GROUPS:

@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import asyncio
+import logging
 import os
 import re
 import time
@@ -11,6 +12,24 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.config import settings
 from app.api.v1.router import router
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logger = logging.getLogger("app.tasks")
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _spawn(coro) -> asyncio.Task:
+    """create_task that keeps a reference (unreferenced tasks can be garbage-collected mid-run) and logs failures."""
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+
+    def _done(t: asyncio.Task) -> None:
+        _background_tasks.discard(t)
+        if not t.cancelled() and t.exception() is not None:
+            logger.error("Tarefa em segundo plano falhou", exc_info=t.exception())
+    task.add_done_callback(_done)
+    return task
 
 
 async def _add_missing_columns(conn) -> None:
@@ -80,9 +99,13 @@ async def lifespan(app: FastAPI):
     # Create all tables on startup (no Alembic needed for simple deployments)
     from app.database import engine, Base
     import app.models  # noqa: F401 — registers all models with Base
+    from app.services import db_maintenance
+    # Copy of the database as the previous version left it, before any migration touches it
+    await asyncio.get_running_loop().run_in_executor(None, db_maintenance.startup_snapshot)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _add_missing_columns(conn)
+        await db_maintenance.cleanup_orphans(conn)
     from app.database import AsyncSessionLocal
     from app.services.bootstrap import ensure_defaults
     async with AsyncSessionLocal() as db:
@@ -94,14 +117,14 @@ async def lifespan(app: FastAPI):
         await ensure_default_roles(db)
     sync_task = None
     if settings.azure_sync_interval_minutes > 0:
-        sync_task = asyncio.create_task(_sync_azure_periodically())
+        sync_task = _spawn(_sync_azure_periodically())
     mail_task = None
     if settings.mail_reply_enabled:
-        mail_task = asyncio.create_task(_sync_mail_replies_periodically())
-    backup_task = asyncio.create_task(_backup_periodically())
-    inactivity_task = asyncio.create_task(_inactivity_check_periodically())
-    reminder_task = asyncio.create_task(_reminders_periodically())
-    support_task = asyncio.create_task(_support_timeouts_periodically())
+        mail_task = _spawn(_sync_mail_replies_periodically())
+    backup_task = _spawn(_backup_periodically())
+    inactivity_task = _spawn(_inactivity_check_periodically())
+    reminder_task = _spawn(_reminders_periodically())
+    support_task = _spawn(_support_timeouts_periodically())
     yield
     support_task.cancel()
     if sync_task:
@@ -126,7 +149,7 @@ async def _sync_azure_periodically() -> None:
             try:
                 await azure_import.import_azure_users(db)
             except Exception:
-                pass
+                logger.exception("Sincronização com o Entra ID falhou")
 
 
 def _seconds_until_next_nightly_sync() -> float:
@@ -148,7 +171,7 @@ async def _sync_mail_replies_periodically() -> None:
             try:
                 await email_ingest.sync_inbound_replies(db)
             except Exception:
-                pass
+                logger.exception("Importação de respostas por email falhou")
 
 
 async def _inactivity_check_periodically() -> None:
@@ -162,7 +185,7 @@ async def _inactivity_check_periodically() -> None:
             try:
                 await inactivity_service.run_inactivity_check(db)
             except Exception:
-                pass
+                logger.exception("Verificação de inatividade falhou")
         await asyncio.sleep(6 * 3600)
 
 
@@ -176,7 +199,7 @@ async def _reminders_periodically() -> None:
             try:
                 await reminder_service.send_due_reminders(db)
             except Exception:
-                pass
+                logger.exception("Envio de lembretes falhou")
         await asyncio.sleep(300)
 
 
@@ -194,12 +217,12 @@ async def _support_timeouts_periodically() -> None:
             try:
                 await chat_service.expire_waiting(db)
             except Exception:
-                pass
+                logger.exception("Expiração de pedidos de chat falhou")
             if rounds % 20 == 1:  # every 10 minutes
                 try:
                     await teams_service.notify_overdue(db)
                 except Exception:
-                    pass
+                    logger.exception("Aviso de tickets em atraso no Teams falhou")
 
 
 async def _backup_periodically() -> None:
@@ -222,26 +245,30 @@ async def _backup_periodically() -> None:
                 async with AsyncSessionLocal() as db:
                     try:
                         await backup_service.write_backup_auto(db)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.exception("Backup automático (JSON) falhou")
+                        backup_service.record_failure("json", exc)
             if zip_on:
                 try:
                     await loop.run_in_executor(None, backup_service.write_full_zip_auto)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.exception("Backup automático (ZIP completo) falhou")
+                    backup_service.record_failure("zip", exc)
         await asyncio.sleep(max(config["interval_hours"], 1) * 3600)
         config = backup_service.load_config()
         if config["enabled"]:
             async with AsyncSessionLocal() as db:
                 try:
                     await backup_service.write_backup_auto(db)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.exception("Backup automático (JSON) falhou")
+                    backup_service.record_failure("json", exc)
         if config.get("full_zip_enabled", False):
             try:
                 await loop.run_in_executor(None, backup_service.write_full_zip_auto)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.exception("Backup automático (ZIP completo) falhou")
+                backup_service.record_failure("zip", exc)
 
 
 app = FastAPI(
@@ -272,9 +299,9 @@ async def realtime_ticket_middleware(request: Request, call_next):
         from app.services import realtime_hooks
         match = _TICKET_PATH.match(request.url.path)
         if match:
-            asyncio.create_task(realtime_hooks.notify_ticket(int(match.group(1))))
+            _spawn(realtime_hooks.notify_ticket(int(match.group(1))))
         elif request.url.path.rstrip("/") in {"/api/v1/tickets", "/api/v1/admin/tickets/bulk", "/api/v1/admin/tickets/bulk-action"}:
-            asyncio.create_task(realtime_hooks.notify_ticket_lists())
+            _spawn(realtime_hooks.notify_ticket_lists())
     return response
 
 
@@ -286,7 +313,7 @@ async def access_log_middleware(request: Request, call_next):
         try:
             await _record_access(request, response.status_code, int((time.perf_counter() - start) * 1000))
         except Exception:
-            pass
+            logger.warning("Registo de acesso falhou", exc_info=True)
     return response
 
 app.include_router(router)

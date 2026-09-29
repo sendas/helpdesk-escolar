@@ -17,7 +17,7 @@ from app.schemas.user import (
     UserRead,
     UserUpdate,
 )
-from app.services import azure_import, passwords, permissions
+from app.services import azure_import, db_maintenance, passwords, permissions
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -240,6 +240,7 @@ async def delete_helpdesk_group(
     if not group:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
     group.members = []
+    await db_maintenance.detach(db, "helpdesk_groups", group.id)
     await db.delete(group)
     await db.commit()
 

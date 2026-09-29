@@ -5,6 +5,7 @@ from app.api.deps import get_db, get_current_user, require_admin, require_perm
 from app.models.category import Category
 from app.models.user import User
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
+from app.services import db_maintenance
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
@@ -63,5 +64,12 @@ async def delete_category(
     category = result.scalar_one_or_none()
     if not category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    in_use = await db_maintenance.category_ticket_count(db, category.id)
+    if in_use:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Não é possível apagar esta categoria: tem {in_use} ticket(s). Mude primeiro a categoria desses tickets.",
+        )
+    await db_maintenance.detach(db, "categories", category.id)
     await db.delete(category)
     await db.commit()

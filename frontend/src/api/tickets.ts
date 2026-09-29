@@ -291,6 +291,7 @@ export interface BackupHistoryEntry {
   backup_type?: 'json' | 'zip'
   secondary_error?: string
   onedrive_error?: string
+  error?: string
 }
 
 export async function getBackupHistory() {

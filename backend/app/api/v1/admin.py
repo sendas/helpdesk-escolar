@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -12,10 +13,11 @@ from app.models.group import HelpdeskGroup
 from app.models.ticket import Ticket, Comment, TicketEvent, TicketRoutingRule, TicketStatus
 from app.models.access_log import AccessLog
 from app.schemas.ticket import TicketBulkAction, TicketBulkUpdate, TicketRead, TicketUpdate, PaginatedTickets, TicketRoutingRuleCreate, TicketRoutingRuleRead, TicketRoutingRuleUpdate
-from app.services import ticket_service, email_service, email_ingest, backup_service
+from app.services import ticket_service, email_service, email_ingest, backup_service, db_maintenance
 from app.api.v1.settings import _read_settings
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/routing-rules", response_model=list[TicketRoutingRuleRead])
@@ -205,15 +207,18 @@ async def admin_bulk_action_tickets(
     now = datetime.utcnow()
     affected = 0
 
+    if data.action == "delete":
+        # Everything that belongs to the tickets goes too (reminders, reactions, read marks, attachment files...)
+        files = await db_maintenance.purge_tickets(db, [t.id for t in tickets])
+        await db.commit()
+        db_maintenance.remove_upload_files(files)
+        return {"affected": len(tickets)}
+
     for ticket in tickets:
-        if data.action == "archive":
-            if ticket.archived_at is None:
-                ticket.archived_at = now
-                ticket.updated_at = now
-                db.add(TicketEvent(ticket_id=ticket.id, actor_id=actor.id, event_type="archived", message="Ticket arquivado"))
-                affected += 1
-        else:
-            await db.delete(ticket)
+        if ticket.archived_at is None:
+            ticket.archived_at = now
+            ticket.updated_at = now
+            db.add(TicketEvent(ticket_id=ticket.id, actor_id=actor.id, event_type="archived", message="Ticket arquivado"))
             affected += 1
 
     await db.commit()
@@ -605,23 +610,31 @@ async def restore_backup_json(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Ficheiro inválido: {exc}") from exc
     if not isinstance(data, dict) or "tickets" not in data:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ficheiro não parece um backup válido")
-    counts = await backup_service.restore_backup(db, data)
+    try:
+        counts = await backup_service.restore_backup(db, data)
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("Restauro do JSON falhou")
+        from sqlalchemy.exc import IntegrityError
+        reason = (
+            "o ficheiro tem registos que apontam para outros que não existem"
+            if isinstance(exc, IntegrityError) else str(exc)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"O restauro falhou e nada foi alterado: {reason}.",
+        ) from exc
     return {"restored": True, "counts": counts}
 
 
 @router.post("/backup/restore/zip")
 async def restore_backup_zip(
     file: UploadFile = FastAPIFile(...),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_perm("settings.manage")),
 ):
     import os
-    import shutil
     import tempfile
     import zipfile
-    from pathlib import Path
-    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession as AsyncSess
-    from sqlalchemy.orm import sessionmaker
 
     # Stream ZIP to temp file to avoid loading it all into RAM
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
@@ -635,60 +648,16 @@ async def restore_backup_zip(
 
         if not zipfile.is_zipfile(tmp.name):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ficheiro não é um ZIP válido")
-
-        with zipfile.ZipFile(tmp.name, "r") as zf:
-            names = set(zf.namelist())
-            if "data/tickets.db" not in names:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="ZIP não contém data/tickets.db — não parece um backup completo",
-                )
-
-            extract_dir = tempfile.mkdtemp(prefix="helpdesk-restore-")
-            try:
-                zf.extractall(extract_dir)
-                extracted_db = Path(extract_dir) / "data" / "tickets.db"
-                extracted_uploads = Path(extract_dir) / "data" / "uploads"
-
-                # Read all records from the extracted SQLite into a backup dict
-                ext_engine = create_async_engine(f"sqlite+aiosqlite:///{extracted_db}")
-                ExtSession = sessionmaker(ext_engine, class_=AsyncSess, expire_on_commit=False)
-                try:
-                    async with ExtSession() as ext_db:
-                        backup_data = await backup_service.build_backup(ext_db)
-                finally:
-                    await ext_engine.dispose()
-
-                # Restore database records
-                counts = await backup_service.restore_backup(db, backup_data)
-
-                # Copy uploads
-                uploads_restored = 0
-                if extracted_uploads.exists():
-                    target_uploads = Path("/app/data/uploads")
-                    target_uploads.mkdir(parents=True, exist_ok=True)
-                    for src in extracted_uploads.rglob("*"):
-                        if src.is_file():
-                            rel = src.relative_to(extracted_uploads)
-                            dest = target_uploads / rel
-                            dest.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copy2(src, dest)
-                            uploads_restored += 1
-                counts["upload_files"] = uploads_restored
-
-                # Copy app_settings if present
-                for extra in ("app_settings.json", "backup_config.json"):
-                    src_file = Path(extract_dir) / "data" / extra
-                    if src_file.exists():
-                        shutil.copy2(src_file, Path("/app/data") / extra)
-
-                return {"restored": True, "counts": counts}
-            finally:
-                shutil.rmtree(extract_dir, ignore_errors=True)
+        try:
+            counts = await backup_service.restore_full_zip(tmp.name)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        return {"restored": True, "counts": counts}
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        logger.exception("Restauro do ZIP falhou")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"O restauro falhou: {exc}") from exc
     finally:
         try:
             os.unlink(tmp.name)

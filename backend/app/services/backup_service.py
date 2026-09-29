@@ -1,20 +1,23 @@
+import enum
 import json
-import os
+import logging
 import shutil
+import sqlite3
 import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import DateTime, Enum as SAEnum, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.models  # noqa: F401 — every table registered on Base
 from app.config import settings
-from app.models.category import Category
-from app.models.school import School
-from app.models.ticket import Attachment, Comment, Ticket
-from app.models.user import User
+from app.database import Base
+from app.services.jsonfile import write_json_atomic
+
+logger = logging.getLogger(__name__)
 
 
 DATA_DIR = Path("/app/data")
@@ -26,38 +29,36 @@ _RESTORE_INSTRUCTIONS = """\
 RESTAURO DO HELPDESK ESCOLAR
 ==============================
 
-Este arquivo ZIP contém tudo o que é necessário para repor o helpdesk
-numa instalação limpa. Inclui:
+Este arquivo ZIP contém os dados do helpdesk:
 
-  .env                  — variáveis de ambiente (chaves, palavras-passe, SMTP, AD)
-  data/                 — volume completo do servidor
-    tickets.db          — base de dados SQLite (tickets, utilizadores, etc.)
+  data/
+    tickets.db          — base de dados SQLite completa (tickets, utilizadores, papéis, chat, etc.)
     uploads/            — ficheiros anexados aos tickets e logótipos
     app_settings.json   — configurações da aplicação (nome, fornecedor, etc.)
     backup_config.json  — configurações de backup automático
 
-ATENÇÃO — SEGURANÇA
--------------------
-Este ZIP contém o ficheiro .env com credenciais sensíveis (chave JWT,
-palavras-passe SMTP, segredos AD/Azure). Guarda-o num local seguro e
-não o partilhes por canais não cifrados.
+As palavras-passe e chaves (app.env) NÃO estão incluídas: guarde-as à parte.
 
-PASSOS PARA RESTAURO
---------------------
+RESTAURAR NA MESMA INSTALAÇÃO
+-----------------------------
+Administração → Cópias de segurança → Importar / Restaurar → escolher este ZIP.
 
-1. Instala o Docker e o Docker Compose no novo servidor.
-
-2. Cria uma pasta de trabalho e copia o docker-compose.yml para lá.
-
-3. Extrai este ZIP para essa pasta:
-     unzip helpdesk-full-*.zip -d /opt/helpdesk
-   Isso vai repor o .env e a pasta data/ nos locais corretos.
-
-4. Inicia o serviço:
-     docker compose up -d
-
-5. Abre o browser e verifica que os tickets, utilizadores e ficheiros estão presentes.
+RESTAURAR NUMA INSTALAÇÃO NOVA
+------------------------------
+1. Instale o helpdesk (git clone + app.env com as mesmas credenciais).
+2. Com os contentores parados, extraia este ZIP para a pasta da aplicação:
+     unzip helpdesk-full-*.zip -d /mnt/cache/appdata/helpdesk
+   (a pasta data/ do ZIP substitui a pasta data/ da instalação)
+3. Inicie: docker compose -f docker-compose.unraid.yml up -d
+4. Verifique que os tickets, utilizadores e anexos estão presentes.
 """
+
+# Tables left out of the JSON export: access statistics only, they can be very large
+_JSON_SKIP_TABLES = {"access_logs"}
+# Tables the old (v1) JSON export contained
+_LEGACY_TABLES = ("schools", "categories", "users", "tickets", "comments", "attachments")
+# Tables that only make sense with their tickets: replaced too when restoring an old export
+_TICKET_TABLES = ("ticket_events", "ticket_watchers", "ticket_assignees", "ticket_reminders", "ticket_views", "processed_emails")
 
 
 def default_config() -> dict[str, Any]:
@@ -117,8 +118,7 @@ def save_config(data: dict[str, Any]) -> dict[str, Any]:
     config["onedrive_user"] = str(config.get("onedrive_user") or "").strip()
     config["onedrive_folder"] = str(config.get("onedrive_folder") or "Backups/Helpdesk").strip()
     config["onedrive_retention"] = max(1, int(config.get("onedrive_retention") or 14))
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json_atomic(CONFIG_PATH, config)
     return config
 
 
@@ -138,41 +138,43 @@ def _append_history(entry: dict[str, Any]) -> None:
     history.insert(0, entry)
     history = history[:MAX_HISTORY]
     try:
-        HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-        HISTORY_PATH.write_text(json.dumps(history, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_atomic(HISTORY_PATH, history)
     except Exception:
-        pass
+        logger.exception("Não foi possível gravar o registo de cópias")
 
 
-def _to_dict(obj: Any) -> dict[str, Any]:
-    data = {}
-    for column in obj.__table__.columns:
-        value = getattr(obj, column.name)
-        if hasattr(value, "isoformat"):
-            value = value.isoformat()
-        elif hasattr(value, "value"):
-            value = value.value
-        data[column.name] = value
-    return data
+def record_failure(kind: str, exc: BaseException) -> None:
+    """Show a failed automatic backup in "Registo de cópias" (it used to fail silently)."""
+    _append_history({
+        "id": int(datetime.utcnow().timestamp() * 1000) + (1 if kind == "zip" else 0),
+        "filename": "Cópia automática falhou" + (" (ZIP completo)" if kind == "zip" else " (JSON)"),
+        "path": "",
+        "locations": [],
+        "date": datetime.utcnow().isoformat(),
+        "ok": False,
+        "source": "auto",
+        "backup_type": kind,
+        "error": str(exc) or exc.__class__.__name__,
+    })
+
+
+def _json_value(value: Any) -> Any:
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if isinstance(value, enum.Enum):
+        return value.value
+    return value
 
 
 async def build_backup(db: AsyncSession) -> dict[str, Any]:
-    schools = (await db.execute(select(School))).scalars().all()
-    categories = (await db.execute(select(Category))).scalars().all()
-    users = (await db.execute(select(User))).scalars().all()
-    tickets = (await db.execute(select(Ticket))).scalars().all()
-    comments = (await db.execute(select(Comment))).scalars().all()
-    attachments = (await db.execute(select(Attachment))).scalars().all()
-
-    return {
-        "exported_at": datetime.utcnow().isoformat(),
-        "schools": [_to_dict(item) for item in schools],
-        "categories": [_to_dict(item) for item in categories],
-        "users": [_to_dict(item) for item in users],
-        "tickets": [_to_dict(item) for item in tickets],
-        "comments": [_to_dict(item) for item in comments],
-        "attachments": [_to_dict(item) for item in attachments],
-    }
+    """Every table of the database (except access statistics), without the attachment files."""
+    data: dict[str, Any] = {"format": 2, "exported_at": datetime.utcnow().isoformat()}
+    for table in Base.metadata.sorted_tables:
+        if table.name in _JSON_SKIP_TABLES:
+            continue
+        rows = (await db.execute(select(table))).mappings().all()
+        data[table.name] = [{k: _json_value(v) for k, v in row.items()} for row in rows]
+    return data
 
 
 async def _write_backup_inner(db: AsyncSession, source: str) -> dict[str, Any]:
@@ -321,7 +323,10 @@ def write_full_zip_auto() -> None:
     _append_history(entry)
 
 
-_ENV_CANDIDATES = [Path("/app/.env"), Path(".env")]
+# Never in the ZIP: the live database files (a consistent snapshot is added instead), the session signing key,
+# older copies and snapshots
+_ZIP_SKIP_DIRS = {"backups", "full_zips", "snapshots"}
+_ZIP_SKIP_FILES = {"tickets.db", "tickets.db-wal", "tickets.db-shm", "tickets.db-journal", ".secret_key"}
 
 
 def build_full_zip() -> tuple[str, str]:
@@ -330,39 +335,41 @@ def build_full_zip() -> tuple[str, str]:
     Uses a temp file instead of BytesIO so large attachment collections
     don't exhaust container memory.
     """
+    from app.services.db_maintenance import snapshot_to
+
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     filename = f"helpdesk-full-{timestamp}.zip"
-    skip_dirs = {"backups", "full_zips"}
 
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
     tmp.close()
-
-    with zipfile.ZipFile(tmp.name, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
-        zf.writestr("RESTAURO.txt", _RESTORE_INSTRUCTIONS)
-
-        for env_path in _ENV_CANDIDATES:
-            if env_path.exists():
-                try:
-                    zf.write(env_path, ".env")
-                except Exception:
-                    pass
-                break
-
-        if DATA_DIR.exists():
-            for path in sorted(DATA_DIR.rglob("*")):
-                if not path.is_file():
-                    continue
-                try:
-                    rel = path.relative_to(DATA_DIR)
-                except ValueError:
-                    continue
-                if rel.parts and rel.parts[0] in skip_dirs:
-                    continue
-                arcname = str(Path("data") / rel)
-                try:
-                    zf.write(path, arcname)
-                except Exception:
-                    pass
+    work_dir = tempfile.mkdtemp(prefix="helpdesk-zip-")
+    try:
+        db_copy = snapshot_to(Path(work_dir) / "tickets.db")
+        with zipfile.ZipFile(tmp.name, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+            zf.writestr("RESTAURO.txt", _RESTORE_INSTRUCTIONS)
+            if db_copy:
+                zf.write(db_copy, "data/tickets.db")
+            if DATA_DIR.exists():
+                for path in sorted(DATA_DIR.rglob("*")):
+                    if not path.is_file():
+                        continue
+                    try:
+                        rel = path.relative_to(DATA_DIR)
+                    except ValueError:
+                        continue
+                    if rel.parts and rel.parts[0] in _ZIP_SKIP_DIRS:
+                        continue
+                    if len(rel.parts) == 1 and (rel.name in _ZIP_SKIP_FILES or ".bak" in rel.name or rel.name.endswith(".tmp")):
+                        continue
+                    try:
+                        zf.write(path, str(Path("data") / rel))
+                    except Exception:
+                        logger.warning("Ficheiro não incluído no ZIP: %s", path, exc_info=True)
+    except BaseException:
+        Path(tmp.name).unlink(missing_ok=True)
+        raise
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
 
     return tmp.name, filename
 
@@ -377,58 +384,192 @@ def write_full_zip_to_disk(target_dir: str | None = None) -> dict[str, str]:
     return {"filename": filename, "path": str(dest)}
 
 
-async def restore_backup(db: AsyncSession, data: dict[str, Any]) -> dict[str, int]:
-    """Restore from a JSON backup. Clears existing data and reimports."""
-    from app.models.group import HelpdeskGroup
+def _column_value(column, value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(column.type, DateTime) and isinstance(value, str):
+        return datetime.fromisoformat(value)
+    if isinstance(column.type, SAEnum) and column.type.enum_class is not None and not isinstance(value, enum.Enum):
+        enum_class = column.type.enum_class
+        try:
+            return enum_class(value)
+        except ValueError:
+            return enum_class[value]
+    return value
 
-    # Clear existing data (order matters for FK constraints)
-    for model in (Attachment, Comment, Ticket, User, Category, School):
-        rows = (await db.execute(select(model))).scalars().all()
-        for row in rows:
-            await db.delete(row)
-    await db.flush()
+
+async def restore_backup(db: AsyncSession, data: dict[str, Any]) -> dict[str, int]:
+    """Replace the database content with a JSON export. Everything happens in one transaction: if anything does
+    not fit, nothing is changed."""
+    tables = {t.name: t for t in Base.metadata.sorted_tables}
+    if data.get("format") == 2:
+        replaced = [name for name in tables if name not in _JSON_SKIP_TABLES]
+    else:
+        # Old export (only 6 tables): also clear what hangs off the old tickets, keep the rest
+        replaced = [name for name in tables if name in _LEGACY_TABLES or name in _TICKET_TABLES]
+    order = [t for t in Base.metadata.sorted_tables if t.name in replaced]
+
+    # Foreign keys are checked once, at commit, instead of after every row
+    await db.execute(text("PRAGMA defer_foreign_keys=ON"))
+    if data.get("format") != 2:
+        await db.execute(text("DELETE FROM reactions WHERE target_type IN ('comment', 'ticket')"))
+    for table in reversed(order):
+        await db.execute(table.delete())
 
     counts: dict[str, int] = {}
+    for table in order:
+        rows = data.get(table.name) or []
+        if not isinstance(rows, list):
+            continue
+        prepared = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            prepared.append({c.name: _column_value(c, row[c.name]) for c in table.columns if c.name in row})
+        # executemany needs the same keys in every row
+        groups: dict[tuple, list[dict]] = {}
+        for row in prepared:
+            groups.setdefault(tuple(sorted(row)), []).append(row)
+        for group in groups.values():
+            await db.execute(table.insert(), group)
+        counts[table.name] = len(prepared)
 
-    def _parse_dt(v: Any) -> datetime | None:
-        if not v:
-            return None
-        try:
-            return datetime.fromisoformat(str(v))
-        except Exception:
-            return None
-
-    for school_d in data.get("schools", []):
-        s = School(**{k: v for k, v in school_d.items() if hasattr(School, k)})
-        db.add(s)
-    counts["schools"] = len(data.get("schools", []))
-
-    for cat_d in data.get("categories", []):
-        c = Category(**{k: v for k, v in cat_d.items() if hasattr(Category, k)})
-        db.add(c)
-    counts["categories"] = len(data.get("categories", []))
-
-    for user_d in data.get("users", []):
-        u = User(**{k: v for k, v in user_d.items() if hasattr(User, k)})
-        db.add(u)
-    counts["users"] = len(data.get("users", []))
-
-    await db.flush()
-
-    for ticket_d in data.get("tickets", []):
-        t = Ticket(**{k: v for k, v in ticket_d.items() if hasattr(Ticket, k)})
-        db.add(t)
-    counts["tickets"] = len(data.get("tickets", []))
-
-    for comment_d in data.get("comments", []):
-        c = Comment(**{k: v for k, v in comment_d.items() if hasattr(Comment, k)})
-        db.add(c)
-    counts["comments"] = len(data.get("comments", []))
-
-    for att_d in data.get("attachments", []):
-        a = Attachment(**{k: v for k, v in att_d.items() if hasattr(Attachment, k)})
-        db.add(a)
-    counts["attachments"] = len(data.get("attachments", []))
-
+    await _fix_dangling_references(db, set(replaced))
     await db.commit()
+    await _after_restore(db)
+    return counts
+
+
+async def _fix_dangling_references(db: AsyncSession, replaced: set[str]) -> None:
+    """Rows that were kept but point at a replaced row that no longer exists: clear the link, or drop the row
+    when the link is mandatory."""
+    for table in Base.metadata.sorted_tables:
+        if table.name in replaced:
+            continue
+        for fk in table.foreign_keys:
+            parent = fk.column.table
+            if parent.name not in replaced:
+                continue
+            col = fk.parent
+            missing = f"{col.name} IS NOT NULL AND {col.name} NOT IN (SELECT {fk.column.name} FROM {parent.name})"
+            if col.nullable and not col.primary_key:
+                await db.execute(text(f"UPDATE {table.name} SET {col.name} = NULL WHERE {missing}"))
+            else:
+                await db.execute(text(f"DELETE FROM {table.name} WHERE {missing}"))
+
+
+async def _after_restore(db: AsyncSession) -> None:
+    from app.services.permissions import load_roles
+    try:
+        await load_roles(db)
+    except Exception:
+        logger.exception("Não foi possível recarregar os papéis depois do restauro")
+
+
+def _check_sqlite_file(path: Path) -> None:
+    con = sqlite3.connect(path)
+    try:
+        ok = con.execute("PRAGMA integrity_check").fetchone()
+        if not ok or ok[0] != "ok":
+            raise ValueError("A base de dados do ZIP está danificada")
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if not {"tickets", "users"} <= tables:
+            raise ValueError("O ZIP não contém uma base de dados do helpdesk")
+    finally:
+        con.close()
+
+
+def _copy_database_into_live(source: Path) -> None:
+    """Replace the live database content with `source`, page by page, through SQLite (safe with WAL and with
+    other connections open, unlike swapping the file)."""
+    from app.database import sqlite_path
+
+    live = sqlite_path()
+    if not live:
+        raise RuntimeError("O restauro por ZIP só é possível com SQLite")
+    dst = sqlite3.connect(live, timeout=30)
+    try:
+        page_size = dst.execute("PRAGMA page_size").fetchone()[0]
+        src = sqlite3.connect(source)
+        try:
+            if src.execute("PRAGMA page_size").fetchone()[0] != page_size:
+                # A WAL database cannot change page size, so the copy is converted first
+                src.execute("PRAGMA journal_mode=DELETE")
+                src.execute(f"PRAGMA page_size={int(page_size)}")
+                src.execute("VACUUM")
+            src.backup(dst)
+        finally:
+            src.close()
+    finally:
+        dst.close()
+
+
+def _zip_member_target(name: str, prefix: str, base: Path) -> Path | None:
+    if not name.startswith(prefix) or name.endswith("/"):
+        return None
+    rel = Path(name[len(prefix):])
+    if rel.is_absolute() or ".." in rel.parts or not rel.parts:
+        return None
+    return base / rel
+
+
+async def restore_full_zip(zip_path: str) -> dict[str, int]:
+    """Restore a full ZIP: the database file as a whole (every table, exactly as it was), then the attachments
+    and the settings files. A copy of the current database is kept in data/snapshots first."""
+    import asyncio
+    from app.database import AsyncSessionLocal, Base as _Base, engine
+    from app.services.db_maintenance import SNAPSHOT_DIR, cleanup_orphans, snapshot_to
+
+    loop = asyncio.get_running_loop()
+    work_dir = Path(tempfile.mkdtemp(prefix="helpdesk-restore-"))
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            if "data/tickets.db" not in zf.namelist():
+                raise ValueError("O ZIP não contém data/tickets.db: não parece um backup completo")
+            extracted = work_dir / "tickets.db"
+            with zf.open("data/tickets.db") as src, open(extracted, "wb") as out:
+                shutil.copyfileobj(src, out)
+            await loop.run_in_executor(None, _check_sqlite_file, extracted)
+
+            safety = await loop.run_in_executor(
+                None, snapshot_to, SNAPSHOT_DIR / f"antes-do-restauro-{datetime.now().strftime('%Y%m%d-%H%M%S')}.db"
+            )
+            logger.warning("Restauro de ZIP: cópia da base de dados atual em %s", safety)
+
+            await engine.dispose()
+            await loop.run_in_executor(None, _copy_database_into_live, extracted)
+            await engine.dispose()
+
+            # An older backup may predate some columns/tables
+            from app.main import _add_missing_columns
+            async with engine.begin() as conn:
+                await conn.run_sync(_Base.metadata.create_all)
+                await _add_missing_columns(conn)
+                await cleanup_orphans(conn)
+
+            uploads = 0
+            for info in zf.infolist():
+                target = _zip_member_target(info.filename, "data/uploads/", DATA_DIR / "uploads")
+                if target is None:
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(info) as src, open(target, "wb") as out:
+                    shutil.copyfileobj(src, out)
+                uploads += 1
+
+            for extra in ("app_settings.json", "backup_config.json"):
+                name = f"data/{extra}"
+                if name in zf.namelist():
+                    with zf.open(name) as src:
+                        content = json.load(src)
+                    write_json_atomic(DATA_DIR / extra, content)
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+    counts: dict[str, int] = {}
+    async with AsyncSessionLocal() as db:
+        for name in ("schools", "categories", "users", "tickets", "comments", "attachments"):
+            counts[name] = (await db.execute(text(f"SELECT COUNT(*) FROM {name}"))).scalar_one()
+        await _after_restore(db)
+    counts["upload_files"] = uploads
     return counts
