@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,6 +46,18 @@ async def update_my_preferences(
     await db.commit()
     await db.refresh(current_user)
     return _me(current_user)
+
+
+class NewsSeen(BaseModel):
+    news_id: int
+
+
+@router.put("/me/news-seen", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_news_seen(data: NewsSeen, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The person closed the "Novidades" popup: do not show this edition again (on any device)."""
+    user = await db.get(User, current_user.id)
+    user.news_seen = max(user.news_seen or 0, data.news_id)
+    await db.commit()
 
 
 @router.put("/me/profile", response_model=MeRead)

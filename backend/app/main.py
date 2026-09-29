@@ -147,6 +147,8 @@ async def _add_missing_columns(conn) -> None:
         await conn.execute(text("UPDATE users SET directory_name = display_name WHERE auth_provider IN ('azure', 'ldap')"))
     if "phone" not in cols_u4:
         await conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(40)"))
+    if "news_seen" not in cols_u4:
+        await conn.execute(text("ALTER TABLE users ADD COLUMN news_seen INTEGER NOT NULL DEFAULT 0"))
 
     # 7e. Personal notification preferences
     rows_u3 = await conn.execute(text("PRAGMA table_info(users)"))

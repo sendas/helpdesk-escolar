@@ -167,3 +167,17 @@ async def test_own_profile_name(client, people, api):
 async def test_weekly_resolved_never_exceeds_created(client, people, api):
     weekly = (await client.get(f"{api}/admin/stats", headers=people["adm"]["h"])).json()["weekly"]
     assert all(w["resolved"] <= w["created"] for w in weekly)
+
+
+async def test_news_popup(client, people, api):
+    public = (await client.get(f"{api}/settings/public")).json()
+    assert public["news_enabled"] is False and len(public["news_items"]) == 5
+    r = await client.put(f"{api}/settings/news", headers=people["adm"]["h"], json={
+        "enabled": True, "audience": "all", "title": "Novidades", "items": [{"icon": "star", "title": "Avalie", "text": "x"}], "republish": True,
+    })
+    assert r.status_code == 200 and r.json()["news_id"] == 2
+    assert (await client.put(f"{api}/settings/news", headers=people["prof"]["h"], json={"items": []})).status_code == 403
+    me = (await client.get(f"{api}/users/me", headers=people["prof"]["h"])).json()
+    assert me["news_seen"] == 0
+    assert (await client.put(f"{api}/users/me/news-seen", headers=people["prof"]["h"], json={"news_id": 2})).status_code == 204
+    assert (await client.get(f"{api}/users/me", headers=people["prof"]["h"])).json()["news_seen"] == 2

@@ -1,4 +1,5 @@
 import copy
+import re
 import json
 import logging
 import os
@@ -48,7 +49,19 @@ DEFAULT_SETTINGS = {
         {"label": "Preciso de mais dados", "body": "Para conseguirmos avançar, pode indicar mais detalhes sobre o problema e, se possível, anexar uma captura de ecrã?", "status": "waiting_user"},
         {"label": "Resolvido ✓", "body": "A situação foi resolvida. Se o problema voltar a ocorrer, responda a este ticket com mais informação.", "status": "closed"},
     ],
-    # Monthly report for the Direção (sent on the 1st of each month)
+    # "Novidades" popup shown once to each person after login (Configurações → Novidades)
+    "news_enabled": False,
+    "news_id": 1,
+    "news_audience": "all",  # all | users (people outside the support team)
+    "news_title": "Novidades no Helpdesk",
+    "news_items": [
+        {"icon": "badge", "title": "O seu perfil", "text": "Clique no seu avatar, no canto superior direito, para escolher como o seu nome aparece nos pedidos."},
+        {"icon": "view_agenda", "title": "Os meus tickets com novo aspeto", "text": "Cada pedido mostra o estado com uma cor; os que têm novidades aparecem a negrito."},
+        {"icon": "star", "title": "Avalie o atendimento", "text": "Quando o seu pedido for resolvido, dê-nos de 1 a 5 estrelas — ajuda-nos a melhorar."},
+        {"icon": "content_paste", "title": "Cole capturas de ecrã", "text": "Ao escrever um pedido ou uma resposta, pode colar uma imagem (Ctrl+V) ou tirar uma fotografia no telemóvel."},
+        {"icon": "notifications", "title": "Escolha o que recebe", "text": "Em \"As minhas notificações\" decide que avisos recebe por email e no telemóvel."},
+    ],
+
     "report_enabled": False,
     "report_recipients": [],
     "report_last_sent": "",
@@ -240,6 +253,41 @@ async def update_quick_replies(payload: QuickRepliesPayload, _: User = Depends(r
         replies.append({"label": label, "body": body, "status": r.status})
     _update_settings({"quick_replies": replies})
     return {"replies": replies}
+
+
+class NewsItem(BaseModel):
+    icon: str = "new_releases"
+    title: str
+    text: str = ""
+
+
+class NewsSettings(BaseModel):
+    enabled: bool = False
+    audience: str = "all"
+    title: str = "Novidades no Helpdesk"
+    items: list[NewsItem] = []
+    republish: bool = False
+
+
+@router.put("/news")
+async def update_news(payload: NewsSettings, _: User = Depends(require_perm("settings.manage"))):
+    items = []
+    for it in payload.items[:10]:
+        title, text = it.title.strip()[:80], it.text.strip()[:400]
+        if not title:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cada novidade precisa de um título.")
+        icon = it.icon.strip()[:40] if re.fullmatch(r"[a-z0-9_]{1,40}", it.icon.strip()) else "new_releases"
+        items.append({"icon": icon, "title": title, "text": text})
+    if payload.enabled and not items:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Acrescente pelo menos uma novidade antes de ligar o aviso.")
+    changes = {
+        "news_enabled": payload.enabled, "news_audience": payload.audience if payload.audience in {"all", "users"} else "all",
+        "news_title": payload.title.strip()[:80] or "Novidades no Helpdesk", "news_items": items,
+    }
+    if payload.republish:
+        changes["news_id"] = int(_read_settings().get("news_id") or 1) + 1
+    data = _update_settings(changes)
+    return {k: data[k] for k in ("news_enabled", "news_id", "news_audience", "news_title", "news_items")}
 
 
 class ReportSettings(BaseModel):

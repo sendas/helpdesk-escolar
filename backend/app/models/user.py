@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from sqlalchemy import String, DateTime, Boolean, Enum as SAEnum
+from sqlalchemy import String, DateTime, Boolean, Integer, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -37,6 +37,8 @@ class User(Base):
     name_locked: Mapped[bool] = mapped_column(Boolean, default=False)
     directory_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Last "Novidades" popup this person closed (settings news_id), so it shows once on every device
+    news_seen: Mapped[int] = mapped_column(Integer, default=0)
     # Personal notification choices (JSON, only what differs from the defaults: see services/notification_prefs.py)
     notification_prefs: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

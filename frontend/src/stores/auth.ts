@@ -19,6 +19,7 @@ interface User {
   role_label?: string
   permissions?: string[]
   name_locked?: boolean
+  news_seen?: number
   directory_name?: string | null
   phone?: string | null
 }

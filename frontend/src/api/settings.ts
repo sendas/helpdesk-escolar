@@ -15,6 +15,11 @@ export interface PublicSettings {
   no_access_contact_email?: string
   ui_design?: 'modern' | 'classic'
   dark_style?: 'grey' | 'black'
+  news_enabled?: boolean
+  news_id?: number
+  news_audience?: 'all' | 'users'
+  news_title?: string
+  news_items?: { icon: string; title: string; text: string }[]
   demo_mode_enabled?: boolean
   demo_profiles?: string[]
   demo_content_visible?: boolean

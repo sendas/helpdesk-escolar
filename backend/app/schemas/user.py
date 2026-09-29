@@ -42,6 +42,7 @@ class UserPreferences(BaseModel):
 class MeRead(UserRead):
     permissions: list[str] = []
     name_locked: bool = False
+    news_seen: int = 0
     directory_name: str | None = None
     phone: str | None = None
 

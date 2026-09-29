@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.9.2'
+export const APP_VERSION = '2.10.0'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '16:07'
+export const APP_VERSION_TIME = '16:12'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.10.0',
+    date: '2026-09-29',
+    time: '16:12',
+    title: 'Aviso de novidades e quadro no telemóvel',
+    changes: [
+      'Aviso de novidades: uma janela com as alterações mais importantes, mostrada uma vez a cada pessoa quando entra (em qualquer dispositivo). Liga-se e edita-se em Configurações → Novidades, com pré-visualização; "Publicar como novas" volta a mostrá-la a todos.',
+      'Quadro: filtro por tipo de pedido (categoria).',
+      'Quadro no telemóvel: separadores por estado e uma coluna de cada vez, em largura total; o estado muda-se no menu de cada cartão.',
+      'Novo cartão para o site do Agrupamento (docs/site-agrupamento), mais moderno e adaptado a telemóvel, a mostrar ajuda.queiroz.pt.',
+    ],
+  },
   {
     version: '2.9.2',
     date: '2026-09-29',

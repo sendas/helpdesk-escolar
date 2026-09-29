@@ -281,6 +281,7 @@
           <component :is="Component" :key="current.meta.remount ? current.path : undefined" />
         </router-view>
         <SupportWidget v-if="showSupportWidget" />
+        <NewsPopup v-if="showNews" :title="settings.news_title || 'Novidades'" :items="settings.news_items || []" @close="closeNews" />
         <div style="height:env(safe-area-inset-bottom,0px)"></div>
       </main>
     </div>
@@ -302,6 +303,8 @@ import PersonName from '../components/PersonName.vue'
 import { shortName } from '../utils/names'
 import { confirmDialog } from '../utils/feedback'
 import { applyDarkStyle } from '../utils/darkStyle'
+import NewsPopup from '../components/NewsPopup.vue'
+import { api } from '../boot/axios'
 import { onRealtime, startRealtime } from '../services/realtime'
 import { getChatUnread, getSupportQueue } from '../api/chat'
 import { loadSupportStatus, openSupportChat, supportStatus } from '../utils/supportChat'
@@ -316,7 +319,8 @@ const openCount = ref(0)
 const adminOpenCount = ref(0)
 const showNotifications = ref(false)
 const mobileMenuOpen = ref(false)
-const settings = ref<{ org_name: string; logo_url: string; favicon_url: string; knowledge_enabled: boolean; dark_style?: string }>({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '', knowledge_enabled: true })
+const settings = ref<{ org_name: string; logo_url: string; favicon_url: string; knowledge_enabled: boolean; dark_style?: string
+  news_enabled?: boolean; news_id?: number; news_audience?: string; news_title?: string; news_items?: { icon: string; title: string; text: string }[] }>({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '', knowledge_enabled: true })
 const versionLabelText = versionLabel()
 const chatUnread = ref(0)
 const supportWaiting = ref(0)
@@ -411,6 +415,22 @@ function debounced(fn: () => void, ms = 1000) {
   return () => { if (t) clearTimeout(t); t = setTimeout(fn, ms) }
 }
 const refreshCountsSoon = debounced(refreshCounts)
+
+// "Novidades": shown once per edition to each person (not in "Ver como docente")
+const newsClosed = ref(false)
+const showNews = computed(() => {
+  const s = settings.value
+  const u = auth.user
+  if (newsClosed.value || !s.news_enabled || !s.news_items?.length || !u || auth.inPreview || auth.isDemo) return false
+  if (s.news_audience === 'users' && auth.isStaff) return false
+  return (u.news_seen ?? 0) < (s.news_id ?? 1)
+})
+function closeNews() {
+  newsClosed.value = true
+  const id = settings.value.news_id ?? 1
+  if (auth.user) auth.user.news_seen = id
+  api.put('/api/v1/users/me/news-seen', { news_id: id }).catch(() => {})
+}
 
 async function askLogout() {
   if (await confirmDialog('Terminar a sessão neste dispositivo?', { ok: 'Terminar sessão' })) auth.logout()

@@ -309,6 +309,7 @@
       <TeamsSettings v-if="section === 'teams'" />
       <QuickRepliesSettings v-if="section === 'respostas'" />
       <ReportSettings v-if="section === 'relatorio'" />
+      <NewsSettings v-if="section === 'novidades'" />
 
       <template v-if="section === 'email'">
         <section class="set-card">
@@ -502,6 +503,7 @@ import SupportChatSettings from '../../components/SupportChatSettings.vue'
 import TeamsSettings from '../../components/TeamsSettings.vue'
 import QuickRepliesSettings from '../../components/QuickRepliesSettings.vue'
 import ReportSettings from '../../components/ReportSettings.vue'
+import NewsSettings from '../../components/NewsSettings.vue'
 import { getGroups, getUsers } from '../../api/users'
 
 const route = useRoute()
@@ -513,6 +515,7 @@ const teamsConfigured = ref(false)
 const navGroups = computed(() => [
   { label: 'Geral', items: [
     { key: 'organizacao', label: 'Organização e aspeto', icon: 'apartment', desc: 'Nome, logotipo, design e modo escuro.' },
+    { key: 'novidades', label: 'Novidades', icon: 'auto_awesome', desc: 'Janela com as alterações mais importantes, mostrada uma vez a cada pessoa.' },
   ] },
   { label: 'Tickets', items: [
     { key: 'categorias', label: 'Categorias e prazos', icon: 'category', desc: 'Categorias dos pedidos, tempos de resposta e emails de aviso.' },

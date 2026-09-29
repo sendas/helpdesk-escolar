@@ -2,6 +2,10 @@
   <div class="hd-page board-page">
     <div class="board-toolbar">
       <input v-model="search" class="hd-input board-search" placeholder="Filtrar por assunto, nº ou pessoa…" />
+      <select v-model="categoryId" class="hd-select board-filter" @change="load">
+        <option value="">Todos os tipos de pedido</option>
+        <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+      </select>
       <select v-model="schoolId" class="hd-select board-filter" @change="load">
         <option value="">Todas as escolas</option>
         <option v-for="s in schools" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -10,16 +14,25 @@
         <input v-model="onlyMine" type="checkbox" @change="load" /> Só os meus
       </label>
       <span v-if="!canMove" class="board-note">Só leitura — o seu papel não permite mudar o estado.</span>
-      <span v-else class="board-note">Tickets em aberto por estado. Arraste um cartão para outra coluna para mudar o estado.</span>
+      <span v-else class="board-note">Tickets em aberto por estado.
+        <span class="note-desktop">Arraste um cartão para outra coluna para mudar o estado.</span>
+        <span class="note-mobile">Mude o estado no menu de cada cartão.</span></span>
     </div>
 
     <div v-if="loading" class="board-empty">A carregar…</div>
-    <div v-else class="board">
+    <!-- Phones: one state at a time, chosen in these tabs -->
+    <div v-if="!loading" class="board-tabs" role="tablist" aria-label="Estado">
+      <button v-for="col in columns" :key="col.status" type="button" role="tab" class="board-tab" :aria-selected="mobileCol === col.status"
+              :class="{ on: mobileCol === col.status }" :style="{ '--col-color': statusColor(col.status) }" @click="mobileCol = col.status">
+        {{ col.label }} <span>{{ visible(col.status).length }}</span>
+      </button>
+    </div>
+    <div v-if="!loading" class="board">
       <section
         v-for="col in columns"
         :key="col.status"
         class="board-col"
-        :class="{ over: overCol === col.status }"
+        :class="{ over: overCol === col.status, 'mobile-on': mobileCol === col.status }"
         :style="{ '--col-color': statusColor(col.status) }"
         @dragover.prevent="canMove && (overCol = col.status)"
         @dragleave="overCol = ''"
@@ -81,7 +94,7 @@
 <script setup lang="ts">
 // Quadro (Kanban): open tickets by state; drag a card to change its state
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { adminUpdateTicket, getSchools, getTickets } from '../../api/tickets'
+import { adminUpdateTicket, getCategories, getSchools, getTickets } from '../../api/tickets'
 import AvatarCircle from '../../components/AvatarCircle.vue'
 import PersonName from '../../components/PersonName.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
@@ -100,6 +113,9 @@ const schools = ref<any[]>([])
 const loading = ref(true)
 const search = ref('')
 const schoolId = ref<number | ''>('')
+const categoryId = ref<number | ''>('')
+const categories = ref<any[]>([])
+const mobileCol = ref('open')
 const onlyMine = ref(false)
 const draggingId = ref(0)
 const overCol = ref('')
@@ -116,6 +132,7 @@ async function load() {
   try {
     const params: any = { admin: true, size: 100 }
     if (schoolId.value) params.school_id = schoolId.value
+    if (categoryId.value) params.category_id = categoryId.value
     if (onlyMine.value && auth.user) params.assignee_id = auth.user.id
     const pages = await Promise.all(columns.map((c) => getTickets({ ...params, status: c.status })))
     tickets.value = pages.flatMap((p) => p.items)
@@ -161,6 +178,7 @@ onBeforeUnmount(() => { offs.forEach((off) => off()); if (refreshTimer) clearTim
 
 onMounted(async () => {
   getSchools().then((s) => { schools.value = s }).catch(() => {})
+  getCategories().then((c) => { categories.value = c }).catch(() => {})
   await load()
 })
 </script>
@@ -175,7 +193,7 @@ onMounted(async () => {
 .board-empty { padding: 60px; text-align: center; color: var(--c-muted); }
 /* The 5 columns share the width (they only scroll sideways on narrow screens) */
 .board { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 12px; align-items: start; }
-@media (max-width: 900px) { .board { grid-template-columns: repeat(5, minmax(220px, 1fr)); scroll-snap-type: x mandatory; } .board-col { scroll-snap-align: start; } }
+@media (max-width: 900px) and (min-width: 701px) { .board { grid-template-columns: repeat(5, minmax(220px, 1fr)); scroll-snap-type: x mandatory; } .board-col { scroll-snap-align: start; } }
 .board-col { background: var(--c-surface-soft); border: 1px solid var(--c-border); border-top: 3px solid var(--col-color); border-radius: 14px; min-height: 200px; display: flex; flex-direction: column; max-height: calc(100vh - 200px); }
 .board-col.over { background: color-mix(in srgb, var(--col-color) 10%, var(--c-surface)); border-color: var(--col-color); }
 .board-col-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px; font-weight: 800; font-size: 12.5px; color: var(--c-text); white-space: nowrap; min-width: 0; }
@@ -201,4 +219,21 @@ onMounted(async () => {
 .board-requester { min-width: 0; flex: 1; }
 .board-assignees { display: inline-flex; gap: 2px; }
 .board-col-empty { text-align: center; color: var(--c-muted); font-size: 12.5px; padding: 18px 0; }
+.note-mobile { display: none; }
+/* Phones: tabs + one full-width column */
+.board-tabs { display: none; }
+@media (max-width: 700px) {
+  .board-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 2px; }
+  .board-tab { flex-shrink: 0; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .board-tab span { margin-left: 4px; color: var(--col-color); }
+  .board-tab.on { border-color: var(--col-color); background: color-mix(in srgb, var(--col-color) 12%, var(--c-surface)); }
+  .board { display: block; overflow: visible; }
+  .board-col { display: none; max-height: none; }
+  .board-col.mobile-on { display: flex; }
+  .board-toolbar .board-search, .board-toolbar .board-filter { width: 100%; }
+  .board-note { margin-left: 0; }
+  .note-desktop { display: none; }
+  .note-mobile { display: inline; }
+  .board-move { max-width: 110px; border-color: var(--c-border); background: var(--c-surface); }
+}
 </style>
