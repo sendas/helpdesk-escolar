@@ -1,8 +1,17 @@
-export const APP_VERSION = '2.10.1'
+export const APP_VERSION = '2.10.2'
 export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '16:56'
+export const APP_VERSION_TIME = '17:12'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.10.2',
+    date: '2026-09-29',
+    time: '17:12',
+    title: 'Aviso para alunos no contacto sem acesso ao mail',
+    changes: [
+      'Em "Não tenho acesso ao mail institucional", ao escolher "Aluno" aparece um aviso: o formulário é só para problemas de acesso ao email institucional e ao Microsoft Teams.',
+    ],
+  },
   {
     version: '2.10.1',
     date: '2026-09-29',

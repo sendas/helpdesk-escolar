@@ -16,6 +16,11 @@
           <span class="material-icons">{{ p.icon }}</span>{{ p.label }}
         </button>
       </div>
+      <div v-if="isStudent" class="nac-warn" role="note">
+        <span class="material-icons">info</span>
+        <span>Este formulário é <strong>só para problemas de acesso ao email institucional e ao Microsoft Teams</strong>
+          (por exemplo: não consegue entrar, esqueceu-se da palavra-passe ou a conta está bloqueada).</span>
+      </div>
       <p class="nac-hint">
         <template v-if="isStudent">Preencha os seus dados de aluno. Se tiver um email (seu ou do encarregado de educação), indique-o para lhe podermos responder.</template>
         <template v-else>Preencha os seus dados. Vamos responder para o email que indicar (pode ser o seu email pessoal).</template>
@@ -108,6 +113,9 @@ async function submit() {
 .nac-profile .material-icons { font-size: 20px; color: var(--c-muted); }
 .nac-profile.on { border-color: var(--c-primary); background: var(--c-primary-soft); color: var(--c-primary); }
 .nac-profile.on .material-icons { color: var(--c-primary); }
+.nac-warn { display: flex; gap: 8px; align-items: flex-start; background: #FFF7E6; border: 1px solid #FCD9A0; color: #7A4A06; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.45; margin-bottom: 12px; }
+.nac-warn .material-icons { font-size: 18px; color: #D97706; flex-shrink: 0; }
+.dark .nac-warn { background: rgba(217, 119, 6, .14); border-color: rgba(217, 119, 6, .4); color: #FCD9A0; }
 .nac-hint { font-size: 12.5px; color: var(--c-muted); margin: 0 0 14px; line-height: 1.5; }
 .nac-error { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #DC2626; margin-bottom: 14px; }
 .nac-fields { display: flex; flex-direction: column; gap: 10px; }
