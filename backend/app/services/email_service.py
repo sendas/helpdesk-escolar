@@ -250,6 +250,7 @@ _SUBJECTS = {
     "supplier_comment": "Nova mensagem",
     "supplier_updated": "Pedido concluído",
     "mentioned": "Foi mencionado",
+    "status_request": "Ponto de situação pedido",
 }
 
 
@@ -283,6 +284,8 @@ def _event_summary_line(event: str, data: dict) -> str:
         return "Escalado para a empresa de apoio informático"
     if event == "created":
         return "Ticket criado"
+    if event == "status_request":
+        return f"Sem resposta da equipa há {data.get('days')} dias — indique o ponto de situação"
     return event.replace("_", " ").capitalize()
 
 

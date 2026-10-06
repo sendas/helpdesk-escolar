@@ -217,3 +217,46 @@ async def test_mailbox_reply_forward_delete(client, people, api, monkeypatch):
     assert calls[-1] == ("delete", "m9")
     # Only the support team sends from the helpdesk address
     assert (await client.post(f"{api}/mailbox/reply", headers=people["prof"]["h"], json={"id": "m9", "text": "x"})).status_code == 403
+
+
+async def test_inactivity_never_closes_a_ticket_waiting_for_the_team(client, people, api, outbox):  # noqa: F811
+    from datetime import datetime
+    from sqlalchemy import text
+    from app.database import AsyncSessionLocal
+    from app.services import inactivity_service
+
+    waiting_user = await _new_ticket(client, people, api, "Equipa respondeu por último")
+    waiting_team = await _new_ticket(client, people, api, "Docente respondeu por último")
+    for tid in (waiting_user, waiting_team):
+        await client.post(f"{api}/tickets/{tid}/comments", headers=people["tec"]["h"], json={"body": "Já reiniciou o computador?"})
+    await client.post(f"{api}/tickets/{waiting_team}/comments", headers=people["prof"]["h"], json={"body": "Sim, continua igual."})
+
+    async def age(sql, days):
+        async with AsyncSessionLocal() as db:
+            await db.execute(text(sql), {"ids": f"{waiting_user},{waiting_team}", "t": datetime.utcnow() - timedelta(days=days)})
+            await db.commit()
+
+    async def run():
+        async with AsyncSessionLocal() as db:
+            await inactivity_service.run_inactivity_check(db)
+
+    async def status(tid):
+        return (await client.get(f"{api}/tickets/{tid}", headers=people["tec"]["h"])).json()["status"]
+
+    in_ids = "instr(',' || :ids || ',', ',' || {col} || ',') > 0"
+    await age("UPDATE tickets SET updated_at = :t WHERE " + in_ids.format(col="id"), 8)
+    outbox.clear()
+    await run()
+    # Team replied last: the requester is warned. Docente replied last: the team is asked where things stand
+    asked = [(to, data) for to, ev, data in outbox if ev == "status_request"]
+    assert {to for to, _ in asked} >= {"tec@escola.pt"} and "prof@escola.pt" not in {to for to, _ in asked}
+    assert all(d["id"] == waiting_team and d["last_message"] == "Sim, continua igual." for _, d in asked)
+    outbox.clear()
+    await run()
+    assert not [1 for _, ev, d in outbox if ev == "status_request" and d["id"] == waiting_team]  # once a week only
+
+    await age("UPDATE ticket_events SET created_at = :t WHERE event_type = 'inactivity_warning' AND " + in_ids.format(col="ticket_id"), 3)
+    await age("UPDATE tickets SET updated_at = :t WHERE " + in_ids.format(col="id"), 10)
+    await run()
+    assert await status(waiting_user) == "closed"
+    assert await status(waiting_team) != "closed"

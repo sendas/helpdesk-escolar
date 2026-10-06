@@ -2,6 +2,9 @@
 Inactivity auto-warning and auto-close service.
 
 Logic (per active, non-archived ticket):
+  0. If the requester spoke last (or nobody from the team has answered yet), the ticket is waiting for the team:
+     it is never closed. After 7 days without activity the team is asked, by email, for a status update — again
+     every 7 days while nothing happens.
   1. If updated_at < now-7d AND no warning event sent after updated_at  → send warning
   2. If latest warning event > updated_at AND warning.created_at < now-2d → close ticket
 
@@ -14,12 +17,13 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.group import HelpdeskGroup
-from app.models.ticket import Ticket, TicketEvent, TicketStatus
+from app.models.ticket import Comment, Ticket, TicketEvent, TicketStatus, comment_private_recipients
+from app.models.user import User, UserRole
 from app.services import email_service
 
 logger = logging.getLogger(__name__)
@@ -41,6 +45,7 @@ async def run_inactivity_check(db: AsyncSession) -> dict:
 
     warned = 0
     closed = 0
+    status_requests = 0
 
     tickets = (await db.execute(
         select(Ticket)
@@ -56,6 +61,21 @@ async def run_inactivity_check(db: AsyncSession) -> dict:
     )).scalars().all()
 
     for ticket in tickets:
+        last_public = await _last_public_comment(db, ticket.id)
+        if last_public is None or not _is_team(last_public.author):
+            # Waiting for the team, not for the requester: never close, ask the team where things stand
+            if ticket.updated_at < warn_cutoff and await _status_request_due(db, ticket.id, warn_cutoff):
+                days = (now - ticket.updated_at).days
+                db.add(TicketEvent(
+                    ticket_id=ticket.id,
+                    actor_id=None,
+                    event_type="status_request",
+                    message=f"Sem resposta da equipa há {days} dias: pedido o ponto de situação por email.",
+                ))
+                status_requests += 1
+                await _ask_team_for_status(db, ticket, last_public, days)
+            continue
+
         latest_warning = (await db.execute(
             select(TicketEvent)
             .where(TicketEvent.ticket_id == ticket.id)
@@ -107,8 +127,81 @@ async def run_inactivity_check(db: AsyncSession) -> dict:
                 await _notify(ticket, msg, closing=False)
 
     await db.commit()
-    logger.info("Inactivity check: %d warned, %d closed", warned, closed)
-    return {"warned": warned, "closed": closed}
+    logger.info("Inactivity check: %d warned, %d closed, %d status requests", warned, closed, status_requests)
+    return {"warned": warned, "closed": closed, "status_requests": status_requests}
+
+
+def _is_team(user: User | None) -> bool:
+    return user is not None and (user.role in {UserRole.ADMIN, UserRole.TECHNICIAN} or bool(user.is_technician))
+
+
+async def _last_public_comment(db: AsyncSession, ticket_id: int) -> Comment | None:
+    """Last reply everyone on the ticket can see (no internal notes, private messages or deleted replies)."""
+    is_private = exists().where(comment_private_recipients.c.comment_id == Comment.id)
+    return (await db.execute(
+        select(Comment)
+        .where(Comment.ticket_id == ticket_id)
+        .where(Comment.is_internal.is_(False))
+        .where(Comment.deleted_at.is_(None))
+        .where(Comment.private_to_id.is_(None))
+        .where(~is_private)
+        .options(selectinload(Comment.author))
+        .order_by(Comment.created_at.desc(), Comment.id.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+
+
+async def _status_request_due(db: AsyncSession, ticket_id: int, cutoff: datetime) -> bool:
+    last = (await db.execute(
+        select(TicketEvent.created_at)
+        .where(TicketEvent.ticket_id == ticket_id)
+        .where(TicketEvent.event_type == "status_request")
+        .order_by(TicketEvent.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    return last is None or last < cutoff
+
+
+async def _ask_team_for_status(db: AsyncSession, ticket: Ticket, last_public: Comment | None, days: int) -> None:
+    team: dict[int, User] = {}
+    for u in [ticket.assignee, *getattr(ticket, "assignees", [])]:
+        if u is not None:
+            team[u.id] = u
+    if ticket.group:
+        for m in ticket.group.members:
+            team[m.id] = m
+    if not team:
+        # Nobody responsible yet: the whole support team
+        for u in (await db.execute(
+            select(User).where(User.is_active.is_(True)).where(
+                (User.role.in_([UserRole.ADMIN, UserRole.TECHNICIAN])) | (User.is_technician.is_(True))
+            )
+        )).scalars():
+            team[u.id] = u
+    team.pop(ticket.creator_id, None)
+
+    if last_public is not None:
+        body, at = last_public.body or "", last_public.created_at
+    else:
+        body, at = ticket.description or "", ticket.created_at
+    if len(body) > 1500:
+        body = body[:1500] + "…"
+    data = {
+        "id": ticket.id,
+        "title": ticket.title,
+        "status": ticket.status.value,
+        "days": days,
+        "requester": ticket.creator.display_name if ticket.creator else "",
+        "last_message": body.strip(),
+        "last_message_at": at.strftime("%d/%m/%Y") if at else "",
+    }
+    for u in team.values():
+        if not u.email or not u.is_active:
+            continue
+        try:
+            await email_service.send_ticket_email_now(u.email, "status_request", data)
+        except Exception:
+            logger.exception("Inactivity: failed to ask %s for a status update on ticket #%d", u.email, ticket.id)
 
 
 async def _notify(ticket: Ticket, message: str, *, closing: bool) -> None:

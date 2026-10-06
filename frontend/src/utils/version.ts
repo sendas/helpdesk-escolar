@@ -1,8 +1,18 @@
-export const APP_VERSION = '2.11.2'
+export const APP_VERSION = '2.12.0'
 export const APP_VERSION_DATE = '2026-10-06'
-export const APP_VERSION_TIME = '12:41'
+export const APP_VERSION_TIME = '12:48'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.12.0',
+    date: '2026-10-06',
+    time: '12:48',
+    title: 'Pedidos à espera da equipa já não fecham sozinhos',
+    changes: [
+      'Um ticket só é fechado automaticamente por inatividade quando a equipa respondeu por último e quem pediu ajuda não voltou a responder.',
+      'Se foi quem pediu ajuda a responder por último (ou a equipa ainda não respondeu), o ticket nunca fecha sozinho: ao fim de 7 dias sem atividade, a equipa responsável recebe um email a pedir o ponto de situação, com a última mensagem. Repete-se a cada 7 dias enquanto não houver resposta.',
+    ],
+  },
   {
     version: '2.11.2',
     date: '2026-10-06',
