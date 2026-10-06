@@ -1,7 +1,11 @@
+import logging
+
 import msal
 import httpx
 from app.config import settings
 from app.services import azure_access
+
+logger = logging.getLogger(__name__)
 
 
 def get_msal_app() -> msal.ConfidentialClientApplication:
@@ -29,6 +33,8 @@ async def exchange_code_for_user(code: str) -> dict | None:
         redirect_uri=settings.azure_redirect_uri,
     )
     if "error" in result:
+        # e.g. AADSTS7000222 = client secret expired, AADSTS50011 = redirect URI mismatch
+        logger.error("Login Microsoft falhou: %s — %s", result.get("error"), (result.get("error_description") or "").splitlines()[0:1])
         return None
 
     access_token = result["access_token"]
@@ -39,6 +45,7 @@ async def exchange_code_for_user(code: str) -> dict | None:
             headers={"Authorization": f"Bearer {access_token}"},
         )
         if resp.status_code != 200:
+            logger.error("Login Microsoft: Graph /me respondeu %s: %s", resp.status_code, resp.text[:300])
             return None
         profile = resp.json()
 
@@ -46,6 +53,7 @@ async def exchange_code_for_user(code: str) -> dict | None:
     onprem_dn = profile.get("onPremisesDistinguishedName")
     department = profile.get("department")
     if not azure_access.is_allowed_directory_user(onprem_dn, department):
+        logger.warning("Login Microsoft recusado para %s: fora das OUs permitidas (%s)", email, onprem_dn or department)
         return None
 
     role = azure_access.role_from_directory_user(onprem_dn, department)

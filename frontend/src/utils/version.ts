@@ -1,8 +1,18 @@
-export const APP_VERSION = '2.11.0'
-export const APP_VERSION_DATE = '2026-09-29'
-export const APP_VERSION_TIME = '17:17'
+export const APP_VERSION = '2.11.1'
+export const APP_VERSION_DATE = '2026-10-06'
+export const APP_VERSION_TIME = '12:38'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.11.1',
+    date: '2026-10-06',
+    time: '12:38',
+    title: 'Diagnóstico da entrada com Microsoft',
+    changes: [
+      'Quando a entrada com a conta Microsoft falha, o motivo fica registado nos logs do servidor (segredo expirado, endereço de retorno errado, utilizador fora das unidades permitidas, ...).',
+      'Se a Microsoft recusar a entrada, aparece uma mensagem clara em vez de um erro técnico.',
+    ],
+  },
   {
     version: '2.11.0',
     date: '2026-09-29',

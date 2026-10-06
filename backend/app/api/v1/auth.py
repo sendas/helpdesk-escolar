@@ -1,3 +1,4 @@
+import logging
 import re
 import secrets
 from datetime import datetime
@@ -142,11 +143,17 @@ async def azure_login(request: Request):
 
 @router.get("/azure-callback")
 async def azure_callback(
-    code: str,
-    state: str,
     request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    if error or not code:
+        # Microsoft sends the user back with ?error=... (consent missing, user not assigned to the app, ...)
+        logging.getLogger(__name__).error("Login Microsoft devolveu erro: %s — %s", error, (error_description or "")[:300])
+        raise HTTPException(status_code=401, detail="A Microsoft recusou a entrada. Contacte o administrador do helpdesk.")
     if state != request.session.get("oauth_state"):
         raise HTTPException(status_code=400, detail="O pedido de entrada expirou. Tente entrar novamente.")
     user_info = await azure_auth.exchange_code_for_user(code)
