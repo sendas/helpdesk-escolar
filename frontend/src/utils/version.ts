@@ -1,8 +1,17 @@
-export const APP_VERSION = '2.12.0'
+export const APP_VERSION = '2.12.1'
 export const APP_VERSION_DATE = '2026-10-06'
-export const APP_VERSION_TIME = '12:48'
+export const APP_VERSION_TIME = '12:50'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.12.1',
+    date: '2026-10-06',
+    time: '12:50',
+    title: 'Quem pediu ajuda sabe que o pedido está a ser acompanhado',
+    changes: [
+      'Quando um pedido está há 7 dias à espera da equipa, quem o fez também recebe um email: o pedido não foi esquecido, foi pedido o ponto de situação à equipa e não será fechado enquanto estiver à espera de resposta.',
+    ],
+  },
   {
     version: '2.12.0',
     date: '2026-10-06',

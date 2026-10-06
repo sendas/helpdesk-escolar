@@ -3,8 +3,8 @@ Inactivity auto-warning and auto-close service.
 
 Logic (per active, non-archived ticket):
   0. If the requester spoke last (or nobody from the team has answered yet), the ticket is waiting for the team:
-     it is never closed. After 7 days without activity the team is asked, by email, for a status update — again
-     every 7 days while nothing happens.
+     it is never closed. After 7 days without activity the team is asked, by email, for a status update and the
+     requester is told the ticket is being followed up — again every 7 days while nothing happens.
   1. If updated_at < now-7d AND no warning event sent after updated_at  → send warning
   2. If latest warning event > updated_at AND warning.created_at < now-2d → close ticket
 
@@ -202,6 +202,14 @@ async def _ask_team_for_status(db: AsyncSession, ticket: Ticket, last_public: Co
             await email_service.send_ticket_email_now(u.email, "status_request", data)
         except Exception:
             logger.exception("Inactivity: failed to ask %s for a status update on ticket #%d", u.email, ticket.id)
+
+    # The requester learns the request has not been forgotten
+    creator = ticket.creator
+    if creator and creator.email and ticket.creator_email_notifications and not _is_team(creator):
+        try:
+            await email_service.send_ticket_email_now(creator.email, "status_followup", data)
+        except Exception:
+            logger.exception("Inactivity: failed to tell %s that ticket #%d is being followed up", creator.email, ticket.id)
 
 
 async def _notify(ticket: Ticket, message: str, *, closing: bool) -> None:

@@ -251,6 +251,7 @@ async def test_inactivity_never_closes_a_ticket_waiting_for_the_team(client, peo
     asked = [(to, data) for to, ev, data in outbox if ev == "status_request"]
     assert {to for to, _ in asked} >= {"tec@escola.pt"} and "prof@escola.pt" not in {to for to, _ in asked}
     assert all(d["id"] == waiting_team and d["last_message"] == "Sim, continua igual." for _, d in asked)
+    assert [(to, d["id"]) for to, ev, d in outbox if ev == "status_followup"] == [("prof@escola.pt", waiting_team)]
     outbox.clear()
     await run()
     assert not [1 for _, ev, d in outbox if ev == "status_request" and d["id"] == waiting_team]  # once a week only
