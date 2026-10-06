@@ -244,7 +244,11 @@ async def lifespan(app: FastAPI):
     from app.services import access_log_buffer
     access_task = _spawn(access_log_buffer.run_forever())
     planning_task = _spawn(_planning_and_reports_periodically())
+    from app.services.watchdog import Watchdog
+    watchdog = Watchdog()
+    watchdog.start()
     yield
+    watchdog.stop()
     access_task.cancel()
     planning_task.cancel()
     await access_log_buffer.flush()

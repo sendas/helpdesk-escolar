@@ -145,6 +145,7 @@ def _get_graph_token() -> str | None:
         client_id=settings.azure_client_id,
         client_credential=settings.azure_client_secret,
         authority=f"https://login.microsoftonline.com/{settings.azure_tenant_id}",
+        timeout=20,
     )
     result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
     if "access_token" in result:

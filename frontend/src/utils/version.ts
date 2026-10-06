@@ -1,8 +1,18 @@
-export const APP_VERSION = '2.11.1'
+export const APP_VERSION = '2.11.2'
 export const APP_VERSION_DATE = '2026-10-06'
-export const APP_VERSION_TIME = '12:38'
+export const APP_VERSION_TIME = '12:41'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.11.2',
+    date: '2026-10-06',
+    time: '12:41',
+    title: 'O servidor já não fica bloqueado',
+    changes: [
+      'Corrigido: uma entrada com Microsoft sem resposta podia deixar o helpdesk inteiro parado (ninguém conseguia entrar, emails e lembretes paravam). Os pedidos à Microsoft passam a ter limite de tempo e já não bloqueiam o resto da aplicação.',
+      'Se o servidor deixar de responder durante 3 minutos, reinicia-se sozinho e regista nos logs onde ficou bloqueado.',
+    ],
+  },
   {
     version: '2.11.1',
     date: '2026-10-06',

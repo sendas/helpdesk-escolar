@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import msal
 import httpx
 from sqlalchemy import select
@@ -23,7 +24,7 @@ async def import_azure_users(db: AsyncSession) -> dict:
     if not all([settings.azure_tenant_id, settings.azure_client_id, settings.azure_client_secret]):
         raise AzureImportError("Configuração Microsoft Entra ID incompleta.")
 
-    token = _get_graph_token()
+    token = await asyncio.to_thread(_get_graph_token)
     users = await _fetch_graph_users(token)
 
     existing = (await db.execute(select(User))).scalars().all()
@@ -182,6 +183,7 @@ def _get_graph_token() -> str:
         client_id=settings.azure_client_id,
         client_credential=settings.azure_client_secret,
         authority=f"https://login.microsoftonline.com/{settings.azure_tenant_id}",
+        timeout=20,
     )
     result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
     if "access_token" not in result:

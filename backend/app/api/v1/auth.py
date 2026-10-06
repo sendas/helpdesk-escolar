@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 import secrets
@@ -100,7 +101,7 @@ async def ldap_login(data: LdapLoginRequest, request: Request, db: AsyncSession 
         token = jwt_service.create_access_token({"sub": str(local_user.id), "role": local_user.role})
         return {"access_token": token, "token_type": "bearer"}
 
-    user_info = ldap_auth.authenticate_ldap(data.username, data.password)
+    user_info = await asyncio.to_thread(ldap_auth.authenticate_ldap, data.username, data.password)
     if not user_info:
         rate_limit.hit(ip_key)
         rate_limit.hit(user_key)
@@ -137,7 +138,7 @@ async def azure_login(request: Request):
         raise HTTPException(status_code=400, detail="A entrada com Microsoft não está configurada.")
     state = secrets.token_urlsafe(16)
     request.session["oauth_state"] = state
-    url = azure_auth.get_azure_login_url(state)
+    url = await azure_auth.get_azure_login_url(state)
     return RedirectResponse(url)
 
 

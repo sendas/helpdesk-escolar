@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import msal
@@ -7,16 +8,25 @@ from app.services import azure_access
 
 logger = logging.getLogger(__name__)
 
+# Seconds per HTTP call to login.microsoftonline.com — without it a stalled connection hangs forever
+MSAL_TIMEOUT = 20
+
 
 def get_msal_app() -> msal.ConfidentialClientApplication:
     return msal.ConfidentialClientApplication(
         client_id=settings.azure_client_id,
         client_credential=settings.azure_client_secret,
         authority=f"https://login.microsoftonline.com/{settings.azure_tenant_id}",
+        timeout=MSAL_TIMEOUT,
     )
 
 
-def get_azure_login_url(state: str) -> str:
+async def get_azure_login_url(state: str) -> str:
+    # MSAL is synchronous (network calls): run it in a thread so it never blocks the event loop
+    return await asyncio.to_thread(_login_url, state)
+
+
+def _login_url(state: str) -> str:
     app = get_msal_app()
     return app.get_authorization_request_url(
         scopes=["User.Read"],
@@ -26,12 +36,18 @@ def get_azure_login_url(state: str) -> str:
 
 
 async def exchange_code_for_user(code: str) -> dict | None:
-    app = get_msal_app()
-    result = app.acquire_token_by_authorization_code(
-        code=code,
-        scopes=["User.Read"],
-        redirect_uri=settings.azure_redirect_uri,
-    )
+    def _exchange() -> dict:
+        return get_msal_app().acquire_token_by_authorization_code(
+            code=code,
+            scopes=["User.Read"],
+            redirect_uri=settings.azure_redirect_uri,
+        )
+
+    try:
+        result = await asyncio.to_thread(_exchange)
+    except Exception:
+        logger.exception("Login Microsoft: sem resposta de login.microsoftonline.com")
+        return None
     if "error" in result:
         # e.g. AADSTS7000222 = client secret expired, AADSTS50011 = redirect URI mismatch
         logger.error("Login Microsoft falhou: %s — %s", result.get("error"), (result.get("error_description") or "").splitlines()[0:1])
@@ -39,7 +55,7 @@ async def exchange_code_for_user(code: str) -> dict | None:
 
     access_token = result["access_token"]
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.get(
             "https://graph.microsoft.com/v1.0/me?$select=displayName,mail,userPrincipalName,proxyAddresses,otherMails,department,onPremisesDistinguishedName",
             headers={"Authorization": f"Bearer {access_token}"},
