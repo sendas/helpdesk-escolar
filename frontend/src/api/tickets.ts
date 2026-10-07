@@ -11,7 +11,7 @@ export interface TicketListItem {
   creator: UserBrief; assignee?: UserBrief; assignees?: UserBrief[]; group?: HelpdeskGroupBrief; watchers?: UserBrief[]; category: Category; school?: School
 }
 export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; updated_at?: string; remind_at?: string | null; reminder_sent_at?: string | null; private_to?: UserBrief | null; author: UserBrief }
-export interface Attachment { id: number; original_name: string; content_type: string; size: number; created_at: string }
+export interface Attachment { id: number; original_name: string; content_type: string; size: number; created_at: string; comment_id?: number | null }
 export interface TicketEvent { id: number; event_type: string; message: string; created_at: string; actor?: UserBrief | null }
 export interface TicketDetail extends TicketListItem { description: string; comments: Comment[]; attachments: Attachment[]; events: TicketEvent[] }
 export interface PaginatedTickets { items: TicketListItem[]; total: number; page: number; size: number }
@@ -36,9 +36,11 @@ export async function createTicket(payload: { title: string; description: string
   return data
 }
 
-export async function uploadTicketAttachment(ticketId: number, file: File) {
+// With commentId the file belongs to that reply and is only seen by who can see it (private message, internal note)
+export async function uploadTicketAttachment(ticketId: number, file: File, commentId: number | null = null) {
   const payload = new FormData()
   payload.append('file', file)
+  if (commentId) payload.append('comment_id', String(commentId))
   const { data } = await api.post<Attachment>(`/api/v1/tickets/${ticketId}/attachments`, payload)
   return data
 }

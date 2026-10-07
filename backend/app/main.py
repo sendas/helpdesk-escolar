@@ -137,6 +137,12 @@ async def _add_missing_columns(conn) -> None:
     if "mention_ids" not in {row[1] for row in rows_c2}:
         await conn.execute(text("ALTER TABLE comments ADD COLUMN mention_ids VARCHAR(500)"))
 
+    # 7h. Files attached to one reply: they follow its visibility (private message, internal note)
+    rows_a = await conn.execute(text("PRAGMA table_info(attachments)"))
+    if "comment_id" not in {row[1] for row in rows_a}:
+        await conn.execute(text("ALTER TABLE attachments ADD COLUMN comment_id INTEGER REFERENCES comments(id)"))
+    await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_attachments_comment_id ON attachments (comment_id)"))
+
     # 7g. Own profile: chosen name, name from the directory, phone
     rows_u4 = await conn.execute(text("PRAGMA table_info(users)"))
     cols_u4 = {row[1] for row in rows_u4}

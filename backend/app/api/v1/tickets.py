@@ -2,7 +2,7 @@ import asyncio
 import os
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -12,7 +12,7 @@ from app.models.user import User, UserRole
 from app.models.ticket import Attachment, Comment, TicketEvent, TicketReminder, TicketStatus
 from app.models.category import Category
 from app.models.school import School
-from app.schemas.ticket import AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, TicketListItem, CommentCreate, CommentRead, CommentUpdate, WatcherAdd, TicketRatingCreate, TicketRatingRead
+from app.schemas.ticket import visible_attachments, AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, TicketListItem, CommentCreate, CommentRead, CommentUpdate, WatcherAdd, TicketRatingCreate, TicketRatingRead
 from app.models.planning import TicketRating
 from app.services import ticket_service, email_service, push_service, read_service
 from app.api.v1.settings import _read_settings
@@ -380,17 +380,30 @@ async def create_ticket(
     return ticket
 
 
+async def _attachment_comment(db: AsyncSession, ticket_id: int, comment_id: int) -> Comment | None:
+    return (await db.execute(
+        select(Comment).where(Comment.id == comment_id, Comment.ticket_id == ticket_id, Comment.deleted_at.is_(None))
+    )).scalar_one_or_none()
+
+
 @router.post("/{ticket_id}/attachments", response_model=AttachmentRead, status_code=status.HTTP_201_CREATED)
 async def upload_attachment(
     ticket_id: int,
     file: UploadFile = File(...),
+    comment_id: int | None = Form(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    ticket = await ticket_service.get_ticket(db, ticket_id)
+    ticket = await ticket_service.get_ticket_for_access(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
-    if not _can_access_ticket(ticket, current_user):
+    comment = None
+    if comment_id is not None:
+        # A file that goes with one's own reply (private message, internal note…): it gets the reply's visibility
+        comment = await _attachment_comment(db, ticket_id, comment_id)
+        if not comment or comment.author_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mensagem não encontrada.")
+    elif not _can_access_ticket(ticket, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
     content = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
@@ -412,10 +425,13 @@ async def upload_attachment(
         size=len(content),
         ticket_id=ticket_id,
         uploaded_by_id=current_user.id,
+        comment_id=comment.id if comment else None,
     )
     db.add(attachment)
     ticket.updated_at = datetime.utcnow()
-    db.add(TicketEvent(ticket_id=ticket_id, actor_id=current_user.id, event_type="attachment_added", message=f"Anexo adicionado: {attachment.original_name}"))
+    # The history is seen by everyone on the ticket: a file of a private message or note stays out of it
+    if comment is None or (not comment.private_to_id and not comment.is_internal):
+        db.add(TicketEvent(ticket_id=ticket_id, actor_id=current_user.id, event_type="attachment_added", message=f"Anexo adicionado: {attachment.original_name}"))
     await db.commit()
     await db.refresh(attachment)
     return attachment
@@ -431,14 +447,25 @@ async def download_attachment(
     ticket = await ticket_service.get_ticket_for_access(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
-    if not _can_access_ticket(ticket, current_user) and not has_perm(current_user, "tickets.view_all"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
 
     attachment = (
         await db.execute(select(Attachment).where(Attachment.id == attachment_id, Attachment.ticket_id == ticket_id))
     ).scalar_one_or_none()
     if not attachment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anexo não encontrado.")
+    comment = await _attachment_comment(db, ticket_id, attachment.comment_id) if attachment.comment_id else None
+    if attachment.comment_id and not comment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anexo não encontrado.")
+    if comment is not None and comment.private_to_id:
+        # Files of a private message: only the people in that conversation
+        people = {comment.author_id, comment.private_to_id, *(u.id for u in comment.private_recipients)}
+        if current_user.id not in people:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anexo não encontrado.")
+    else:
+        if not _can_access_ticket(ticket, current_user) and not has_perm(current_user, "tickets.view_all"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
+        if comment is not None and comment.is_internal and not _is_staff(current_user):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anexo não encontrado.")
 
     path = os.path.join(UPLOAD_DIR, attachment.stored_name)
     if not os.path.exists(path):
@@ -475,6 +502,7 @@ async def get_ticket(
     await read_service.mark_read(db, current_user.id, [ticket.id])
     if hide_demo:
         data.comments = [c for c in data.comments if c.author is None or c.author.auth_provider != "demo"]
+        data.attachments = visible_attachments(data.attachments, data.comments)
     return data
 
 

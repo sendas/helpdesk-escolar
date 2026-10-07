@@ -261,3 +261,36 @@ async def test_inactivity_never_closes_a_ticket_waiting_for_the_team(client, peo
     await run()
     assert await status(waiting_user) == "closed"
     assert await status(waiting_team) != "closed"
+
+
+async def test_files_of_a_private_message_stay_private(client, people, api):
+    tid = await _new_ticket(client, people, api, "Anexo privado")
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+    msg = (await client.post(f"{api}/tickets/{tid}/comments", headers=people["tec"]["h"],
+                             json={"body": "Segue a fatura", "private_to_ids": [people["dir"]["id"]]})).json()
+    # Only the author of the message can attach to it
+    r = await client.post(f"{api}/tickets/{tid}/attachments", headers=people["tec2"]["h"],
+                          files={"file": ("x.png", png, "image/png")}, data={"comment_id": str(msg["id"])})
+    assert r.status_code == 404
+    r = await client.post(f"{api}/tickets/{tid}/attachments", headers=people["tec"]["h"],
+                          files={"file": ("fatura.png", png, "image/png")}, data={"comment_id": str(msg["id"])})
+    assert r.status_code == 201 and r.json()["comment_id"] == msg["id"]
+    aid = r.json()["id"]
+    note = (await client.post(f"{api}/tickets/{tid}/comments", headers=people["tec"]["h"], json={"body": "Nota", "is_internal": True})).json()
+    nid = (await client.post(f"{api}/tickets/{tid}/attachments", headers=people["tec"]["h"],
+                             files={"file": ("nota.png", png, "image/png")}, data={"comment_id": str(note["id"])})).json()["id"]
+
+    def files(who):
+        return client.get(f"{api}/tickets/{tid}", headers=people[who]["h"])
+
+    seen = {who: {a["id"] for a in (await files(who)).json()["attachments"]} for who in ("tec", "tec2", "prof")}
+    assert seen["tec"] == {aid, nid}
+    assert seen["tec2"] == {nid}          # another technician: the note's file, not the private one
+    assert seen["prof"] == set()          # the requester: neither
+    dl = lambda who, a: client.get(f"{api}/tickets/{tid}/attachments/{a}/download", headers=people[who]["h"])  # noqa: E731
+    assert (await dl("dir", aid)).status_code == 200
+    assert (await dl("tec2", aid)).status_code == 404
+    assert (await dl("prof", aid)).status_code == 404
+    assert (await dl("prof", nid)).status_code == 404
+    events = (await files("prof")).json()["events"]
+    assert not any("fatura.png" in e["message"] or "nota.png" in e["message"] for e in events)

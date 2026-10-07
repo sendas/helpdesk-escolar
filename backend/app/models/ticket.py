@@ -167,6 +167,8 @@ class Attachment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
     uploaded_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # Attached to one reply: only who can see that reply (private message, internal note) can see the file
+    comment_id: Mapped[int | None] = mapped_column(ForeignKey("comments.id"), nullable=True, index=True)
 
     ticket: Mapped["Ticket"] = relationship("Ticket", back_populates="attachments")
     uploaded_by: Mapped["User"] = relationship("User")

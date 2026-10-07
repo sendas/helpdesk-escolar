@@ -99,6 +99,7 @@ class AttachmentRead(BaseModel):
     content_type: str
     size: int
     created_at: datetime
+    comment_id: int | None = None
 
 
 class TicketEventRead(BaseModel):
@@ -161,7 +162,14 @@ class TicketRead(BaseModel):
             if (c.private_to is None or viewer in {c.author.id, c.private_to.id, *(u.id for u in c.private_recipients)})
             and (not c.is_internal or is_staff)
         ]
+        self.attachments = visible_attachments(self.attachments, self.comments)
         return self
+
+
+def visible_attachments(attachments: list[AttachmentRead], comments: list[CommentRead]) -> list[AttachmentRead]:
+    """Files of the ticket itself, plus those of the replies this viewer can see."""
+    seen = {c.id for c in comments}
+    return [a for a in attachments if a.comment_id is None or a.comment_id in seen]
 
 
 class TicketListItem(BaseModel):

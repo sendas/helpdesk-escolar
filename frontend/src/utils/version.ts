@@ -1,8 +1,19 @@
-export const APP_VERSION = '2.12.1'
-export const APP_VERSION_DATE = '2026-10-06'
-export const APP_VERSION_TIME = '12:50'
+export const APP_VERSION = '2.13.0'
+export const APP_VERSION_DATE = '2026-10-07'
+export const APP_VERSION_TIME = '20:04'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.13.0',
+    date: '2026-10-07',
+    time: '20:04',
+    title: 'Anexos nas mensagens privadas',
+    changes: [
+      'Já é possível anexar imagens e ficheiros às mensagens privadas — na caixa de resposta e diretamente na conversa privada (botão de clip, ou colar uma imagem). Só as pessoas da conversa veem e descarregam esses ficheiros.',
+      'Cada ficheiro aparece junto da mensagem com que foi enviado.',
+      'Corrigido: um ficheiro anexado a uma nota interna ficava visível para quem pediu ajuda. Agora só a equipa o vê.',
+    ],
+  },
   {
     version: '2.12.1',
     date: '2026-10-06',

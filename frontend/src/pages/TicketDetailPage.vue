@@ -117,7 +117,7 @@
               <ReactionBar v-if="!editingContent" target-type="ticket" :target-id="ticket.id" :reactions="ticketReactions" @update="(r) => (ticketReactions = r)" />
               <textarea v-else class="hd-textarea" v-model="editDescription" rows="6" style="margin-top:4px"></textarea>
               <div v-if="contentError" style="color:#DC2626;font-size:12px;margin-top:6px">{{ contentError }}</div>
-              <div v-if="ticket.attachments?.length" style="margin-top:10px">
+              <div v-if="ticketLevelAttachments.length" style="margin-top:10px">
                 <!-- image thumbnails -->
                 <div v-if="imageAttachments.length" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
                   <button
@@ -191,24 +191,49 @@
                 </div>
               </div>
               <div v-else class="hd-msg-bubble" v-html="renderText(c.body)"></div>
+              <div v-if="attachmentsByComment[c.id]?.length" class="msg-files">
+                <template v-for="a in attachmentsByComment[c.id]" :key="a.id">
+                  <button v-if="isImage(a)" type="button" class="attach-thumb" :title="a.original_name" @click="openLightbox(a)">
+                    <img v-if="attachBlobUrls[a.id]" :src="attachBlobUrls[a.id]" :alt="a.original_name" style="width:100%;height:100%;object-fit:cover" />
+                    <span v-else class="material-icons" style="color:var(--c-muted);font-size:28px">image</span>
+                  </button>
+                  <button v-else type="button" class="msg-file" @click="openFile(a)">
+                    <span class="material-icons">description</span>
+                    {{ a.original_name }} · {{ formatSize(a.size) }}
+                  </button>
+                </template>
+              </div>
               <ReactionBar v-if="editingCommentId !== c.id" target-type="comment" :target-id="c.id" :reactions="reactions[c.id] ?? []" @update="(r) => (reactions[c.id] = r)" />
             </div>
           </div>
           <!-- Answer this private conversation right here (goes to everyone in it) -->
+          <div v-if="b.others && b.lastOfGroup && threadFiles[b.group]" class="reply-file-preview thread-file">
+            <span class="material-icons" style="font-size:15px;color:var(--c-primary)">attach_file</span>
+            <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ threadFiles[b.group]?.name }}</span>
+            <button type="button" class="hd-icon-btn" style="padding:2px" title="Remover" @click="threadFiles[b.group] = null">
+              <span class="material-icons" style="font-size:14px">close</span>
+            </button>
+          </div>
           <div v-if="b.others && b.lastOfGroup" class="thread-reply">
             <textarea
               v-model="threadDrafts[b.group]"
               class="hd-textarea"
               rows="1"
-              :placeholder="b.others.length > 1 ? `Responder em privado a ${namesList(b.others)}…` : `Responder em privado a ${namesList(b.others)}…`"
+              :placeholder="`Responder em privado a ${namesList(b.others)}… (pode colar imagens)`"
               @input="autoGrow($event.target as HTMLTextAreaElement)"
+              @paste="onPasteThreadImage($event, b.group)"
               @keydown.ctrl.enter.prevent="sendThreadReply(b)"
               @keydown.meta.enter.prevent="sendThreadReply(b)"
             ></textarea>
+            <label class="hd-icon-btn thread-attach" title="Anexar imagem ou ficheiro (só as pessoas desta conversa o veem)">
+              <span class="material-icons">attach_file</span>
+              <input type="file" style="display:none" :accept="ATTACH_ACCEPT"
+                     @change="threadFiles[b.group] = ($event.target as HTMLInputElement).files?.[0] ?? null; ($event.target as HTMLInputElement).value = ''" />
+            </label>
             <button
               class="hd-btn hd-btn-primary thread-send"
               type="button"
-              :disabled="!threadDrafts[b.group]?.trim() || threadSending === b.group"
+              :disabled="(!threadDrafts[b.group]?.trim() && !threadFiles[b.group]) || threadSending === b.group"
               :title="'Enviar só para ' + namesList(b.others, true)"
               @click="sendThreadReply(b)"
             >
@@ -314,7 +339,7 @@
               ref="commentFileInput"
               type="file"
               style="display:none"
-              accept=".png,.jpg,.jpeg,.gif,.webp,.heic,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.txt,.csv,.zip"
+              :accept="ATTACH_ACCEPT"
               @change="commentFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
             />
             <!-- Selected file preview -->
@@ -367,17 +392,16 @@
                   Nota interna
                 </label>
                 <button
-                  v-if="!privateOn"
                   type="button"
                   class="hd-btn hd-btn-outline"
                   style="font-size:12px;padding:5px 10px"
-                  title="Anexar ficheiro"
+                  :title="privateOn ? 'Anexar ficheiro (só os destinatários da mensagem privada o veem)' : isInternal ? 'Anexar ficheiro (só a equipa o vê)' : 'Anexar ficheiro'"
                   @click="commentFileInput?.click()"
                 >
                   <span class="material-icons" style="font-size:15px">attach_file</span>
                   Anexar
                 </button>
-                <button v-if="!privateOn && isTouch" type="button" class="hd-btn hd-btn-outline" style="font-size:12px;padding:5px 10px" title="Tirar fotografia" @click="cameraInput?.click()">
+                <button v-if="isTouch" type="button" class="hd-btn hd-btn-outline" style="font-size:12px;padding:5px 10px" title="Tirar fotografia" @click="cameraInput?.click()">
                   <span class="material-icons" style="font-size:15px">photo_camera</span>
                   Foto
                 </button>
@@ -770,24 +794,34 @@ function togglePrivate() {
   privateOn.value = !privateOn.value
   if (privateOn.value) {
     isInternal.value = false
-    commentFile.value = null
     privateToIds.value = privateToIds.value.filter((id) => privateTargets.value.some((u: any) => u.id === id))
   }
 }
 // Quick replies inside a private conversation block, one draft per conversation
 const threadDrafts = ref<Record<string, string>>({})
+const threadFiles = ref<Record<string, File | null>>({})
 const threadSending = ref('')
+const ATTACH_ACCEPT = '.png,.jpg,.jpeg,.gif,.webp,.heic,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.txt,.csv,.zip'
+function onPasteThreadImage(e: ClipboardEvent, group: string) {
+  const file = pastedImage(e)
+  if (file) threadFiles.value[group] = file
+}
 function autoGrow(el: HTMLTextAreaElement) {
   el.style.height = 'auto'
   el.style.height = Math.min(el.scrollHeight, 220) + 'px'
 }
 async function sendThreadReply(b: { group: string; others: any[] | null }) {
   const text = (threadDrafts.value[b.group] ?? '').trim()
-  if (!text || !b.others || threadSending.value || !ticket.value) return
+  const file = threadFiles.value[b.group] ?? null
+  if ((!text && !file) || !b.others || threadSending.value || !ticket.value) return
   threadSending.value = b.group
   try {
-    await addComment(ticket.value.id, text, false, null, b.others.map((u: any) => u.id))
+    const c = await addComment(ticket.value.id, text || '📎 Ficheiro anexado.', false, null, b.others.map((u: any) => u.id))
     threadDrafts.value[b.group] = ''
+    if (file) {
+      threadFiles.value[b.group] = null
+      await uploadTicketAttachment(ticket.value.id, file, c.id)
+    }
     await load({ live: true })
     loadReactions()
   } catch (e) {
@@ -913,12 +947,18 @@ const editDescription = ref('')
 const savingContent = ref(false)
 const contentError = ref('')
 
-const imageAttachments = computed(() =>
-  (ticket.value?.attachments ?? []).filter((a: any) => (a.content_type as string).startsWith('image/'))
-)
-const fileAttachments = computed(() =>
-  (ticket.value?.attachments ?? []).filter((a: any) => !(a.content_type as string).startsWith('image/'))
-)
+const isImage = (a: any) => (a.content_type as string).startsWith('image/')
+// Files of the ticket itself (shown with the description); files sent with a reply are shown under that reply
+const ticketLevelAttachments = computed(() => (ticket.value?.attachments ?? []).filter((a: any) => !a.comment_id))
+const imageAttachments = computed(() => ticketLevelAttachments.value.filter(isImage))
+const fileAttachments = computed(() => ticketLevelAttachments.value.filter((a: any) => !isImage(a)))
+const attachmentsByComment = computed(() => {
+  const out: Record<number, any[]> = {}
+  for (const a of ticket.value?.attachments ?? []) {
+    if (a.comment_id) (out[a.comment_id] ??= []).push(a)
+  }
+  return out
+})
 
 const isEscalated = computed(() => !!ticket.value?.is_escalated)
 const isDeescalated = computed(() => {
@@ -1028,14 +1068,18 @@ async function saveRating() {
 // Paste a screenshot straight into the reply; take a photo on phones/tablets
 const cameraInput = ref<HTMLInputElement | null>(null)
 const isTouch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
-function onPasteImage(e: ClipboardEvent) {
+function pastedImage(e: ClipboardEvent): File | null {
   const item = Array.from(e.clipboardData?.items ?? []).find((i) => i.kind === 'file' && i.type.startsWith('image/'))
   const file = item?.getAsFile()
-  if (!file) return
+  if (!file) return null
   e.preventDefault()
   const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png'
   const stamp = new Date().toLocaleString('pt-PT').replace(/[/:, ]+/g, '-')
-  commentFile.value = new File([file], `captura-${stamp}.${ext}`, { type: file.type })
+  return new File([file], `captura-${stamp}.${ext}`, { type: file.type })
+}
+function onPasteImage(e: ClipboardEvent) {
+  const file = pastedImage(e)
+  if (file) commentFile.value = file
 }
 
 // @mentions: pick someone from the list; they get a notification when the reply is sent
@@ -1369,14 +1413,14 @@ async function onAddComment() {
     const internal = isInternal.value && !privateIds.length
     // A public reply carries the new state itself: the requester gets one email with both
     const statusWithReply = newStatus && !internal && !privateIds.length ? newStatus : null
-    await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', internal, null, privateIds, statusWithReply, mentionIdsIn(newComment.value))
+    const created = await addComment(ticket.value.id, newComment.value || '📎 Ficheiro anexado.', internal, null, privateIds, statusWithReply, mentionIdsIn(newComment.value))
     mentioned.clear()
     newComment.value = ''
     isInternal.value = false
     privateOn.value = privateOnly.value
     privateToIds.value = privateOnly.value ? privateIds : []
     if (commentFile.value) {
-      await uploadTicketAttachment(ticket.value.id, commentFile.value)
+      await uploadTicketAttachment(ticket.value.id, commentFile.value, created.id)
       commentFile.value = null
       if (commentFileInput.value) commentFileInput.value.value = ''
     }
@@ -2207,6 +2251,11 @@ function formatSize(size: number) {
   font-size: 12.5px; font-weight: 700; color: #6D28D9;
 }
 .private-thread-head .material-icons { font-size: 16px; }
+.msg-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
+.msg-file { display: inline-flex; align-items: center; gap: 5px; color: var(--c-primary); font-size: 12.5px; background: none; border: none; cursor: pointer; padding: 0; text-align: left; }
+.msg-file .material-icons { font-size: 15px; }
+.thread-attach { cursor: pointer; flex-shrink: 0; align-self: center; }
+.thread-file { margin-top: 4px; }
 .thread-reply { display: flex; align-items: flex-end; gap: 8px; margin-top: 4px; }
 .thread-reply .hd-textarea { flex: 1; min-width: 0; min-height: 40px; resize: none; padding: 9px 12px; font-size: 13.5px; line-height: 1.4; }
 .thread-send { flex-shrink: 0; padding: 8px 14px; font-size: 13px; }
