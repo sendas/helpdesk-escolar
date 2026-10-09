@@ -1,8 +1,17 @@
-export const APP_VERSION = '2.14.1'
+export const APP_VERSION = '2.14.2'
 export const APP_VERSION_DATE = '2026-10-09'
-export const APP_VERSION_TIME = '17:43'
+export const APP_VERSION_TIME = '21:02'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.14.2',
+    date: '2026-10-09',
+    time: '21:02',
+    title: 'Número da empresa de apoio a partir da confirmação',
+    changes: [
+      'O número do pedido na empresa de apoio também é apanhado do email de confirmação deles ("Pedido de suporte registado com o nº 10288").',
+    ],
+  },
   {
     version: '2.14.1',
     date: '2026-10-09',

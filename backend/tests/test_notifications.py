@@ -147,6 +147,7 @@ async def test_support_company_number_goes_in_later_subjects(client, people, api
     assert len(mails) == 1 and mails[0]["provider_ref"] == "8591" and not mails[0]["first"]
     # Our own marker is never taken for theirs; a technician can also type it
     assert email_ingest._provider_ref(f"[Ticket #{tid}] Teste") is None
+    assert email_ingest._provider_ref("Pedido de suporte registado com o nº 10288") == "10288"
     r = await client.put(f"{api}/tickets/{tid}/provider-ref", headers=people["tec"]["h"], json={"ref": "#8600"})
     assert r.status_code == 200 and r.json()["provider_ref"] == "8600"
     assert (await client.put(f"{api}/tickets/{tid}/provider-ref", headers=people["prof"]["h"], json={"ref": "1"})).status_code == 403

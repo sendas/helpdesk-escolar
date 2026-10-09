@@ -31,6 +31,8 @@ BODY_TICKET_RE = re.compile(r"O\s+Seu\s+Ticket\s+de\s+Apoio\s+ao\s+Cliente\s*[\r
 PRIVATE_SUBJECT_RE = re.compile(r"\[Privada\]", re.IGNORECASE)
 # The support company's own ticket number in the subject, e.g. "… (#8591)" or "[#8591]" (never our "[Ticket #12]")
 PROVIDER_REF_RE = re.compile(r"[(\[]#(\d{2,10})[)\]]")
+# …or their acknowledgement: "Pedido de suporte registado com o nº 10288"
+PROVIDER_ACK_RE = re.compile(r"\bregistad[oa]\b.*?\bn\.?\s*[ºo°]\s*(\d{2,10})\b", re.IGNORECASE)
 CLOSE_SUBJECT_RE = re.compile(r"\b(FECHADO|resolvido|resolved|closed)\b", re.IGNORECASE)
 _SUBJECT_STATUS_MAP: dict[str, str] = {
     "fechado": "closed",
@@ -460,7 +462,7 @@ NEGATED_STATUS_RE = re.compile(r"\bn[ãa]o\s+(?:est[áa]\s+|foi\s+|ficou\s+)?(?:
 
 
 def _provider_ref(subject: str) -> str | None:
-    m = PROVIDER_REF_RE.search(subject or "")
+    m = PROVIDER_REF_RE.search(subject or "") or PROVIDER_ACK_RE.search(subject or "")
     return m.group(1) if m else None
 
 
