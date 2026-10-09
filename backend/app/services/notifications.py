@@ -104,6 +104,7 @@ async def send_to_provider(ticket: Ticket, event: str, extra: dict, exclude_comm
         "school": ticket.school.name if ticket.school else "",
         "conversation": conversation(ticket, exclude_comment_id),
         "attachments": attachment_names(ticket),
+        "provider_ref": ticket.provider_ref,
         **extra,
     }
     await email_service.send_provider_email(email, event, data, ticket.provider_thread_id, first)

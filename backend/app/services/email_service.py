@@ -49,6 +49,8 @@ async def send_provider_email(to_email: str, event: str, ticket_data: dict, thre
         logger.warning("Email template error for event %s: %s", event, exc)
         return
     subject = f"[Ticket #{ticket_data.get('id')}] {ticket_data.get('title')}"
+    if ticket_data.get("provider_ref"):
+        subject += f" (#{ticket_data['provider_ref']})"
     headers = {"Reply-To": settings.mail_from}
     if not first:
         subject = "RE: " + subject

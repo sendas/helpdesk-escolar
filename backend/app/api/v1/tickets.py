@@ -625,6 +625,29 @@ async def deescalate_ticket(
     return await ticket_service.get_ticket(db, ticket_id)
 
 
+class ProviderRefUpdate(BaseModel):
+    ref: str | None = None
+
+
+@router.put("/{ticket_id}/provider-ref", response_model=TicketRead)
+async def set_provider_ref(ticket_id: int, data: ProviderRefUpdate, current_user: User = Depends(get_current_user),
+                           db: AsyncSession = Depends(get_db)):
+    """The support company's number for this ticket (e.g. 8591): later emails to them carry "(#8591)" in the subject."""
+    if not _is_staff(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não tem acesso a este ticket.")
+    ticket = await ticket_service.get_ticket(db, ticket_id)
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket não encontrado.")
+    ref = (data.ref or "").strip().lstrip("#").strip()
+    if ref and not ref.isdigit():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Indique só o número do pedido na empresa de apoio (ex.: 8591).")
+    ticket.provider_ref = ref or None
+    db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="provider_ref",
+                       message=f"Número do pedido na empresa de apoio: #{ref}" if ref else "Número do pedido na empresa de apoio removido"))
+    await db.commit()
+    return await ticket_service.get_ticket(db, ticket_id)
+
+
 @router.post("/{ticket_id}/comments/{comment_id}/escalate", status_code=status.HTTP_204_NO_CONTENT)
 async def escalate_comment(
     ticket_id: int,

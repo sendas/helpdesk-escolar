@@ -54,8 +54,17 @@
             </span>
             <span v-if="isEscalated && !isDeescalated" class="escalated-badge" title="Ticket reportado à empresa de apoio">
               <span class="material-icons" style="font-size:13px;vertical-align:middle">open_in_new</span>
-              Empresa de apoio
+              Empresa de apoio<template v-if="ticket.provider_ref"> · #{{ ticket.provider_ref }}</template>
             </span>
+            <button
+              v-if="(isEscalated || ticket.provider_ref) && auth.isStaff"
+              class="hd-icon-btn"
+              style="padding:2px"
+              :title="ticket.provider_ref ? 'Alterar o número do pedido na empresa de apoio' : 'Indicar o número do pedido na empresa de apoio (ex.: 8591) — vai no assunto dos emails seguintes'"
+              @click="editProviderRef"
+            >
+              <span class="material-icons" style="font-size:15px">tag</span>
+            </button>
             <button
               v-if="isEscalated && !isDeescalated && auth.isStaff"
               class="hd-btn hd-btn-outline"
@@ -650,7 +659,7 @@
 import { statusLabel as labelFor } from '../utils/ticketStatus'
 import { computed, nextTick, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getTicket, markTicketUnread, adminBulkActionTickets, getMyReminders, setMyReminder, clearMyReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
+import { getTicket, markTicketUnread, adminBulkActionTickets, getMyReminders, setMyReminder, clearMyReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, setProviderRef, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, getUsers, searchUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -662,7 +671,7 @@ import ReactionBar from '../components/ReactionBar.vue'
 import { getReactions, type ReactionSummary } from '../api/reactions'
 import PersonName from '../components/PersonName.vue'
 import { api } from '../boot/axios'
-import { confirmDialog, errorMessage, notifyError } from '../utils/feedback'
+import { confirmDialog, promptDialog, errorMessage, notifyError } from '../utils/feedback'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -1616,6 +1625,18 @@ async function onEscalateTicket() {
     escalationMessage.value = errorMessage(error, 'Não foi possível reportar o ticket. Verifica o email da empresa de apoio nas configurações.')
   } finally {
     escalating.value = false
+  }
+}
+
+async function editProviderRef() {
+  if (!ticket.value) return
+  const current = ticket.value.provider_ref || ''
+  const value = await promptDialog('Número deste pedido no sistema da empresa de apoio (ex.: 8591). Vai no assunto dos emails seguintes, para ficarem no mesmo pedido do lado deles.', current, { title: 'Número na empresa de apoio', placeholder: '8591' })
+  if (value === null || value.trim() === current) return
+  try {
+    ticket.value = await setProviderRef(ticket.value.id, value.trim() || null)
+  } catch (e) {
+    notifyError(e, 'Não foi possível guardar o número.')
   }
 }
 

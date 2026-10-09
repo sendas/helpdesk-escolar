@@ -7,7 +7,7 @@ export interface HelpdeskGroupBrief { id: number; name: string; description?: st
 
 export interface TicketListItem {
   id: number; title: string; status: string; priority: string
-  created_at: string; updated_at: string; creator_email_notifications: boolean; is_escalated: boolean; closed_via_email?: boolean
+  created_at: string; updated_at: string; creator_email_notifications: boolean; is_escalated: boolean; provider_ref?: string | null; closed_via_email?: boolean
   creator: UserBrief; assignee?: UserBrief; assignees?: UserBrief[]; group?: HelpdeskGroupBrief; watchers?: UserBrief[]; category: Category; school?: School
 }
 export interface Comment { id: number; body: string; is_internal: boolean; created_at: string; updated_at?: string; remind_at?: string | null; reminder_sent_at?: string | null; private_to?: UserBrief | null; author: UserBrief }
@@ -47,6 +47,11 @@ export async function uploadTicketAttachment(ticketId: number, file: File, comme
 
 export async function updateTicket(id: number, payload: Partial<{ status: string; assignee_id: number | null; assignee_ids: number[]; group_id: number | null; priority: string; creator_email_notifications: boolean; title: string; description: string }>) {
   const { data } = await api.patch<TicketDetail>(`/api/v1/tickets/${id}`, payload)
+  return data
+}
+
+export async function setProviderRef(ticketId: number, ref: string | null) {
+  const { data } = await api.put<TicketDetail>(`/api/v1/tickets/${ticketId}/provider-ref`, { ref })
   return data
 }
 

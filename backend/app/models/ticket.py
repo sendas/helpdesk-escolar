@@ -64,6 +64,8 @@ class Ticket(Base):
     is_escalated: Mapped[bool] = mapped_column(Boolean, default=False)
     # Message-ID of the email that reported the ticket to the support company: later emails reply to it
     provider_thread_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # The support company's own number for this ticket ("#8591"), put in the subject of later emails
+    provider_ref: Mapped[str | None] = mapped_column(String(30), nullable=True)
     closed_via_email: Mapped[bool] = mapped_column(Boolean, default=False)
 
     creator_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

@@ -29,6 +29,8 @@ BODY_TICKET_RE = re.compile(r"O\s+Seu\s+Ticket\s+de\s+Apoio\s+ao\s+Cliente\s*[\r
 # Subject keywords that trigger automatic ticket status change
 # Replies to a private message keep the "[Privada]" marker in the subject
 PRIVATE_SUBJECT_RE = re.compile(r"\[Privada\]", re.IGNORECASE)
+# The support company's own ticket number in the subject, e.g. "… (#8591)" or "[#8591]" (never our "[Ticket #12]")
+PROVIDER_REF_RE = re.compile(r"[(\[]#(\d{2,10})[)\]]")
 CLOSE_SUBJECT_RE = re.compile(r"\b(FECHADO|resolvido|resolved|closed)\b", re.IGNORECASE)
 _SUBJECT_STATUS_MAP: dict[str, str] = {
     "fechado": "closed",
@@ -187,6 +189,7 @@ def _parse_graph_message(msg: dict) -> dict | None:
         "body": body,
         "status_action": None if PRIVATE_SUBJECT_RE.search(subject) else status_action,
         "private": bool(PRIVATE_SUBJECT_RE.search(subject)),
+        "provider_ref": _provider_ref(subject),
     }
 
 
@@ -283,7 +286,13 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
     )
     from app.api.v1.settings import _read_settings
     provider = (_read_settings().get("support_provider_email") or "").strip().lower()
-    is_provider = bool(provider) and sender == provider
+    is_provider = is_provider_address(sender, provider)
+    ref = msg.get("provider_ref")
+    if is_provider and ref and ticket.provider_ref != ref and str(ticket.id) != ref:
+        # Their number for this ticket: later emails to them carry it, so they land in the same ticket
+        ticket.provider_ref = ref
+        db.add(TicketEvent(ticket_id=ticket.id, actor_id=None, event_type="provider_ref",
+                           message=f"Número do pedido na empresa de apoio: #{ref}"))
     if not linked and not (is_provider and status_action):
         logger.info("Mail reply skipped: %s is not part of ticket #%s", sender, ticket.id)
         return False
@@ -443,10 +452,29 @@ def _parse_reply(msg: Message) -> dict | None:
         "body": body,
         "status_action": None if PRIVATE_SUBJECT_RE.search(subject) else status_action,
         "private": bool(PRIVATE_SUBJECT_RE.search(subject)),
+        "provider_ref": _provider_ref(subject),
     }
 
 
 NEGATED_STATUS_RE = re.compile(r"\bn[ãa]o\s+(?:est[áa]\s+|foi\s+|ficou\s+)?(?:fechado|resolvido|resolved|closed)\b", re.IGNORECASE)
+
+
+def _provider_ref(subject: str) -> str | None:
+    m = PROVIDER_REF_RE.search(subject or "")
+    return m.group(1) if m else None
+
+
+def is_provider_address(sender: str, provider: str) -> bool:
+    """The configured address, or any address of the same company — their helpdesk sends from another one,
+    e.g. notifications=empresa.pt@mg.empresa.pt for suporte@empresa.pt."""
+    sender, provider = (sender or "").strip().lower(), (provider or "").strip().lower()
+    if not sender or not provider:
+        return False
+    if sender == provider:
+        return True
+    domain = provider.rsplit("@", 1)[-1]
+    sender_domain = sender.rsplit("@", 1)[-1]
+    return bool(domain) and (sender_domain == domain or sender_domain.endswith("." + domain))
 
 
 def _detect_status_action(subject: str) -> str | None:

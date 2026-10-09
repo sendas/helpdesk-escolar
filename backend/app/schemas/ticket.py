@@ -138,6 +138,7 @@ class TicketRead(BaseModel):
     archived_at: datetime | None = None
     creator_email_notifications: bool = True
     is_escalated: bool = False
+    provider_ref: str | None = None
     closed_via_email: bool = False
     creator: UserRead
     assignee: UserRead | None = None

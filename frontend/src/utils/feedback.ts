@@ -30,6 +30,25 @@ export function notifySuccess(message: string) {
   Notify.create({ type: 'positive', message, position: 'top', timeout: 2500 })
 }
 
+/** Ask for one line of text. Resolves with the text, or null when cancelled. */
+export function promptDialog(message: string, value = '', opts: { title?: string; ok?: string; placeholder?: string } = {}): Promise<string | null> {
+  return new Promise((resolve) => {
+    let done = false
+    Dialog.create({
+      title: opts.title,
+      message,
+      prompt: { model: value, type: 'text', placeholder: opts.placeholder, outlined: true, dense: true },
+      persistent: false,
+      ok: { label: opts.ok ?? 'Guardar', color: 'primary', unelevated: true, noCaps: true },
+      cancel: { label: 'Cancelar', flat: true, noCaps: true, color: 'grey-8' },
+      class: 'hd-confirm-dialog',
+    })
+      .onOk((v: string) => { done = true; resolve(v ?? '') })
+      .onCancel(() => { if (!done) resolve(null) })
+      .onDismiss(() => { if (!done) resolve(null) })
+  })
+}
+
 /** Ask before doing something. Resolves true when the person confirms. */
 export function confirmDialog(message: string, opts: { title?: string; ok?: string; cancel?: string; danger?: boolean } = {}): Promise<boolean> {
   return new Promise((resolve) => {

@@ -1,8 +1,19 @@
-export const APP_VERSION = '2.14.0'
+export const APP_VERSION = '2.14.1'
 export const APP_VERSION_DATE = '2026-10-09'
-export const APP_VERSION_TIME = '17:38'
+export const APP_VERSION_TIME = '17:43'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.14.1',
+    date: '2026-10-09',
+    time: '17:43',
+    title: 'Número do pedido na empresa de apoio',
+    changes: [
+      'Quando a empresa de apoio responde com o número do pedido deles no assunto (ex.: "(#8591)"), o helpdesk guarda-o e passa a incluí-lo no assunto dos emails seguintes, para ficarem sempre no mesmo pedido do lado deles.',
+      'O número aparece junto da etiqueta "Empresa de apoio" no ticket e a equipa pode indicá-lo ou corrigi-lo à mão (botão #).',
+      'Os emails da empresa enviados de outro endereço do mesmo domínio (ex.: notificações do sistema deles) passam a ser reconhecidos como sendo da empresa.',
+    ],
+  },
   {
     version: '2.14.0',
     date: '2026-10-09',

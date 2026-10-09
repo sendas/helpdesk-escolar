@@ -120,3 +120,33 @@ async def test_email_templates_render(client):
                                                    description="d", requester="R", requester_email="r@x", category="C",
                                                    priority="Alta", school="S", escalated_by="E", ticket_url="http://x")
         assert "&lt;b&gt;olá&lt;/b&gt;" in html or name == "ticket_commented.html"
+
+
+async def test_support_company_number_goes_in_later_subjects(client, people, api, outbox):
+    from app.api.v1.settings import _update_settings
+    from app.database import AsyncSessionLocal
+    from app.services import email_ingest
+    _update_settings({"support_provider_email": "suporte@controlink.pt", "support_provider_name": "Controlink"})
+    tid = await _new_ticket(client, people, api, "Switch da sala de DTs")
+    assert (await client.post(f"{api}/tickets/{tid}/escalate", headers=people["tec"]["h"])).status_code == 200
+    # Their helpdesk answers from another address of the company, with its own number in the subject
+    msg = email_ingest._parse_graph_message({
+        "subject": f"RE: [Ticket #{tid}] Switch da sala de DTs (#8591)",
+        "from": {"emailAddress": {"address": "notifications=controlink.pt@mg.controlink.pt"}},
+        "body": {"contentType": "text", "content": "Um switch de quantas portas?"},
+        "internetMessageId": f"<controlink-{tid}@mg.controlink.pt>",
+    })
+    assert msg["provider_ref"] == "8591"
+    async with AsyncSessionLocal() as db:
+        await email_ingest._import_messages(db, [msg])
+    t = (await client.get(f"{api}/tickets/{tid}", headers=people["tec"]["h"])).json()
+    assert t["provider_ref"] == "8591"
+    outbox.clear()
+    await client.patch(f"{api}/admin/tickets/{tid}", headers=people["tec"]["h"], json={"status": "resolved"})
+    mails = [d for to, ev, d in outbox if to == "suporte@controlink.pt"]
+    assert len(mails) == 1 and mails[0]["provider_ref"] == "8591" and not mails[0]["first"]
+    # Our own marker is never taken for theirs; a technician can also type it
+    assert email_ingest._provider_ref(f"[Ticket #{tid}] Teste") is None
+    r = await client.put(f"{api}/tickets/{tid}/provider-ref", headers=people["tec"]["h"], json={"ref": "#8600"})
+    assert r.status_code == 200 and r.json()["provider_ref"] == "8600"
+    assert (await client.put(f"{api}/tickets/{tid}/provider-ref", headers=people["prof"]["h"], json={"ref": "1"})).status_code == 403
