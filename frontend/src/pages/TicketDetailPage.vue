@@ -35,16 +35,16 @@
             <button v-if="auth.isAdmin" class="hd-icon-btn" title="Editar assunto e descrição" @click="startEditContent">
               <span class="material-icons" style="font-size:18px">edit</span>
             </button>
-            <!-- Force-send to support company (staff only) -->
+            <!-- Report to the support company (staff only), once: later messages go with "Enviar para empresa de apoio" on a reply -->
             <button
-              v-if="auth.isStaff && !isDeescalated"
+              v-if="auth.isStaff && !isEscalated && !isDeescalated"
               class="hd-btn hd-btn-outline"
               style="font-size:12px;padding:3px 10px"
               :disabled="escalating"
               @click="onEscalateTicket"
             >
-              <span class="material-icons" style="font-size:13px">{{ isEscalated ? 'forward_to_inbox' : 'outgoing_mail' }}</span>
-              {{ escalating ? '...' : (isEscalated ? 'Reenviar à empresa de apoio' : 'Enviar para empresa de apoio') }}
+              <span class="material-icons" style="font-size:13px">outgoing_mail</span>
+              {{ escalating ? '...' : 'Enviar para empresa de apoio' }}
             </button>
             <span class="hd-status" :class="ticket.status">{{ statusLabel(ticket.status) }}</span>
             <PriorityBadge :priority="ticket.priority" />
@@ -69,14 +69,14 @@
             </button>
             <span v-if="isDeescalated" class="deescalated-badge">
               <span class="material-icons" style="font-size:13px;vertical-align:middle">check_circle</span>
-              Resolvido pela empresa de apoio
+              {{ deescalatedLabel }}
             </span>
             <button
               v-if="isDeescalated && auth.isStaff"
               class="hd-btn hd-btn-outline"
               style="font-size:12px;padding:3px 10px"
               :disabled="escalating"
-              title="Reverter — empresa de apoio ainda não resolveu"
+              title="Reverter — volta a ficar reportado à empresa de apoio, sem enviar novo email"
               @click="onEscalateTicket"
             >
               <span class="material-icons" style="font-size:13px">undo</span>
@@ -967,6 +967,10 @@ const isDeescalated = computed(() => {
   return hadEscalated && !ticket.value?.is_escalated
 })
 const deescalating = ref(false)
+const deescalatedLabel = computed(() => {
+  const last = [...(ticket.value?.events ?? [])].reverse().find((e: any) => e.event_type === 'deescalated')
+  return last?.message?.startsWith('Resolvido pela escola') ? 'Encerrado junto da empresa de apoio' : 'Resolvido pela empresa de apoio'
+})
 
 const canManageEmailNotifications = computed(() => {
   if (!ticket.value || !auth.user) return false
@@ -1594,18 +1598,18 @@ async function onRemoveWatcher(userId: number) {
 }
 
 async function onEscalateTicket() {
-  const alreadyEscalated = isEscalated.value
-  const msg = alreadyEscalated
-    ? 'Reenviar este ticket à empresa de apoio (enviará novamente o email de escalamento)?'
-    : 'Reportar este ticket à empresa de apoio informático configurada?'
-  if (!(await confirmDialog(msg, { ok: alreadyEscalated ? 'Reenviar' : 'Reportar' }))) return
+  const reverting = isDeescalated.value
+  const msg = reverting
+    ? 'Voltar a marcar este ticket como reportado à empresa de apoio? Não é enviado nenhum email — para lhes escrever, use "Enviar para empresa de apoio" numa resposta.'
+    : 'Reportar este ticket à empresa de apoio informático configurada? É enviado um único email com o pedido e a conversa; as respostas seguintes só lhes são enviadas quando usar "Enviar para empresa de apoio" numa resposta.'
+  if (!(await confirmDialog(msg, { ok: reverting ? 'Reverter' : 'Reportar' }))) return
   escalating.value = true
   escalationMessage.value = ''
   escalationError.value = false
   try {
     ticket.value = await escalateTicket(ticket.value.id)
-    escalationMessage.value = alreadyEscalated
-      ? 'Email reenviado à empresa de apoio.'
+    escalationMessage.value = reverting
+      ? 'O ticket voltou a estar reportado à empresa de apoio.'
       : 'Ticket reportado e email enviado à empresa de apoio.'
   } catch (error: any) {
     escalationError.value = true
@@ -1628,13 +1632,14 @@ async function onDeescalate() {
 }
 
 async function forwardCommentToProvider(comment: any) {
-  if (!(await confirmDialog('Reenviar esta resposta à empresa de apoio?', { ok: 'Reenviar' }))) return
+  if (!(await confirmDialog('Enviar esta resposta à empresa de apoio? Vai como resposta ao email do pedido, para ficar no mesmo ticket do lado deles.', { ok: 'Enviar' }))) return
   sendingCommentId.value = comment.id
   escalationMessage.value = ''
   escalationError.value = false
   try {
     await escalateComment(ticket.value.id, comment.id)
     escalationMessage.value = 'Resposta enviada à empresa de apoio.'
+    await load({ live: true })
   } catch (error: any) {
     escalationError.value = true
     escalationMessage.value = errorMessage(error, 'Não foi possível reenviar. Verifique as configurações de email.')

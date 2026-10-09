@@ -324,6 +324,9 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
             ticket.status = new_status
             ticket.closed_via_email = True
             status_label = {"closed": "Fechado", "resolved": "Resolvido"}.get(status_action, status_action)
+            if is_provider and ticket.is_escalated and new_status in (TicketStatus.RESOLVED, TicketStatus.CLOSED):
+                # The company closed it on their side: nothing more to send them
+                ticket.is_escalated = False
             db.add(TicketEvent(
                 ticket_id=ticket.id,
                 actor_id=user.id if user else None,

@@ -1,7 +1,11 @@
 import asyncio
 import os
 import logging
+import uuid
 from collections import defaultdict
+from contextvars import ContextVar
+
+import fastapi_mail.msg as _fastapi_mail_msg
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from app.config import settings
@@ -18,6 +22,46 @@ jinja_env = Environment(loader=FileSystemLoader(_templates_dir), autoescape=sele
 _DIGEST_WINDOW_SECONDS = settings.mail_digest_window_seconds
 _pending: dict[tuple[str, int], list[dict]] = defaultdict(list)
 _flush_tasks: dict[tuple[str, int], "asyncio.Task"] = {}
+
+
+# fastapi-mail always makes up a Message-ID; emails to the support company need a known one, so that the later
+# messages can say "this is a reply to that" (In-Reply-To/References) and land in the same ticket on their side
+_forced_message_id: ContextVar[str | None] = ContextVar("forced_message_id", default=None)
+_make_msgid = _fastapi_mail_msg.make_msgid
+_fastapi_mail_msg.make_msgid = lambda *a, **k: _forced_message_id.get() or _make_msgid(*a, **k)
+
+
+def new_thread_id(ticket_id: int) -> str:
+    domain = (settings.mail_from or "helpdesk.local").rsplit("@", 1)[-1].strip(" >") or "helpdesk.local"
+    return f"<helpdesk-{ticket_id}-{uuid.uuid4().hex[:12]}@{domain}>"
+
+
+async def send_provider_email(to_email: str, event: str, ticket_data: dict, thread_id: str, first: bool) -> None:
+    """One conversation per ticket with the support company: the first email opens it (Message-ID = thread_id),
+    every later one is a reply to it, with the same subject — so their system adds to the same ticket instead of
+    opening a new one each time."""
+    if not settings.mail_server or _is_hidden_demo_action():
+        return
+    ticket_data = _normalize_ticket_data(ticket_data)
+    try:
+        html_body = jinja_env.get_template(f"ticket_{event}.html").render(**ticket_data)
+    except Exception as exc:
+        logger.warning("Email template error for event %s: %s", event, exc)
+        return
+    subject = f"[Ticket #{ticket_data.get('id')}] {ticket_data.get('title')}"
+    headers = {"Reply-To": settings.mail_from}
+    if not first:
+        subject = "RE: " + subject
+        headers.update({"In-Reply-To": thread_id, "References": thread_id})
+    token = _forced_message_id.set(thread_id if first else None)
+    try:
+        message = MessageSchema(subject=subject, recipients=[to_email], body=html_body, subtype=MessageType.html, headers=headers)
+        await FastMail(_get_conf()).send_message(message)
+        logger.info("Email to the support company %s for ticket %s (%s)", to_email, ticket_data.get("id"), event)
+    except Exception as exc:
+        logger.warning("Email to the support company failed for ticket %s (%s): %s", ticket_data.get("id"), event, exc)
+    finally:
+        _forced_message_id.reset(token)
 
 
 def _get_conf() -> ConnectionConfig:

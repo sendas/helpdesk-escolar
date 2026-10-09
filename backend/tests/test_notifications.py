@@ -18,6 +18,11 @@ def outbox(monkeypatch):
     monkeypatch.setattr(settings, "mail_server", "smtp.test")
     monkeypatch.setattr(email_service, "send_ticket_notification", fake)
     monkeypatch.setattr(email_service, "send_ticket_email_now", fake)
+
+    async def fake_provider(to, event, data, thread_id, first):
+        sent.append((to, event, {**data, "thread_id": thread_id, "first": first}))
+
+    monkeypatch.setattr(email_service, "send_provider_email", fake_provider)
     return sent
 
 
@@ -75,18 +80,35 @@ async def test_support_company_gets_the_conversation(client, people, api, outbox
     assert len(mails) == 1 and mails[0][0] == "escalated"
     bodies = [m["body"] for m in mails[0][1]["conversation"]]
     assert bodies == ["Continua sem ligar.", "Já testei outro cabo."]
-    # A later reply goes with the history
+    thread = mails[0][1]["thread_id"]
+    assert mails[0][1]["first"] and thread.startswith("<helpdesk-")
+    # Reporting it again would open a duplicate on their side
+    assert (await client.post(f"{api}/tickets/{tid}/escalate", headers=people["tec"]["h"])).status_code == 400
+    # Ordinary replies are not sent to the company
     outbox.clear()
-    await client.post(f"{api}/tickets/{tid}/comments", headers=people["tec"]["h"], json={"body": "Pode verificar a fonte?"})
+    reply = (await client.post(f"{api}/tickets/{tid}/comments", headers=people["tec"]["h"], json={"body": "Pode verificar a fonte?"})).json()
+    assert not any(to == "apoio@empresa.pt" for to, _, _ in outbox)
+    # …only when sent on purpose, as a reply in the same email conversation, with the history
+    r = await client.post(f"{api}/tickets/{tid}/comments/{reply['id']}/escalate", headers=people["tec"]["h"])
+    assert r.status_code == 204
     mails = [(ev, d) for to, ev, d in outbox if to == "apoio@empresa.pt"]
-    assert mails[0][0] == "supplier_comment" and mails[0][1]["comment"] == "Pode verificar a fonte?"
+    assert len(mails) == 1 and mails[0][0] == "supplier_comment" and mails[0][1]["comment"] == "Pode verificar a fonte?"
+    assert mails[0][1]["thread_id"] == thread and not mails[0][1]["first"]
     assert [m["body"] for m in mails[0][1]["conversation"]] == ["Continua sem ligar.", "Já testei outro cabo."]
-    # Priority changes no longer go to the company; closing does
+    # Priority changes do not go to the company; solving it does, once, in the same conversation
     outbox.clear()
     await client.patch(f"{api}/admin/tickets/{tid}", headers=people["tec"]["h"], json={"priority": "urgent"})
     assert not any(to == "apoio@empresa.pt" for to, _, _ in outbox)
+    await client.patch(f"{api}/admin/tickets/{tid}", headers=people["tec"]["h"], json={"status": "resolved"})
     await client.patch(f"{api}/admin/tickets/{tid}", headers=people["tec"]["h"], json={"status": "closed"})
-    assert [ev for to, ev, _ in outbox if to == "apoio@empresa.pt"] == ["supplier_updated"]
+    mails = [(ev, d) for to, ev, d in outbox if to == "apoio@empresa.pt"]
+    assert [ev for ev, _ in mails] == ["supplier_updated"] and mails[0][1]["thread_id"] == thread
+    t = (await client.get(f"{api}/tickets/{tid}", headers=people["tec"]["h"])).json()
+    assert t["is_escalated"] is False
+    # "Reverter": reported again without a new email (they already have this ticket)
+    outbox.clear()
+    assert (await client.post(f"{api}/tickets/{tid}/escalate", headers=people["tec"]["h"])).status_code == 200
+    assert not any(to == "apoio@empresa.pt" for to, _, _ in outbox)
 
 
 async def test_email_templates_render(client):

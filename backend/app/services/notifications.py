@@ -6,7 +6,9 @@ Rules:
 - State changes: only the requester (and followers who are not in the support team) and only when it concerns them:
   waiting for their answer, resolved or closed. Staff get them only if they turned them on in their preferences.
 - Priority/group changes: no email; only a person who becomes responsible is told ("assigned").
-- Support company (ticket reported to it): replies and the closing, each time with the conversation so far.
+- Support company (ticket reported to it): one email when the ticket is reported, a reply sent on purpose
+  ("Enviar para empresa de apoio") and one last email if the school solves it — all in the same email conversation,
+  so their system keeps a single ticket. Ordinary replies are not sent to them.
 """
 from __future__ import annotations
 
@@ -83,10 +85,15 @@ def attachment_names(ticket: Ticket) -> list[str]:
 
 
 async def send_to_provider(ticket: Ticket, event: str, extra: dict, exclude_comment_id: int | None = None) -> bool:
+    """Reporting the ticket ("escalated") starts a new email conversation with the company; anything else is a reply
+    in that conversation. The caller commits (ticket.provider_thread_id is set on reporting)."""
     email, name = _provider()
     from app.config import settings
     if not email or not settings.mail_server:
         return False
+    first = event == "escalated" or not ticket.provider_thread_id
+    if first:
+        ticket.provider_thread_id = email_service.new_thread_id(ticket.id)
     data = {
         "id": ticket.id, "title": ticket.title, "provider": name,
         "status": ticket.status.value, "priority": ticket.priority.value,
@@ -99,8 +106,32 @@ async def send_to_provider(ticket: Ticket, event: str, extra: dict, exclude_comm
         "attachments": attachment_names(ticket),
         **extra,
     }
-    await email_service.send_ticket_email_now(email, event, data)
+    await email_service.send_provider_email(email, event, data, ticket.provider_thread_id, first)
     return True
+
+
+async def tell_provider_solved(ticket: Ticket, actor: User | None) -> None:
+    """The school solved a ticket that had been reported to the company: tell them once, in the same conversation,
+    that they may close it — and stop treating it as reported, so nothing else is sent to them."""
+    if not ticket.is_escalated:
+        return
+    from sqlalchemy import update
+    from sqlalchemy.orm.attributes import set_committed_value
+    from app.database import AsyncSessionLocal
+    from app.models.ticket import TicketEvent
+    _, name = _provider()
+    async with AsyncSessionLocal() as db:
+        # Whoever flips the flag first sends the email: two quick state changes never send it twice
+        claimed = (await db.execute(
+            update(Ticket).where(Ticket.id == ticket.id, Ticket.is_escalated.is_(True)).values(is_escalated=False)
+        )).rowcount
+        if claimed:
+            db.add(TicketEvent(ticket_id=ticket.id, actor_id=actor.id if actor else None, event_type="deescalated",
+                               message=f"Resolvido pela escola: {name or 'a empresa de apoio'} foi informada de que pode encerrar o pedido"))
+        await db.commit()
+    set_committed_value(ticket, "is_escalated", False)
+    if claimed:
+        await send_to_provider(ticket, "supplier_updated", {"editor": actor.display_name if actor else "Sistema"})
 
 
 async def notify_reply(ticket: Ticket, actor: User, body: str, new_status: TicketStatus | None = None,
@@ -119,8 +150,6 @@ async def notify_reply(ticket: Ticket, actor: User, body: str, new_status: Ticke
     if category_email and category_email.lower() not in sent and category_email.lower() != (actor.email or "").lower():
         await email_service.send_ticket_notification(category_email, "commented", payload)
     _push(targets, "replies", f"Nova resposta: {ticket.title}", f"{actor.display_name}: {body[:80]}", f"/tickets/{ticket.id}")
-    if ticket.is_escalated:
-        await send_to_provider(ticket, "supplier_comment", {"author": actor.display_name, "comment": body}, exclude_comment_id=comment_id)
 
 
 async def notify_status(ticket: Ticket, actor: User | None, old: TicketStatus | None, new: TicketStatus,
@@ -146,7 +175,7 @@ async def notify_status(ticket: Ticket, actor: User | None, old: TicketStatus | 
         await email_service.send_ticket_notification(u.email, "updated", payload)
     _push(push_to, "status", f"Ticket {label.lower()}: {ticket.title}", f"Estado: {label}", f"/tickets/{ticket.id}")
     if ticket.is_escalated and new in DONE_STATES:
-        await send_to_provider(ticket, "supplier_updated", {"editor": actor.display_name if actor else "Sistema"})
+        await tell_provider_solved(ticket, actor)
 
 
 async def notify_assigned(ticket: Ticket, users: list[User], actor: User | None, label: str | None = None) -> None:

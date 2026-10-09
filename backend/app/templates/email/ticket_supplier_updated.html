@@ -1,9 +1,11 @@
 <!doctype html>
 <html lang="pt">
 <body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;max-width:680px">
-  <h2 style="margin:0 0 12px">Pedido #{{ id }}: {{ status }}</h2>
-  <p>O pedido encaminhado para {{ provider }} passou a <strong>{{ status }}</strong> ({{ editor }}).</p>
-  <p><strong>Ticket:</strong> #{{ id }} - {{ title }}</p>
+  <h2 style="margin:0 0 12px">Pedido #{{ id }} resolvido pela escola — pode ser encerrado</h2>
+  <p>Este pedido, que tinha sido encaminhado para {{ provider }}, foi resolvido internamente pela equipa da escola ({{ editor }}).</p>
+  <p><strong>Pedimos que o encerrem no vosso sistema. Não é necessária mais nenhuma intervenção.</strong></p>
+  <p><strong>Ticket:</strong> #{{ id }} - {{ title }}<br><strong>Estado:</strong> {{ status }}</p>
   {% include "_conversation.html" %}
+  <p style="margin-top:20px;color:#374151;font-size:13px">Obrigado pela colaboração.</p>
 </body>
 </html>

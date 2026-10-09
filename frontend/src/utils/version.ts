@@ -1,8 +1,20 @@
-export const APP_VERSION = '2.13.0'
-export const APP_VERSION_DATE = '2026-10-07'
-export const APP_VERSION_TIME = '20:04'
+export const APP_VERSION = '2.14.0'
+export const APP_VERSION_DATE = '2026-10-09'
+export const APP_VERSION_TIME = '17:38'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.14.0',
+    date: '2026-10-09',
+    time: '17:38',
+    title: 'Empresa de apoio: um só pedido por situação',
+    changes: [
+      'Cada ticket é reportado à empresa de apoio uma única vez. As respostas do ticket já não lhes são enviadas automaticamente: para lhes mandar uma resposta, use "Enviar para empresa de apoio" nessa resposta.',
+      'Todos os emails para a empresa sobre o mesmo ticket seguem como resposta ao primeiro (mesmo assunto, ligados entre si), para ficarem num único pedido do lado deles em vez de criarem duplicados.',
+      'Quando a escola resolve um pedido reportado, a empresa recebe um único aviso a pedir que o encerrem, e o ticket deixa de estar reportado. Se for a empresa a fechá-lo por email, não lhe é enviado nada de volta.',
+      '"Reverter" volta a marcar o ticket como reportado sem enviar novo email.',
+    ],
+  },
   {
     version: '2.13.0',
     date: '2026-10-07',

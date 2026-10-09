@@ -583,6 +583,18 @@ async def escalate_ticket(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email do fornecedor não configurado")
     if not settings.mail_server:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envio de email não configurado")
+    if ticket.is_escalated:
+        # One request per situation: reporting it again would open a duplicate ticket on the company's side
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Este pedido já foi reportado à empresa de apoio. Para lhes enviar uma resposta, use \"Enviar para empresa de apoio\" nessa resposta.")
+
+    if any(e.event_type == "escalated" for e in ticket.events):
+        # Reported before and marked as solved ("Reverter"): it goes back to being reported, without a new email —
+        # the company already has this ticket; a reply can be sent to them with "Enviar para empresa de apoio"
+        ticket.is_escalated = True
+        db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="escalated",
+                           message=f"Volta a estar reportado a {provider_name} (sem novo email)"))
+        await db.commit()
+        return await ticket_service.get_ticket(db, ticket_id)
 
     # Everything the support company needs: the request and the public conversation so far
     await notifications.send_to_provider(ticket, "escalated", {"escalated_by": current_user.display_name})
@@ -645,6 +657,9 @@ async def escalate_comment(
     # The reply, with the conversation before it (the company may not have seen the earlier messages)
     await notifications.send_to_provider(ticket, "supplier_comment", {"author": author_name, "comment": comment.body},
                                          exclude_comment_id=comment.id)
+    db.add(TicketEvent(ticket_id=ticket.id, actor_id=current_user.id, event_type="provider_forward",
+                       message=f"Resposta de {author_name} enviada a {provider_name}"))
+    await db.commit()
 
 
 @router.post("/{ticket_id}/watchers", response_model=TicketRead)
@@ -794,7 +809,7 @@ async def add_comment(
         # One email per person with the reply and, if it changed, the new state
         await notifications.notify_reply(ticket, current_user, data.body, new_status, comment_id=comment.id)
         if new_status is not None and ticket.is_escalated and new_status in notifications.DONE_STATES:
-            await notifications.send_to_provider(ticket, "supplier_updated", {"editor": current_user.display_name})
+            await notifications.tell_provider_solved(ticket, current_user)
     return comment
 
 

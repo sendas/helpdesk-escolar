@@ -137,6 +137,11 @@ async def _add_missing_columns(conn) -> None:
     if "mention_ids" not in {row[1] for row in rows_c2}:
         await conn.execute(text("ALTER TABLE comments ADD COLUMN mention_ids VARCHAR(500)"))
 
+    # 7i. Emails to the support company stay in one conversation
+    rows_t2 = await conn.execute(text("PRAGMA table_info(tickets)"))
+    if "provider_thread_id" not in {row[1] for row in rows_t2}:
+        await conn.execute(text("ALTER TABLE tickets ADD COLUMN provider_thread_id VARCHAR(255)"))
+
     # 7h. Files attached to one reply: they follow its visibility (private message, internal note)
     rows_a = await conn.execute(text("PRAGMA table_info(attachments)"))
     if "comment_id" not in {row[1] for row in rows_a}:
