@@ -280,6 +280,7 @@
         <router-view v-slot="{ Component, route: current }">
           <component :is="Component" :key="current.meta.remount ? current.path : undefined" />
         </router-view>
+        <footer v-if="!fullHeightPage" class="app-credit">{{ APP_CREDIT }}</footer>
         <SupportWidget v-if="showSupportWidget" />
         <NewsPopup v-if="showNews" :title="settings.news_title || 'Novidades'" :items="settings.news_items || []" @close="closeNews" />
         <div style="height:env(safe-area-inset-bottom,0px)"></div>
@@ -295,7 +296,7 @@ import { useAuthStore } from '../stores/auth'
 import { getTickets } from '../api/tickets'
 import { getPublicSettings } from '../api/settings'
 import { applyFavicon } from '../utils/branding'
-import { versionLabel } from '../utils/version'
+import { APP_CREDIT, versionLabel } from '../utils/version'
 import AvatarCircle from '../components/AvatarCircle.vue'
 import { usePushNotifications } from '../composables/usePushNotifications'
 import SupportWidget from '../components/SupportWidget.vue'
@@ -322,6 +323,8 @@ const mobileMenuOpen = ref(false)
 const settings = ref<{ org_name: string; logo_url: string; favicon_url: string; knowledge_enabled: boolean; dark_style?: string
   news_enabled?: boolean; news_id?: number; news_audience?: string; news_title?: string; news_items?: { icon: string; title: string; text: string }[] }>({ org_name: 'Agrupamento de Escolas Eça de Queirós', logo_url: '', favicon_url: '', knowledge_enabled: true })
 const versionLabelText = versionLabel()
+// Pages that fill the screen (chat, board, mailbox) have no room for the credit line at the end
+const fullHeightPage = computed(() => ['/chat', '/admin/quadro', '/admin/caixa-entrada'].includes(route.path))
 const chatUnread = ref(0)
 const supportWaiting = ref(0)
 // Docentes and other staff get the live-support bubble; those who answer it use the Chat page instead
@@ -544,6 +547,13 @@ onBeforeUnmount(() => {
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+}
+.app-credit {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--c-muted);
+  padding: 18px 16px 22px;
+  line-height: 1.5;
 }
 .app-content {
   flex: 1 1 auto;

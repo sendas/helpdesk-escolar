@@ -96,7 +96,7 @@
 
       <!-- Footer -->
       <p style="font-size:11.5px;color:var(--c-muted);margin-top:auto">
-        {{ versionLabelText }} · © 2026 Agrupamento de Escolas Eça de Queirós
+        {{ versionLabelText }} · © 2026 Agrupamento de Escolas Eça de Queirós<br>{{ APP_CREDIT }}
       </p>
     </div>
 
@@ -169,7 +169,7 @@ import { useAuthStore } from '../stores/auth'
 import { getPublicSettings } from '../api/settings'
 import DemoLoginPicker from '../components/DemoLoginPicker.vue'
 import { applyFavicon } from '../utils/branding'
-import { versionLabel } from '../utils/version'
+import { APP_CREDIT, versionLabel } from '../utils/version'
 
 const auth = useAuthStore()
 const loading = ref(false)

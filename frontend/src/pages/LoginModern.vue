@@ -68,7 +68,7 @@
         </div>
       </div>
 
-      <p class="lg-footer">{{ versionLabelText }} · © 2026 Agrupamento de Escolas Eça de Queirós</p>
+      <p class="lg-footer">{{ versionLabelText }} · © 2026 Agrupamento de Escolas Eça de Queirós<br>{{ APP_CREDIT }}</p>
     </main>
 
     <!-- Right: showcase -->
@@ -154,7 +154,7 @@ import { useAuthStore } from '../stores/auth'
 import { getPublicSettings } from '../api/settings'
 import DemoLoginPicker from '../components/DemoLoginPicker.vue'
 import { applyFavicon } from '../utils/branding'
-import { versionLabel } from '../utils/version'
+import { APP_CREDIT, versionLabel } from '../utils/version'
 
 const auth = useAuthStore()
 const loading = ref(false)

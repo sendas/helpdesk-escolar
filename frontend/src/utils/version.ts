@@ -1,8 +1,19 @@
-export const APP_VERSION = '2.14.2'
+export const APP_VERSION = '2.14.3'
 export const APP_VERSION_DATE = '2026-10-09'
-export const APP_VERSION_TIME = '21:02'
+export const APP_VERSION_TIME = '21:48'
+
+export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.14.3',
+    date: '2026-10-09',
+    time: '21:48',
+    title: 'Autoria no rodapé',
+    changes: [
+      'No fim das páginas e na página de entrada: "Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós."',
+    ],
+  },
   {
     version: '2.14.2',
     date: '2026-10-09',
