@@ -37,14 +37,17 @@
       </div>
 
       <!-- Room: the list of spaces of the chosen school -->
-      <div v-if="form.school_id && rooms.length" class="hd-field" style="margin-bottom:24px">
+      <div v-if="form.school_id" class="hd-field" style="margin-bottom:24px">
         <label class="hd-label">Sala / espaço <span class="hd-label-hint">(se o pedido for sobre uma sala)</span></label>
-        <select class="hd-select" v-model="form.room_id" style="max-width:420px;margin-top:8px" @change="onRoomChange">
-          <option :value="null">— Não se aplica / outro espaço —</option>
+        <select class="hd-select" v-model="form.room_id" style="max-width:420px;margin-top:8px" :disabled="roomsLoading || !rooms.length" @change="onRoomChange">
+          <option :value="null">{{ roomsLoading ? 'A carregar as salas…' : rooms.length ? '— Não se aplica / outro espaço —' : 'Ainda não há salas configuradas para esta escola' }}</option>
           <optgroup v-for="g in roomGroups" :key="g.kind" :label="g.kind">
             <option v-for="r in g.rooms" :key="r.id" :value="r.id">{{ r.label }}</option>
           </optgroup>
         </select>
+        <p v-if="!roomsLoading && !rooms.length && auth.isAdmin" class="hd-hint">
+          Carregue a lista de salas em <router-link to="/admin/settings">Definições → Escolas e salas</router-link>.
+        </p>
         <div v-if="recent.length" class="room-recent" role="alert">
           <div class="room-recent-title">
             <span class="material-icons">report</span>
@@ -313,6 +316,7 @@ const selectedGroupIds = ref<number[]>([])
 const warningPopup = ref<{ text: string } | null>(null)
 const categoryWarningsEnabled = ref(true)
 const rooms = ref<Room[]>([])
+const roomsLoading = ref(false)
 const roomGroups = computed(() => groupRooms(rooms.value))
 const recent = ref<RecentRoomTicket[]>([])
 const recentDays = ref(7)
@@ -323,7 +327,8 @@ async function pickSchool(id: number) {
   form.value.room_id = null
   recent.value = []
   rooms.value = []
-  try { rooms.value = await getRooms(id) } catch { rooms.value = [] }
+  roomsLoading.value = true
+  try { rooms.value = await getRooms(id) } catch { rooms.value = [] } finally { roomsLoading.value = false }
 }
 
 // Someone may already have asked for help with this room: show it before a second ticket is opened
@@ -381,6 +386,7 @@ onMounted(async () => {
   ])
   categories.value = cats
   schools.value = schs
+  if (schs.length === 1) pickSchool(schs[0].id)
   groups.value = grps as HelpdeskGroup[]
   categoryWarningsEnabled.value = settings?.category_warnings_enabled !== false
   const preselected = Number(route.query.categoria)

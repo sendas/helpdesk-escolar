@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +24,25 @@ async def list_rooms(school_id: int | None = None, all: bool = Query(False), db:
     if not all:
         q = q.where(Room.active.is_(True))
     return list((await db.execute(q)).scalars())
+
+
+@router.get("/lists")
+async def room_lists(_: User = Depends(require_perm("settings.manage"))):
+    """The lists of spaces that come with the app, to load into a school."""
+    return [{"key": k, "name": room_service.LIST_NAMES.get(k, k), "count": len(v)} for k, v in room_service.seed_lists().items()]
+
+
+class RoomImport(BaseModel):
+    school_id: int
+    key: str
+
+
+@router.post("/import")
+async def import_rooms(data: RoomImport, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm("settings.manage"))):
+    await _check_school(db, data.school_id)
+    if data.key not in room_service.seed_lists():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Lista de salas desconhecida.")
+    return {"added": await room_service.import_list(db, data.school_id, data.key)}
 
 
 @router.get("/{room_id}/recent")

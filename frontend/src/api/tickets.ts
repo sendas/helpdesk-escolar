@@ -67,6 +67,14 @@ export async function saveRoom(room: { id?: number; school_id: number; code?: st
   return data
 }
 export async function deleteRoom(id: number) { await api.delete(`/api/v1/rooms/${id}`) }
+export async function getRoomLists() {
+  const { data } = await api.get<{ key: string; name: string; count: number }[]>('/api/v1/rooms/lists')
+  return data
+}
+export async function importRooms(schoolId: number, key: string) {
+  const { data } = await api.post<{ added: number }>('/api/v1/rooms/import', { school_id: schoolId, key })
+  return data
+}
 
 export async function setProviderRef(ticketId: number, ref: string | null) {
   const { data } = await api.put<TicketDetail>(`/api/v1/tickets/${ticketId}/provider-ref`, { ref })

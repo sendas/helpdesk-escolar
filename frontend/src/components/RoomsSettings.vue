@@ -45,6 +45,16 @@
       <span class="material-icons">add</span> Nova sala
     </button>
 
+    <div v-if="!loading && lists.length && !rooms.length && !editing" class="rooms-import">
+      <span>Carregar a lista de espaços do agrupamento:</span>
+      <select v-model="listKey" class="hd-select">
+        <option v-for="l in lists" :key="l.key" :value="l.key">{{ l.name }} ({{ l.count }})</option>
+      </select>
+      <button class="hd-btn hd-btn-outline" type="button" :disabled="!listKey || importing" @click="doImport">
+        <span class="material-icons">playlist_add</span> {{ importing ? 'A carregar…' : 'Carregar para esta escola' }}
+      </button>
+    </div>
+
     <datalist id="room-kinds">
       <option v-for="k in kinds" :key="k" :value="k" />
     </datalist>
@@ -54,14 +64,39 @@
 <script setup lang="ts">
 // Rooms of each school (backend app/api/v1/rooms.py); the first list comes from app/seed/rooms.json
 import { computed, ref, watch } from 'vue'
-import { deleteRoom, getRooms, saveRoom, type Room } from '../api/tickets'
-import { confirmDialog, notifyError } from '../utils/feedback'
+import { deleteRoom, getRoomLists, getRooms, importRooms, saveRoom, type Room } from '../api/tickets'
+import { confirmDialog, notifyError, notifySuccess } from '../utils/feedback'
 
 const props = defineProps<{ schools: { id: number; name: string }[] }>()
 const schoolId = ref<number | null>(null)
 const rooms = ref<Room[]>([])
 const loading = ref(false)
 const editing = ref<any | null>(null)
+const lists = ref<{ key: string; name: string; count: number }[]>([])
+const listKey = ref('')
+const importing = ref(false)
+
+// Suggest the list whose school name looks like the chosen school
+function guessList() {
+  const school = props.schools.find((s) => s.id === schoolId.value)
+  const name = (school?.name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const hit = lists.value.find((l) => (l.key === 'EQ' && /queiro/.test(name)) || (l.key === 'VG' && /vasco|gama/.test(name)) || (l.key === 'PN' && /parque|nacoes/.test(name)))
+  listKey.value = hit?.key || lists.value[0]?.key || ''
+}
+
+async function doImport() {
+  if (!schoolId.value || !listKey.value) return
+  importing.value = true
+  try {
+    const r = await importRooms(schoolId.value, listKey.value)
+    notifySuccess(r.added ? `${r.added} salas carregadas.` : 'Todas as salas desta lista já existiam.')
+    await load()
+  } catch (e) {
+    notifyError(e, 'Não foi possível carregar a lista.')
+  } finally {
+    importing.value = false
+  }
+}
 const kinds = computed(() => [...new Set(['Sala de aula', 'Sala TIC', 'Sala específica', 'Laboratório', 'Biblioteca', 'Espaço M',
   'Sala CAA', 'Sala de estudo', 'Educação Física', 'Auditório', ...rooms.value.map((r) => r.kind)])])
 
@@ -69,6 +104,7 @@ async function load() {
   editing.value = null
   if (!schoolId.value) return
   loading.value = true
+  guessList()
   try {
     rooms.value = await getRooms(schoolId.value, true)
   } catch (e) {
@@ -100,6 +136,8 @@ async function remove(r: Room) {
   }
 }
 
+getRoomLists().then((l) => { lists.value = l; guessList() }).catch(() => {})
+
 watch(() => props.schools, (list) => {
   if (!schoolId.value && list.length) {
     schoolId.value = list[0].id
@@ -129,4 +167,6 @@ watch(() => props.schools, (list) => {
 .rooms-active { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; }
 .rooms-new { border: 1px dashed var(--c-border); border-radius: 10px; margin-top: 10px; }
 .rooms-add { margin-top: 10px; }
+.rooms-import { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--c-muted); margin: 0 0 12px; }
+.rooms-import .hd-select { max-width: 320px; }
 </style>

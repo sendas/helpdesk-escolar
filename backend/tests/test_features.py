@@ -331,3 +331,15 @@ async def test_rooms_by_school_and_duplicate_warning(client, people, api):
     assert r.status_code == 201
     assert (await client.post(f"{api}/rooms", headers=people["prof"]["h"], json={"school_id": eq["id"], "name": "X"})).status_code == 403
     assert (await client.delete(f"{api}/rooms/{r.json()['id']}", headers=people["adm"]["h"])).status_code == 204
+
+
+async def test_room_list_can_be_loaded_into_a_school(client, people, api):
+    r = await client.post(f"{api}/schools", headers=people["adm"]["h"], json={"name": "Escola Nova", "short_name": "Nova"})
+    sid = r.json()["id"]
+    lists = (await client.get(f"{api}/rooms/lists", headers=people["adm"]["h"])).json()
+    assert {l["key"] for l in lists} == {"EQ", "VG", "PN"}
+    r = await client.post(f"{api}/rooms/import", headers=people["adm"]["h"], json={"school_id": sid, "key": "PN"})
+    assert r.json()["added"] == 31
+    r = await client.post(f"{api}/rooms/import", headers=people["adm"]["h"], json={"school_id": sid, "key": "PN"})
+    assert r.json()["added"] == 0   # loading again does not duplicate
+    assert (await client.post(f"{api}/rooms/import", headers=people["prof"]["h"], json={"school_id": sid, "key": "PN"})).status_code == 403

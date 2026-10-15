@@ -1,10 +1,21 @@
-export const APP_VERSION = '2.15.0'
+export const APP_VERSION = '2.15.1'
 export const APP_VERSION_DATE = '2026-10-15'
-export const APP_VERSION_TIME = '12:13'
+export const APP_VERSION_TIME = '12:23'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.15.1',
+    date: '2026-10-15',
+    time: '12:23',
+    title: 'Escolha da sala sempre visível',
+    changes: [
+      'O campo "Sala / espaço" aparece sempre que se escolhe a escola ao criar um ticket (antes ficava escondido se a escola ainda não tivesse salas).',
+      'As escolas são reconhecidas com mais flexibilidade ao carregar a lista de salas (ex.: "Queiroz", "EB Vasco da Gama", "Parque das Nações").',
+      'Em Definições → Escolas e salas, uma escola sem salas tem o botão "Carregar para esta escola" para importar a lista de espaços do agrupamento.',
+    ],
+  },
   {
     version: '2.15.0',
     date: '2026-10-15',

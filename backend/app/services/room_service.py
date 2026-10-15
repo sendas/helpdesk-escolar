@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 SEED_FILE = Path(__file__).resolve().parent.parent / "seed" / "rooms.json"
 RECENT_DAYS = 7
 # How each school of the list is recognised among the schools set up in the app
-_SCHOOL_HINTS = {"EQ": ("eça de queirós", "eca de queiros"), "VG": ("vasco da gama",), "PN": ("parque das nações", "parque das nacoes")}
+_SCHOOL_HINTS = {"EQ": ("queiros", "queiroz", "eca"), "VG": ("vasco", "gama"), "PN": ("parque", "nacoes")}
+LIST_NAMES = {"EQ": "Escola Secundária Eça de Queirós", "VG": "Escola Básica Vasco da Gama", "PN": "Escola Básica Parque das Nações"}
 
 
 def _fold(text: str) -> str:
@@ -30,11 +31,34 @@ def _match_school(key: str, schools: list[School]) -> School | None:
     for s in schools:
         if (s.short_name or "").strip().upper() == key:
             return s
-    hints = [_fold(h) for h in _SCHOOL_HINTS.get(key, ())]
+    hints = _SCHOOL_HINTS.get(key, ())
     for s in schools:
-        if any(h in _fold(s.name) for h in hints):
+        words = set(_fold(f"{s.name} {s.short_name}").replace("-", " ").split())
+        if any(h in words for h in hints):
             return s
     return None
+
+
+def seed_lists() -> dict[str, list[dict]]:
+    rows = json.loads(SEED_FILE.read_text(encoding="utf-8"))
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        out.setdefault(r["school"], []).append(r)
+    return out
+
+
+async def import_list(db: AsyncSession, school_id: int, key: str) -> int:
+    """Definições: load one of the lists (EQ, VG, PN) into a school, skipping rooms it already has (same code/name)."""
+    rows = seed_lists().get(key, [])
+    existing = {(r.code or "", r.name) for r in (await db.execute(select(Room).where(Room.school_id == school_id))).scalars()}
+    added = 0
+    for i, r in enumerate(rows):
+        if (r.get("code") or "", r["name"]) in existing:
+            continue
+        db.add(Room(school_id=school_id, code=r.get("code"), name=r["name"], kind=r.get("kind") or "Sala de aula", sort=i))
+        added += 1
+    await db.commit()
+    return added
 
 
 async def seed_rooms(db: AsyncSession) -> int:
