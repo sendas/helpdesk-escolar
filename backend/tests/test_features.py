@@ -294,3 +294,40 @@ async def test_files_of_a_private_message_stay_private(client, people, api):
     assert (await dl("prof", nid)).status_code == 404
     events = (await files("prof")).json()["events"]
     assert not any("fatura.png" in e["message"] or "nota.png" in e["message"] for e in events)
+
+
+async def test_rooms_by_school_and_duplicate_warning(client, people, api):
+    cats = (await client.get(f"{api}/categories", headers=people["adm"]["h"])).json()
+    schools = {s["name"]: s for s in (await client.get(f"{api}/schools", headers=people["prof"]["h"])).json()}
+    eq, vg = schools["Escola Eça de Queirós"], schools["Escola Vasco da Gama"]
+    eq_rooms = (await client.get(f"{api}/rooms", params={"school_id": eq["id"]}, headers=people["prof"]["h"])).json()
+    vg_rooms = (await client.get(f"{api}/rooms", params={"school_id": vg["id"]}, headers=people["prof"]["h"])).json()
+    assert len(eq_rooms) == 50 and len(vg_rooms) == 29
+    sala12 = next(r for r in eq_rooms if r["code"] == "EQ12T")
+    assert sala12["label"] == "Sala TIC 12 · EQ12T"
+
+    def new(room_id, school_id, confirm=False, who="prof"):
+        return client.post(f"{api}/tickets", headers=people[who]["h"], json={
+            "title": "Computador não liga", "description": "x", "category_id": cats[0]["id"], "school_id": school_id,
+            "room_id": room_id, "confirm_duplicate": confirm})
+
+    assert (await new(vg_rooms[0]["id"], eq["id"])).status_code == 400   # a room of another school
+    first = await new(sala12["id"], eq["id"])
+    assert first.status_code == 201 and first.json()["room"]["code"] == "EQ12T"
+    # Someone else, same room, same week: shown the ticket and asked to confirm
+    recent = (await client.get(f"{api}/rooms/{sala12['id']}/recent", headers=people["tec2"]["h"])).json()
+    assert [t["id"] for t in recent["tickets"]] == [first.json()["id"]]
+    dup = await new(sala12["id"], eq["id"])
+    assert dup.status_code == 409
+    assert dup.json()["detail"]["recent"][0]["id"] == first.json()["id"]
+    assert (await new(sala12["id"], eq["id"], confirm=True)).status_code == 201
+    # The team can correct the room; only rooms of the ticket's school
+    tid = first.json()["id"]
+    r = await client.patch(f"{api}/admin/tickets/{tid}", headers=people["tec"]["h"], json={"room_id": eq_rooms[0]["id"]})
+    assert r.status_code == 200 and r.json()["room"]["id"] == eq_rooms[0]["id"]
+    assert (await client.patch(f"{api}/admin/tickets/{tid}", headers=people["tec"]["h"], json={"room_id": vg_rooms[0]["id"]})).status_code == 400
+    # Rooms are managed in the settings
+    r = await client.post(f"{api}/rooms", headers=people["adm"]["h"], json={"school_id": eq["id"], "code": "EQ40", "name": "Sala 40"})
+    assert r.status_code == 201
+    assert (await client.post(f"{api}/rooms", headers=people["prof"]["h"], json={"school_id": eq["id"], "name": "X"})).status_code == 403
+    assert (await client.delete(f"{api}/rooms/{r.json()['id']}", headers=people["adm"]["h"])).status_code == 204

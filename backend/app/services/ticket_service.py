@@ -96,6 +96,7 @@ async def create_ticket(db: AsyncSession, data: TicketCreate, creator: User, all
         description=data.description,
         category_id=data.category_id,
         school_id=data.school_id,
+        room_id=data.room_id,
         priority=data.priority,
         creator_id=creator.id,
         creator_email_notifications=data.creator_email_notifications,
@@ -301,6 +302,14 @@ _PRIORITY_PT: dict[str, str] = {
 
 async def update_ticket(db: AsyncSession, ticket: Ticket, data: TicketUpdate) -> Ticket:
     changes: list[str] = []
+    if "room_id" in data.model_fields_set and data.room_id != ticket.room_id:
+        from app.models.room import Room
+        room = await db.get(Room, data.room_id) if data.room_id is not None else None
+        if data.room_id is not None and (not room or room.school_id != ticket.school_id):
+            raise TicketValidationError("A sala escolhida não pertence à escola do ticket.")
+        ticket.room_id = data.room_id
+        ticket.room = room
+        changes.append(f"Sala alterada para {room.label}" if room else "Sala removida")
     if data.status is not None:
         changes.append(f"Estado alterado para {_STATUS_PT.get(data.status.value, data.status.value)}")
         ticket.status = data.status

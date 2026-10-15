@@ -3,7 +3,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from app.models.ticket import TicketStatus, TicketPriority
 from app.schemas.user import HelpdeskGroupRead, UserRead
 from app.schemas.category import CategoryRead
-from app.schemas.school import SchoolRead
+from app.schemas.school import RoomRead, SchoolRead
 
 
 class WatcherAdd(BaseModel):
@@ -21,10 +21,14 @@ class TicketCreate(BaseModel):
     assignee_ids: list[int] = []
     creator_email_notifications: bool = True
     escalate: bool = False
+    room_id: int | None = None
+    # A ticket for a room that already had one in the last days must be confirmed by the person
+    confirm_duplicate: bool = False
 
 
 class TicketUpdate(BaseModel):
     status: TicketStatus | None = None
+    room_id: int | None = None
     assignee_id: int | None = None
     assignee_ids: list[int] | None = None
     group_id: int | None = None
@@ -146,6 +150,7 @@ class TicketRead(BaseModel):
     group: HelpdeskGroupRead | None = None
     category: CategoryRead
     school: SchoolRead | None = None
+    room: RoomRead | None = None
     comments: list[CommentRead] = []
     attachments: list[AttachmentRead] = []
     watchers: list[UserRead] = []
@@ -193,6 +198,7 @@ class TicketListItem(BaseModel):
     watchers: list[UserRead] = []
     category: CategoryRead
     school: SchoolRead | None = None
+    room: RoomRead | None = None
     has_reminder: bool = False
     reminder_at: datetime | None = None
     is_unread: bool = False

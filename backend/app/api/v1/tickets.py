@@ -9,12 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, get_current_user
 from app.models.user import User, UserRole
-from app.models.ticket import Attachment, Comment, TicketEvent, TicketReminder, TicketStatus
+from app.models.ticket import Attachment, Comment, Ticket, TicketEvent, TicketReminder, TicketStatus
+from app.models.room import Room
 from app.models.category import Category
 from app.models.school import School
 from app.schemas.ticket import visible_attachments, AttachmentRead, TicketCreate, TicketRead, TicketUpdate, PaginatedTickets, TicketListItem, CommentCreate, CommentRead, CommentUpdate, WatcherAdd, TicketRatingCreate, TicketRatingRead
 from app.models.planning import TicketRating
-from app.services import ticket_service, email_service, push_service, read_service
+from app.services import ticket_service, email_service, push_service, read_service, room_service
 from app.api.v1.settings import _read_settings
 from app.config import settings
 from app.services.permissions import has_perm
@@ -323,6 +324,18 @@ async def create_ticket(
     school = (await db.execute(select(School).where(School.id == data.school_id))).scalar_one_or_none()
     if not school:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escola obrigatória ou inválida")
+    if data.room_id is not None:
+        room = await db.get(Room, data.room_id)
+        if not room or not room.active or room.school_id != school.id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A sala escolhida não pertence a esta escola.")
+        if not data.confirm_duplicate:
+            # One problem, one ticket: someone may already have reported this room
+            recent = await room_service.recent_tickets(db, room.id)
+            if recent:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={
+                    "message": f"Nos últimos {room_service.RECENT_DAYS} dias já foi aberto um pedido para {room.label}. Confirme que se trata de outro problema.",
+                    "recent": [recent_ticket_info(t, current_user) for t in recent],
+                })
 
     ticket = await ticket_service.create_ticket(db, data, current_user)
     notified: set[str] = set()
@@ -378,6 +391,15 @@ async def create_ticket(
             await db.commit()
 
     return ticket
+
+
+def recent_ticket_info(t: Ticket, viewer: User) -> dict:
+    """What anyone may see of another ticket for the same room: number, subject, state and date —
+    and whether they can open it."""
+    return {
+        "id": t.id, "title": t.title, "status": t.status.value, "created_at": t.created_at.isoformat(),
+        "can_open": _can_access_ticket(t, viewer) or has_perm(viewer, "tickets.view_all"),
+    }
 
 
 async def _attachment_comment(db: AsyncSession, ticket_id: int, comment_id: int) -> Comment | None:

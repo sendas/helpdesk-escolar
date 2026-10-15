@@ -76,6 +76,7 @@ _ORPHAN_DELETES = (
     "UPDATE chat_conversations SET ticket_id = NULL WHERE ticket_id IS NOT NULL AND ticket_id NOT IN (SELECT id FROM tickets)",
     "UPDATE tickets SET group_id = NULL WHERE group_id IS NOT NULL AND group_id NOT IN (SELECT id FROM helpdesk_groups)",
     "UPDATE tickets SET school_id = NULL WHERE school_id IS NOT NULL AND school_id NOT IN (SELECT id FROM schools)",
+    "UPDATE tickets SET room_id = NULL WHERE room_id IS NOT NULL AND room_id NOT IN (SELECT id FROM rooms)",
     "UPDATE ticket_routing_rules SET group_id = NULL WHERE group_id IS NOT NULL AND group_id NOT IN (SELECT id FROM helpdesk_groups)",
     "UPDATE ticket_routing_rules SET school_id = NULL WHERE school_id IS NOT NULL AND school_id NOT IN (SELECT id FROM schools)",
     "UPDATE ticket_routing_rules SET category_id = NULL WHERE category_id IS NOT NULL AND category_id NOT IN (SELECT id FROM categories)",
@@ -143,6 +144,8 @@ _DETACH = {
         "UPDATE knowledge_articles SET category_id = NULL WHERE category_id = :id",
     ),
     "schools": (
+        "UPDATE tickets SET room_id = NULL WHERE room_id IN (SELECT id FROM rooms WHERE school_id = :id)",
+        "DELETE FROM rooms WHERE school_id = :id",
         "UPDATE tickets SET school_id = NULL WHERE school_id = :id",
         "UPDATE ticket_routing_rules SET school_id = NULL WHERE school_id = :id",
         "UPDATE chat_conversations SET school_id = NULL WHERE school_id = :id",

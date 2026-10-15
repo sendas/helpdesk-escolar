@@ -137,6 +137,12 @@ async def _add_missing_columns(conn) -> None:
     if "mention_ids" not in {row[1] for row in rows_c2}:
         await conn.execute(text("ALTER TABLE comments ADD COLUMN mention_ids VARCHAR(500)"))
 
+    # 7j. Room of the ticket (chosen from the school's list of spaces)
+    cols_t3 = {row[1] for row in await conn.execute(text("PRAGMA table_info(tickets)"))}
+    if "room_id" not in cols_t3:
+        await conn.execute(text("ALTER TABLE tickets ADD COLUMN room_id INTEGER REFERENCES rooms(id)"))
+    await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tickets_room_id ON tickets (room_id)"))
+
     # 7i. Emails to the support company stay in one conversation
     cols_t2 = {row[1] for row in await conn.execute(text("PRAGMA table_info(tickets)"))}
     if "provider_thread_id" not in cols_t2:
@@ -239,6 +245,9 @@ async def lifespan(app: FastAPI):
     from app.services.bootstrap import ensure_defaults
     async with AsyncSessionLocal() as db:
         await ensure_defaults(db)
+    from app.services.room_service import seed_rooms
+    async with AsyncSessionLocal() as db:
+        await seed_rooms(db)
     from app.api.v1.settings import apply_settings_migrations
     apply_settings_migrations()
     from app.services.permissions import ensure_default_roles

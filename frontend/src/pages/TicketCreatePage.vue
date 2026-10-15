@@ -19,7 +19,7 @@
             :key="s.id"
             class="hd-sel-card"
             :class="{ selected: form.school_id === s.id }"
-            @click="form.school_id = s.id"
+            @click="pickSchool(s.id)"
           >
             <div class="hd-sel-icon" style="background:#EEF1FF">
               <span class="material-icons" style="color:var(--c-primary);font-size:18px">account_balance</span>
@@ -34,6 +34,31 @@
       </div>
       <div v-else style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:13px;color:#DC2626;margin-bottom:20px">
         Ainda não existem escolas configuradas. Peça a um administrador para adicionar escolas.
+      </div>
+
+      <!-- Room: the list of spaces of the chosen school -->
+      <div v-if="form.school_id && rooms.length" class="hd-field" style="margin-bottom:24px">
+        <label class="hd-label">Sala / espaço <span class="hd-label-hint">(se o pedido for sobre uma sala)</span></label>
+        <select class="hd-select" v-model="form.room_id" style="max-width:420px;margin-top:8px" @change="onRoomChange">
+          <option :value="null">— Não se aplica / outro espaço —</option>
+          <optgroup v-for="g in roomGroups" :key="g.kind" :label="g.kind">
+            <option v-for="r in g.rooms" :key="r.id" :value="r.id">{{ r.label }}</option>
+          </optgroup>
+        </select>
+        <div v-if="recent.length" class="room-recent" role="alert">
+          <div class="room-recent-title">
+            <span class="material-icons">report</span>
+            {{ recent.length === 1 ? 'Já foi aberto um pedido' : `Já foram abertos ${recent.length} pedidos` }} para esta sala nos últimos {{ recentDays }} dias
+          </div>
+          <ul>
+            <li v-for="t in recent" :key="t.id">
+              <router-link v-if="t.can_open" :to="`/tickets/${t.id}`" target="_blank">T-{{ t.id }} · {{ t.title }}</router-link>
+              <span v-else>T-{{ t.id }} · {{ t.title }}</span>
+              <small>{{ statusLabel(t.status) }} · {{ formatDay(t.created_at) }}</small>
+            </li>
+          </ul>
+          <p>Se for o mesmo problema, não é preciso abrir outro pedido — a equipa já está a tratar. Se for um problema diferente, pode continuar.</p>
+        </div>
       </div>
 
       <!-- Category selector -->
@@ -80,7 +105,7 @@
       <!-- Title -->
       <div class="hd-field" :class="{ 'field-missing': !form.title.trim() }" style="margin-bottom:20px">
         <label class="hd-label">Assunto <span class="hd-label-hint">*</span></label>
-        <input class="hd-input" v-model="form.title" placeholder="Ex: Projetor da sala B-12 sem imagem" />
+        <input class="hd-input" v-model="form.title" placeholder="Ex: Projetor sem imagem" />
       </div>
 
       <!-- Description -->
@@ -90,7 +115,7 @@
           placeholder="Descreva o problema com o máximo de detalhe: o que aconteceu, quando começou, o que já tentou... (pode colar aqui capturas de ecrã)"
           @paste="onPasteImage"
         ></textarea>
-        <p class="hd-hint">Inclua, se possível, número da sala, equipamento e horário em que precisa de resolução.</p>
+        <p class="hd-hint">Inclua, se possível, o equipamento e o horário em que precisa de resolução.</p>
       </div>
 
       <!-- Priority -->
@@ -259,11 +284,13 @@
 </template>
 
 <script setup lang="ts">
-import { errorMessage } from '../utils/feedback'
+import { confirmDialog, errorMessage } from '../utils/feedback'
 import { ref, computed, onMounted } from 'vue'
+import { groupRooms } from '../utils/rooms'
+import { statusLabel } from '../utils/ticketStatus'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { createTicket, getCategories, getSchools, uploadTicketAttachment } from '../api/tickets'
+import { createTicket, getCategories, getRoomRecent, getRooms, getSchools, uploadTicketAttachment, type RecentRoomTicket, type Room } from '../api/tickets'
 import { getGroups, searchUsers, type HelpdeskGroup, type UserFull } from '../api/users'
 import { getPublicSettings } from '../api/settings'
 import SupportBanner from '../components/SupportBanner.vue'
@@ -285,12 +312,51 @@ const groups = ref<HelpdeskGroup[]>([])
 const selectedGroupIds = ref<number[]>([])
 const warningPopup = ref<{ text: string } | null>(null)
 const categoryWarningsEnabled = ref(true)
+const rooms = ref<Room[]>([])
+const roomGroups = computed(() => groupRooms(rooms.value))
+const recent = ref<RecentRoomTicket[]>([])
+const recentDays = ref(7)
+
+async function pickSchool(id: number) {
+  if (form.value.school_id === id) return
+  form.value.school_id = id
+  form.value.room_id = null
+  recent.value = []
+  rooms.value = []
+  try { rooms.value = await getRooms(id) } catch { rooms.value = [] }
+}
+
+// Someone may already have asked for help with this room: show it before a second ticket is opened
+async function onRoomChange() {
+  recent.value = []
+  if (!form.value.room_id) return
+  try {
+    const r = await getRoomRecent(form.value.room_id)
+    recentDays.value = r.days
+    recent.value = r.tickets
+  } catch { recent.value = [] }
+}
+
+function formatDay(iso: string) {
+  const d = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z')
+  return d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) + ' às ' + d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+}
+
+async function confirmSameRoom(list: RecentRoomTicket[]) {
+  const room = rooms.value.find((r) => r.id === form.value.room_id)
+  const lines = list.map((t) => `• T-${t.id} · ${t.title} (${statusLabel(t.status)}, ${formatDay(t.created_at)})`).join('\n')
+  return confirmDialog(
+    `Nos últimos ${recentDays.value} dias já foi aberto um pedido para ${room?.label ?? 'esta sala'}:\n\n${lines}\n\nSe for o mesmo problema, não é preciso abrir outro. Quer mesmo criar um novo pedido para esta sala?`,
+    { title: 'Pedido para a mesma sala', ok: 'Sim, é outro problema', cancel: 'Não criar' },
+  )
+}
 
 const form = ref({
   title: '',
   description: '',
   category_id: null as number | null,
   school_id: null as number | null,
+  room_id: null as number | null,
   priority: 'medium',
   creator_email_notifications: true as boolean | null,
 })
@@ -334,6 +400,19 @@ async function onSubmit() {
     error.value = `Ainda falta: ${missingRequired.value.join(', ')}.`
     return
   }
+  let confirmDuplicate = false
+  if (form.value.room_id) {
+    await onRoomChange()
+    if (recent.value.length) {
+      if (!(await confirmSameRoom(recent.value))) return
+      confirmDuplicate = true
+    }
+  }
+  await submit(confirmDuplicate)
+}
+
+async function submit(confirmDuplicate: boolean) {
+  if (!form.value.category_id || !form.value.school_id) return
   loading.value = true
   error.value = ''
   try {
@@ -342,6 +421,8 @@ async function onSubmit() {
       description: form.value.description,
       category_id: form.value.category_id,
       school_id: form.value.school_id,
+      room_id: form.value.room_id,
+      confirm_duplicate: confirmDuplicate,
       priority: form.value.priority,
       watcher_ids: selectedWatchers.value.map(user => user.id),
       group_ids: selectedGroupIds.value,
@@ -361,6 +442,14 @@ async function onSubmit() {
       error.value = `Ticket criado, mas os seguintes anexos falharam: ${attachErrors.join(', ')}`
     }
   } catch (e: any) {
+    // Someone opened a ticket for the same room in the meantime: show it and ask again
+    const detail = e?.response?.status === 409 ? e.response.data?.detail : null
+    if (detail?.recent?.length && !confirmDuplicate) {
+      recent.value = detail.recent
+      loading.value = false
+      if (await confirmSameRoom(detail.recent)) await submit(true)
+      return
+    }
     error.value = errorMessage(e, 'Erro ao criar ticket')
   } finally {
     loading.value = false
@@ -740,6 +829,24 @@ function formatSize(size: number) {
   color: var(--c-muted);
   font-size: 12px;
 }
+
+.room-recent {
+  background: #FFF7ED;
+  border: 1px solid #FDBA74;
+  border-radius: 10px;
+  color: #9A3412;
+  margin-top: 10px;
+  max-width: 620px;
+  padding: 12px 14px;
+}
+.room-recent-title { align-items: center; display: flex; font-size: 13px; font-weight: 800; gap: 8px; }
+.room-recent-title .material-icons { font-size: 18px; }
+.room-recent ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.room-recent li { display: flex; flex-direction: column; font-size: 13px; }
+.room-recent li a { color: inherit; font-weight: 700; }
+.room-recent li small { opacity: .8; font-size: 12px; }
+.room-recent p { font-size: 12.5px; margin: 10px 0 0; line-height: 1.45; }
+.dark .room-recent { background: rgba(154, 52, 18, 0.18); border-color: #C2410C; color: #FDBA74; }
 
 .cat-warning-backdrop {
   position: fixed; inset: 0; z-index: 9999;

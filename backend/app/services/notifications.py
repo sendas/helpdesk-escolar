@@ -102,6 +102,7 @@ async def send_to_provider(ticket: Ticket, event: str, extra: dict, exclude_comm
         "requester_email": ticket.creator.email if ticket.creator else "",
         "category": ticket.category.name if ticket.category else "",
         "school": ticket.school.name if ticket.school else "",
+        "room": ticket.room.label if ticket.room else "",
         "conversation": conversation(ticket, exclude_comment_id),
         "attachments": attachment_names(ticket),
         "provider_ref": ticket.provider_ref,

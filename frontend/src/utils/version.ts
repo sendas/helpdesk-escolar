@@ -1,10 +1,22 @@
-export const APP_VERSION = '2.14.3'
-export const APP_VERSION_DATE = '2026-10-09'
-export const APP_VERSION_TIME = '21:48'
+export const APP_VERSION = '2.15.0'
+export const APP_VERSION_DATE = '2026-10-15'
+export const APP_VERSION_TIME = '12:13'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.15.0',
+    date: '2026-10-15',
+    time: '12:13',
+    title: 'Sala do pedido e aviso de pedidos repetidos',
+    changes: [
+      'Ao abrir um ticket escolhe-se a sala ou espaço, da lista da escola escolhida (salas de aula, salas TIC, laboratórios, biblioteca, pavilhões…).',
+      'Se nos últimos 7 dias já foi aberto um pedido para a mesma sala, aparece logo esse pedido e é preciso confirmar que se trata de outro problema antes de criar um novo.',
+      'A sala aparece no ticket, na lista de tickets e no email para a empresa de apoio; a equipa pode corrigi-la no ticket.',
+      'Em Definições → Escolas e salas é possível acrescentar, corrigir, desativar ou apagar salas.',
+    ],
+  },
   {
     version: '2.14.3',
     date: '2026-10-09',

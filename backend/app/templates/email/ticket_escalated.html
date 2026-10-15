@@ -7,6 +7,7 @@
     <strong>Ticket:</strong> #{{ id }} - {{ title }}<br>
     <strong>Solicitante:</strong> {{ requester }} &lt;{{ requester_email }}&gt;<br>
     <strong>Escola:</strong> {{ school or "Não indicada" }}<br>
+    {% if room %}<strong>Sala / espaço:</strong> {{ room }}<br>{% endif %}
     <strong>Categoria:</strong> {{ category }}<br>
     <strong>Prioridade:</strong> {{ priority }}<br>
     <strong>Estado:</strong> {{ status }}<br>

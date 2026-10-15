@@ -234,6 +234,7 @@
         </div>
       </div>
         </section>
+        <RoomsSettings :schools="schools" />
       </template>
 
       <template v-if="section === 'encaminhamento'">
@@ -502,6 +503,7 @@ import { api } from '../../boot/axios'
 import SupportChatSettings from '../../components/SupportChatSettings.vue'
 import TeamsSettings from '../../components/TeamsSettings.vue'
 import QuickRepliesSettings from '../../components/QuickRepliesSettings.vue'
+import RoomsSettings from '../../components/RoomsSettings.vue'
 import ReportSettings from '../../components/ReportSettings.vue'
 import NewsSettings from '../../components/NewsSettings.vue'
 import { getGroups, getUsers } from '../../api/users'
@@ -519,7 +521,7 @@ const navGroups = computed(() => [
   ] },
   { label: 'Tickets', items: [
     { key: 'categorias', label: 'Categorias e prazos', icon: 'category', desc: 'Categorias dos pedidos, tempos de resposta e emails de aviso.' },
-    { key: 'escolas', label: 'Escolas', icon: 'account_balance', desc: 'Escolas que os utilizadores escolhem ao abrir um ticket.' },
+    { key: 'escolas', label: 'Escolas e salas', icon: 'account_balance', desc: 'Escolas e salas que os utilizadores escolhem ao abrir um ticket.' },
     { key: 'encaminhamento', label: 'Encaminhamento', icon: 'alt_route', desc: 'Quem fica responsável por cada tipo de pedido.' },
     { key: 'empresa', label: 'Empresa de apoio', icon: 'handshake', desc: 'Empresa externa para onde se reportam os tickets.' },
     { key: 'respostas', label: 'Respostas-modelo', icon: 'quickreply', desc: 'Respostas prontas a usar nos tickets.' },

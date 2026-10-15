@@ -12,7 +12,7 @@
         <span class="trow-id">T-{{ ticket.id }}</span>
         <ReminderChip :at="ticket.reminder_at" />
         <span v-if="ticket.is_escalated" class="trow-esc" title="Reportado à empresa de apoio">E</span>
-        <span v-if="ticket.school" class="trow-school" :title="ticket.school.name">{{ schoolInitials(ticket.school.name) }}</span>
+        <span v-if="ticket.school" class="trow-school" :title="ticket.school.name + (ticket.room ? ' · ' + ticket.room.label : '')">{{ schoolInitials(ticket.school.name) }}<template v-if="ticket.room"> · {{ ticket.room.code || ticket.room.name }}</template></span>
         <span class="trow-cat">{{ ticket.category?.name || 'Sem categoria' }}</span>
         <span class="trow-sep">·</span>
         <span class="trow-person"><PersonName :name="ticket.creator?.display_name" /></span>

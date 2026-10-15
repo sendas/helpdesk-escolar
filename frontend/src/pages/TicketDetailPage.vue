@@ -50,7 +50,7 @@
             <PriorityBadge :priority="ticket.priority" />
             <span v-if="ticket.school" class="school-badge" :title="ticket.school.name">
               <span class="material-icons">school</span>
-              {{ ticket.school.name }}
+              {{ ticket.school.name }}<template v-if="ticket.room"> · {{ ticket.room.label }}</template>
             </span>
             <span v-if="isEscalated && !isDeescalated" class="escalated-badge" title="Ticket reportado à empresa de apoio">
               <span class="material-icons" style="font-size:13px;vertical-align:middle">open_in_new</span>
@@ -594,6 +594,19 @@
               <span style="font-size:13px">{{ ticket.school.name }}</span>
             </div>
 
+            <div v-if="ticket.room || (auth.isStaff && ticket.school)" class="hd-detail-row">
+              <div class="hd-detail-label">Sala / espaço</div>
+              <select v-if="auth.isStaff" class="hd-select" style="font-size:13px;padding:5px 8px" :value="ticket.room?.id ?? ''"
+                      @focus="loadRoomOptions" @change="changeRoom(($event.target as HTMLSelectElement).value)">
+                <option value="">— Não indicada —</option>
+                <option v-if="ticket.room && !roomOptions.some((r) => r.id === ticket.room.id)" :value="ticket.room.id">{{ ticket.room.label }}</option>
+                <optgroup v-for="g in roomGroups" :key="g.kind" :label="g.kind">
+                  <option v-for="r in g.rooms" :key="r.id" :value="r.id">{{ r.label }}</option>
+                </optgroup>
+              </select>
+              <span v-else style="font-size:13px">{{ ticket.room.label }}</span>
+            </div>
+
             <div class="hd-detail-row">
               <div class="hd-detail-label">Aberto</div>
               <span style="font-size:13px">{{ formatDate(ticket.created_at) }}</span>
@@ -658,8 +671,9 @@
 <script setup lang="ts">
 import { statusLabel as labelFor } from '../utils/ticketStatus'
 import { computed, nextTick, ref, onMounted, onUnmounted, watch } from 'vue'
+import { groupRooms } from '../utils/rooms'
 import { useRoute, useRouter } from 'vue-router'
-import { getTicket, markTicketUnread, adminBulkActionTickets, getMyReminders, setMyReminder, clearMyReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, setProviderRef, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
+import { getTicket, markTicketUnread, adminBulkActionTickets, getMyReminders, setMyReminder, clearMyReminder, deleteReminder, addComment, adminUpdateTicket, updateTicket, updateComment, deleteComment, escalateTicket, deescalateTicket, escalateComment, setProviderRef, getRooms, addWatcher, removeWatcher, downloadAttachment, fetchAttachmentBlob, uploadTicketAttachment } from '../api/tickets'
 import { getGroups, getUsers, searchUsers } from '../api/users'
 import { useAuthStore } from '../stores/auth'
 import AvatarCircle from '../components/AvatarCircle.vue'
@@ -1625,6 +1639,21 @@ async function onEscalateTicket() {
     escalationMessage.value = errorMessage(error, 'Não foi possível reportar o ticket. Verifica o email da empresa de apoio nas configurações.')
   } finally {
     escalating.value = false
+  }
+}
+
+// Room: the team can set or correct it (rooms of the ticket's school)
+const roomOptions = ref<any[]>([])
+const roomGroups = computed(() => groupRooms(roomOptions.value))
+async function loadRoomOptions() {
+  if (roomOptions.value.length || !ticket.value?.school) return
+  try { roomOptions.value = await getRooms(ticket.value.school.id) } catch { roomOptions.value = [] }
+}
+async function changeRoom(value: string) {
+  try {
+    ticket.value = await adminUpdateTicket(ticket.value.id, { room_id: value ? Number(value) : null })
+  } catch (e) {
+    notifyError(e, 'Não foi possível alterar a sala.')
   }
 }
 

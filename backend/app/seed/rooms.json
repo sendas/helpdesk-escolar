@@ -1,0 +1,662 @@
+[
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ01",
+  "name": "Sala 01"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ02",
+  "name": "Sala 02"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ03",
+  "name": "Sala 03"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ04",
+  "name": "Sala 04"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ05",
+  "name": "Sala 05"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ06",
+  "name": "Sala 06"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala TIC",
+  "code": "EQ07T",
+  "name": "Sala TIC 07"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ08",
+  "name": "Sala 08"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ09",
+  "name": "Sala 09"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ10",
+  "name": "Sala 10"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ11",
+  "name": "Sala 11"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala TIC",
+  "code": "EQ12T",
+  "name": "Sala TIC 12"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala TIC",
+  "code": "EQ13T",
+  "name": "Sala TIC 13"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ14",
+  "name": "Sala 14"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ15E",
+  "name": "Sala 15E"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ16E",
+  "name": "Sala 16E"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ17E",
+  "name": "Sala 17E"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ18",
+  "name": "Sala 18 (MM)"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ19",
+  "name": "Sala 19"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ20",
+  "name": "Sala 20"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ21",
+  "name": "Sala 21"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ22",
+  "name": "Sala 22"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ23",
+  "name": "Sala 23"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ24",
+  "name": "Sala 24"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ25",
+  "name": "Sala 25"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ26",
+  "name": "Sala 26"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ27",
+  "name": "Sala 27"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ28",
+  "name": "Sala 28"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ29",
+  "name": "Sala 29"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ30",
+  "name": "Sala 30"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ31",
+  "name": "Sala 31"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ32",
+  "name": "Sala 32"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ33",
+  "name": "Sala 33"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ34",
+  "name": "Sala 34"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ35",
+  "name": "Sala 35"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ36",
+  "name": "Sala 36"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ37",
+  "name": "Sala 37"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ38",
+  "name": "Sala 38"
+ },
+ {
+  "school": "EQ",
+  "kind": "Sala de aula",
+  "code": "EQ39",
+  "name": "Sala 39"
+ },
+ {
+  "school": "EQ",
+  "kind": "Biblioteca",
+  "code": "EQBIB",
+  "name": "Biblioteca"
+ },
+ {
+  "school": "EQ",
+  "kind": "Educação Física",
+  "code": "EQEF1",
+  "name": "Pavilhão Ed. Física 1"
+ },
+ {
+  "school": "EQ",
+  "kind": "Educação Física",
+  "code": "EQEF2",
+  "name": "Pavilhão Ed. Física 2"
+ },
+ {
+  "school": "EQ",
+  "kind": "Educação Física",
+  "code": "EQEF3",
+  "name": "Pavilhão Ed. Física 3"
+ },
+ {
+  "school": "EQ",
+  "kind": "Espaço M",
+  "code": "EQEsp",
+  "name": "Espaço M"
+ },
+ {
+  "school": "EQ",
+  "kind": "Laboratório",
+  "code": "EQLB1",
+  "name": "Lab. Física e Química"
+ },
+ {
+  "school": "EQ",
+  "kind": "Laboratório",
+  "code": "EQLB2",
+  "name": "Lab. Física e Química"
+ },
+ {
+  "school": "EQ",
+  "kind": "Laboratório",
+  "code": "EQLB3",
+  "name": "Lab. Biologia e Geologia"
+ },
+ {
+  "school": "EQ",
+  "kind": "Laboratório",
+  "code": "EQLB4",
+  "name": "Lab. Biologia e Geologia"
+ },
+ {
+  "school": "EQ",
+  "kind": "Auditório",
+  "code": null,
+  "name": "Auditório 1"
+ },
+ {
+  "school": "EQ",
+  "kind": "Auditório",
+  "code": null,
+  "name": "Auditório 2"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG01",
+  "name": "Sala de aula 1"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG02",
+  "name": "Sala de aula 2"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG04",
+  "name": "Sala de aula 4"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG05",
+  "name": "Sala de aula 5"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG06",
+  "name": "Sala de aula 6"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG07",
+  "name": "Sala de aula 7"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG08",
+  "name": "Sala de aula 8"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG09",
+  "name": "Sala de aula 9"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG10",
+  "name": "Sala de aula 10"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG13",
+  "name": "Sala de aula 13"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG14",
+  "name": "Sala de aula 14"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG15",
+  "name": "Sala de aula 15"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala específica",
+  "code": "VG16EV",
+  "name": "Sala de aula 16 - EV"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala específica",
+  "code": "VG17ET/EVT",
+  "name": "Sala de aula 17 - EV/ET"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala específica",
+  "code": "VG18ET/EV",
+  "name": "Sala de aula 18 - EV/ET 2.º Ciclo"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala específica",
+  "code": "VG19EV",
+  "name": "Sala de aula 19 - EV/ET"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala de aula",
+  "code": "VG20",
+  "name": "Sala de aula 20"
+ },
+ {
+  "school": "VG",
+  "kind": "Laboratório",
+  "code": "VG21LabFQ",
+  "name": "Sala de aula 21 - FQ"
+ },
+ {
+  "school": "VG",
+  "kind": "Laboratório",
+  "code": "VG22LabCN",
+  "name": "Sala de aula 22 - CN"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala específica",
+  "code": "VG23",
+  "name": "Sala de aula 23 - EV/ET"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala TIC",
+  "code": "VGTIC1",
+  "name": "Sala TIC 1 - R/C chão, 3.º Ciclo"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala TIC",
+  "code": "VGTIC2",
+  "name": "Sala TIC 2 - 2.º piso, 2.º Ciclo"
+ },
+ {
+  "school": "VG",
+  "kind": "Biblioteca",
+  "code": "VGBIBLI",
+  "name": "Biblioteca"
+ },
+ {
+  "school": "VG",
+  "kind": "Sala CAA",
+  "code": "VGCAA",
+  "name": "Sala CAA"
+ },
+ {
+  "school": "VG",
+  "kind": "Espaço M",
+  "code": "VGEM",
+  "name": "Espaço M"
+ },
+ {
+  "school": "VG",
+  "kind": "Educação Física",
+  "code": "VGG1",
+  "name": "Pavilhão Desportivo - Educação Física"
+ },
+ {
+  "school": "VG",
+  "kind": "Educação Física",
+  "code": "VGEFCJ",
+  "name": "Campo de Jogos - Educação Física"
+ },
+ {
+  "school": "VG",
+  "kind": "Educação Física",
+  "code": "VGGEF",
+  "name": "Gabinete de EF"
+ },
+ {
+  "school": "VG",
+  "kind": "Auditório",
+  "code": null,
+  "name": "Auditório"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s01",
+  "name": "Sala 1"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s02",
+  "name": "Sala 2"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s03",
+  "name": "Sala 3"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s04",
+  "name": "Sala 4"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s05",
+  "name": "Sala 5"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s09",
+  "name": "Sala 9"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s10",
+  "name": "Sala 10"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s11",
+  "name": "Sala 11"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s12",
+  "name": "Sala 12"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s13",
+  "name": "Sala 13"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s14",
+  "name": "Sala 14"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s15",
+  "name": "Sala 15"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s16",
+  "name": "Sala 16"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s17",
+  "name": "Sala 17"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de aula",
+  "code": "s18",
+  "name": "Sala 18"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala específica",
+  "code": "sET",
+  "name": "Sala de Educação Tecnológica"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala específica",
+  "code": "sEV",
+  "name": "Sala EV 2.º e 3.º ciclo"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala específica",
+  "code": "sMus.",
+  "name": "Sala de Música"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala CAA",
+  "code": "sCAA",
+  "name": "CAA - piso 0"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala de estudo",
+  "code": "sEPN",
+  "name": "Sala de Estudo"
+ },
+ {
+  "school": "PN",
+  "kind": "Laboratório",
+  "code": "sLCN",
+  "name": "Lab. CN"
+ },
+ {
+  "school": "PN",
+  "kind": "Laboratório",
+  "code": "sLFQ",
+  "name": "Lab. FQ"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala TIC",
+  "code": "sTIC1",
+  "name": "Sala TIC 1"
+ },
+ {
+  "school": "PN",
+  "kind": "Sala TIC",
+  "code": "sTIC2",
+  "name": "Sala TIC 2"
+ },
+ {
+  "school": "PN",
+  "kind": "Biblioteca",
+  "code": "sBIBLI",
+  "name": "Biblioteca"
+ },
+ {
+  "school": "PN",
+  "kind": "Espaço M",
+  "code": "s.ESp.M",
+  "name": "Espaço M (GPD)"
+ },
+ {
+  "school": "PN",
+  "kind": "Educação Física",
+  "code": "sPav1",
+  "name": "Pavilhão EF 1"
+ },
+ {
+  "school": "PN",
+  "kind": "Educação Física",
+  "code": "sPav2",
+  "name": "Pavilhão EF 2"
+ },
+ {
+  "school": "PN",
+  "kind": "Educação Física",
+  "code": "sCjg2",
+  "name": "Campo de Jogos"
+ },
+ {
+  "school": "PN",
+  "kind": "Educação Física",
+  "code": "sEF",
+  "name": "Ginásio provisório"
+ },
+ {
+  "school": "PN",
+  "kind": "Auditório",
+  "code": null,
+  "name": "Espaço equivalente a auditório"
+ }
+]
