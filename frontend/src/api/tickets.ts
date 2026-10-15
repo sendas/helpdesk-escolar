@@ -3,7 +3,7 @@ import { api } from '../boot/axios'
 export interface School { id: number; name: string; short_name: string; address?: string }
 export interface Room { id: number; school_id: number; code?: string | null; name: string; kind: string; label: string; active: boolean }
 export interface RecentRoomTicket { id: number; title: string; status: string; created_at: string; can_open: boolean }
-export interface Category { id: number; name: string; description?: string; email_to?: string; color: string; icon: string; sla_hours: number; warning_enabled?: boolean; warning_text?: string }
+export interface Category { id: number; name: string; description?: string; email_to?: string; color: string; icon: string; sla_hours: number; warning_enabled?: boolean; warning_text?: string; room_required?: boolean }
 export interface UserBrief { id: number; username: string; email: string; display_name: string; department?: string; role: string }
 export interface HelpdeskGroupBrief { id: number; name: string; description?: string; members?: UserBrief[] }
 
@@ -241,12 +241,12 @@ export async function getCategories() {
   return data
 }
 
-export async function createCategory(payload: { name: string; description?: string; email_to?: string; color: string; icon: string; sla_hours: number; warning_enabled?: boolean; warning_text?: string }) {
+export async function createCategory(payload: { name: string; description?: string; email_to?: string; color: string; icon: string; sla_hours: number; warning_enabled?: boolean; warning_text?: string; room_required?: boolean }) {
   const { data } = await api.post<Category>('/api/v1/categories', payload)
   return data
 }
 
-export async function updateCategory(id: number, payload: Partial<{ name: string; description?: string; email_to?: string; color: string; icon: string; sla_hours: number; warning_enabled: boolean; warning_text: string }>) {
+export async function updateCategory(id: number, payload: Partial<{ name: string; description?: string; email_to?: string; color: string; icon: string; sla_hours: number; warning_enabled: boolean; warning_text: string; room_required: boolean }>) {
   const { data } = await api.patch<Category>(`/api/v1/categories/${id}`, payload)
   return data
 }

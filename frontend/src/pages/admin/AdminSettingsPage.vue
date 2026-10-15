@@ -101,7 +101,7 @@
           </div>
       <div v-if="loadingCats" style="color:var(--c-muted)">A carregar...</div>
       <table v-else class="hd-table">
-        <thead><tr><th>ÍCONE</th><th>NOME</th><th>DESCRIÇÃO</th><th>EMAIL</th><th>TEMPO DE RESPOSTA</th><th></th></tr></thead>
+        <thead><tr><th>ÍCONE</th><th>NOME</th><th>DESCRIÇÃO</th><th>EMAIL</th><th>TEMPO DE RESPOSTA</th><th title="Quem abre um ticket desta categoria tem de escolher a sala">SALA OBRIGATÓRIA</th><th></th></tr></thead>
         <tbody>
           <tr v-for="cat in categories" :key="cat.id">
             <td>
@@ -122,6 +122,13 @@
               />
             </td>
             <td style="font-weight:600">{{ cat.sla_hours }}h</td>
+            <td style="text-align:center">
+              <div class="hd-toggle-wrap" style="display:inline-flex" role="switch" tabindex="0" :aria-checked="!!cat.room_required"
+                   :title="cat.room_required ? 'Sala obrigatória nesta categoria' : 'Sala opcional nesta categoria'"
+                   @click="toggleRoomRequired(cat)" @keydown.enter.prevent="toggleRoomRequired(cat)" @keydown.space.prevent="toggleRoomRequired(cat)">
+                <div class="hd-toggle-track" :class="{ on: cat.room_required }"><div class="hd-toggle-thumb"></div></div>
+              </div>
+            </td>
             <td>
               <button class="hd-icon-btn" @click="deleteCategory(cat.id)" title="Eliminar">
                 <span class="material-icons" style="font-size:15px;color:#EF4444">delete</span>
@@ -129,7 +136,7 @@
             </td>
           </tr>
           <tr v-if="!categories.length">
-            <td colspan="6" style="text-align:center;color:var(--c-muted);padding:32px">Sem categorias.</td>
+            <td colspan="7" style="text-align:center;color:var(--c-muted);padding:32px">Sem categorias.</td>
           </tr>
         </tbody>
       </table>
@@ -155,6 +162,9 @@
           <label class="hd-label">Email de notificação</label>
           <input class="hd-input" v-model="newCat.email_to" placeholder="ex: inovar@escola.pt" />
         </div>
+        <label class="hd-row" style="gap:8px;margin-bottom:12px;font-size:13px;cursor:pointer">
+          <input v-model="newCat.room_required" type="checkbox" /> É obrigatório escolher a sala nos pedidos desta categoria
+        </label>
         <div class="hd-grid-2" style="margin-bottom:16px">
           <div class="hd-field">
             <label class="hd-label">Ícone Material Icons</label>
@@ -615,7 +625,7 @@ const suggestionEmailsRaw = ref('')
 const savedEmail = ref(false)
 
 
-const newCat = ref({ name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 48 })
+const newCat = ref({ name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 48, room_required: false })
 const newSchool = ref({ name: '', short_name: '', address: '' })
 const newRoute = ref({ category_id: '', school_id: '', group_id: '', assignee_id: '', priority: 100 })
 const newArticle = ref({ title: '', body: '', category_id: '', is_published: true })
@@ -832,7 +842,7 @@ async function createCat() {
     const cat = await createCategory({ ...newCat.value })
     categories.value.push(cat)
     showNewCat.value = false
-    newCat.value = { name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 48 }
+    newCat.value = { name: '', description: '', email_to: '', icon: 'help', color: '#3D52D5', sla_hours: 48, room_required: false }
   } catch (e) {
     notifyError(e, 'Não foi possível criar a categoria.')
   }
@@ -845,6 +855,17 @@ async function saveCategoryEmail(cat: any) {
     if (idx !== -1) categories.value[idx] = { ...categories.value[idx], ...updated }
   } catch (e) {
     notifyError(e, 'Não foi possível guardar o email da categoria.')
+  }
+}
+
+async function toggleRoomRequired(cat: any) {
+  const next = !cat.room_required
+  cat.room_required = next
+  try {
+    await apiUpdateCategory(cat.id, { room_required: next })
+  } catch (e) {
+    cat.room_required = !next
+    notifyError(e, 'Não foi possível guardar a opção.')
   }
 }
 

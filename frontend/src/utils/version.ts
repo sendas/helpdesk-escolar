@@ -1,10 +1,20 @@
-export const APP_VERSION = '2.15.1'
+export const APP_VERSION = '2.15.2'
 export const APP_VERSION_DATE = '2026-10-15'
-export const APP_VERSION_TIME = '12:23'
+export const APP_VERSION_TIME = '12:30'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.15.2',
+    date: '2026-10-15',
+    time: '12:30',
+    title: 'Sala obrigatória por categoria',
+    changes: [
+      'Em Definições → Categorias, a coluna "Sala obrigatória" define em que categorias é preciso escolher a sala ao abrir um ticket (ex.: Projetores, Computadores).',
+      'Nessas categorias, o ticket só pode ser submetido depois de escolher a sala. Numa escola que ainda não tenha salas configuradas, o pedido nunca fica bloqueado.',
+    ],
+  },
   {
     version: '2.15.1',
     date: '2026-10-15',

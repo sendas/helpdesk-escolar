@@ -324,6 +324,11 @@ async def create_ticket(
     school = (await db.execute(select(School).where(School.id == data.school_id))).scalar_one_or_none()
     if not school:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Escola obrigatória ou inválida")
+    if data.room_id is None and category.room_required:
+        # Only where there is a list to choose from: a school without rooms never blocks a ticket
+        has_rooms = (await db.execute(select(Room.id).where(Room.school_id == school.id, Room.active.is_(True)).limit(1))).first()
+        if has_rooms:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Nos pedidos de \"{category.name}\" é obrigatório indicar a sala.")
     if data.room_id is not None:
         room = await db.get(Room, data.room_id)
         if not room or not room.active or room.school_id != school.id:

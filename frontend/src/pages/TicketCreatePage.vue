@@ -37,10 +37,10 @@
       </div>
 
       <!-- Room: the list of spaces of the chosen school -->
-      <div v-if="form.school_id" class="hd-field" style="margin-bottom:24px">
-        <label class="hd-label">Sala / espaço <span class="hd-label-hint">(se o pedido for sobre uma sala)</span></label>
+      <div v-if="form.school_id" class="hd-field" :class="{ 'field-missing': roomRequired && !form.room_id }" style="margin-bottom:24px">
+        <label class="hd-label">Sala / espaço <span class="hd-label-hint">{{ roomRequired ? '*' : '(se o pedido for sobre uma sala)' }}</span></label>
         <select class="hd-select" v-model="form.room_id" style="max-width:420px;margin-top:8px" :disabled="roomsLoading || !rooms.length" @change="onRoomChange">
-          <option :value="null">{{ roomsLoading ? 'A carregar as salas…' : rooms.length ? '— Não se aplica / outro espaço —' : 'Ainda não há salas configuradas para esta escola' }}</option>
+          <option :value="null">{{ roomsLoading ? 'A carregar as salas…' : !rooms.length ? 'Ainda não há salas configuradas para esta escola' : roomRequired ? '— Escolha a sala —' : '— Não se aplica / outro espaço —' }}</option>
           <optgroup v-for="g in roomGroups" :key="g.kind" :label="g.kind">
             <option v-for="r in g.rooms" :key="r.id" :value="r.id">{{ r.label }}</option>
           </optgroup>
@@ -316,6 +316,9 @@ const selectedGroupIds = ref<number[]>([])
 const warningPopup = ref<{ text: string } | null>(null)
 const categoryWarningsEnabled = ref(true)
 const rooms = ref<Room[]>([])
+const selectedCategory = computed(() => categories.value.find((c: any) => c.id === form.value.category_id))
+// Required only where there is a list to choose from (a school without rooms never blocks a ticket)
+const roomRequired = computed(() => !!selectedCategory.value?.room_required && rooms.value.length > 0)
 const roomsLoading = ref(false)
 const roomGroups = computed(() => groupRooms(rooms.value))
 const recent = ref<RecentRoomTicket[]>([])
@@ -370,6 +373,7 @@ const missingRequired = computed(() => {
   const missing: string[] = []
   if (!form.value.school_id) missing.push('Escolher a escola')
   if (!form.value.category_id) missing.push('Escolher a categoria')
+  if (roomRequired.value && !form.value.room_id) missing.push(`Escolher a sala (obrigatório em "${selectedCategory.value?.name}")`)
   if (!form.value.title.trim()) missing.push('Preencher o assunto')
   if (!form.value.description.trim()) missing.push('Preencher a descrição')
   if (form.value.creator_email_notifications === null) missing.push('Responder se quer receber atualizações por email')

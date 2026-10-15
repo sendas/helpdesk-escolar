@@ -343,3 +343,22 @@ async def test_room_list_can_be_loaded_into_a_school(client, people, api):
     r = await client.post(f"{api}/rooms/import", headers=people["adm"]["h"], json={"school_id": sid, "key": "PN"})
     assert r.json()["added"] == 0   # loading again does not duplicate
     assert (await client.post(f"{api}/rooms/import", headers=people["prof"]["h"], json={"school_id": sid, "key": "PN"})).status_code == 403
+
+
+async def test_category_can_require_a_room(client, people, api):
+    cat = (await client.post(f"{api}/categories", headers=people["adm"]["h"], json={"name": "Projetores e quadros (teste)", "room_required": True})).json()
+    assert cat["room_required"] is True
+    schools = {s["name"]: s for s in (await client.get(f"{api}/schools", headers=people["prof"]["h"])).json()}
+    eq = schools["Escola Eça de Queirós"]
+    room = (await client.get(f"{api}/rooms", params={"school_id": eq["id"]}, headers=people["prof"]["h"])).json()[-1]
+    body = {"title": "Projetor sem imagem", "description": "x", "category_id": cat["id"], "school_id": eq["id"]}
+    r = await client.post(f"{api}/tickets", headers=people["prof"]["h"], json=body)
+    assert r.status_code == 400 and "sala" in r.json()["detail"]
+    assert (await client.post(f"{api}/tickets", headers=people["prof"]["h"], json={**body, "room_id": room["id"]})).status_code == 201
+    # A school without rooms is never blocked
+    empty = (await client.post(f"{api}/schools", headers=people["adm"]["h"], json={"name": "Escola Sem Salas", "short_name": "SS"})).json()
+    assert (await client.post(f"{api}/tickets", headers=people["prof"]["h"], json={**body, "school_id": empty["id"]})).status_code == 201
+    # Switched off again
+    r = await client.patch(f"{api}/categories/{cat['id']}", headers=people["adm"]["h"], json={"room_required": False})
+    assert r.status_code == 200 and r.json()["room_required"] is False
+    assert (await client.post(f"{api}/tickets", headers=people["prof"]["h"], json=body)).status_code == 201

@@ -62,6 +62,8 @@ async def _add_missing_columns(conn) -> None:
         await conn.execute(text("ALTER TABLE categories ADD COLUMN warning_enabled BOOLEAN NOT NULL DEFAULT 0"))
     if "warning_text" not in existing_cat:
         await conn.execute(text("ALTER TABLE categories ADD COLUMN warning_text TEXT"))
+    if "room_required" not in existing_cat:
+        await conn.execute(text("ALTER TABLE categories ADD COLUMN room_required BOOLEAN NOT NULL DEFAULT 0"))
 
     # 3. Backfill: mark tickets that have an 'escalated' event with no later 'deescalated' event
     await conn.execute(text("""

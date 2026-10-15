@@ -10,6 +10,7 @@ class CategoryCreate(BaseModel):
     sla_hours: int = 48
     warning_enabled: bool = False
     warning_text: str | None = None
+    room_required: bool = False
 
 
 class CategoryUpdate(BaseModel):
@@ -21,6 +22,7 @@ class CategoryUpdate(BaseModel):
     sla_hours: int | None = None
     warning_enabled: bool | None = None
     warning_text: str | None = None
+    room_required: bool | None = None
 
 
 class CategoryRead(BaseModel):
@@ -35,3 +37,4 @@ class CategoryRead(BaseModel):
     sla_hours: int
     warning_enabled: bool = False
     warning_text: str | None = None
+    room_required: bool = False

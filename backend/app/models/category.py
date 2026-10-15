@@ -15,5 +15,7 @@ class Category(Base):
     sla_hours: Mapped[int] = mapped_column(Integer, default=48)
     warning_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     warning_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Tickets of this category must say which room (classroom equipment, projectors…)
+    room_required: Mapped[bool] = mapped_column(Boolean, default=False)
 
     tickets: Mapped[list["Ticket"]] = relationship("Ticket", back_populates="category")
