@@ -1,10 +1,20 @@
-export const APP_VERSION = '2.15.2'
-export const APP_VERSION_DATE = '2026-10-15'
-export const APP_VERSION_TIME = '12:30'
+export const APP_VERSION = '2.15.3'
+export const APP_VERSION_DATE = '2026-10-16'
+export const APP_VERSION_TIME = '11:19'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.15.3',
+    date: '2026-10-16',
+    time: '11:19',
+    title: 'Nenhum email para contas de demonstração',
+    changes: [
+      'Corrigido: alguns emails (lembretes, aviso de "pedido a ser acompanhado") ainda podiam ser enviados para as contas de demonstração (@demo.escola.pt), que não existem e voltavam como devolvidos.',
+      'Os tickets de demonstração deixam de receber avisos de inatividade e de ser fechados automaticamente, e não geram pedidos de ponto de situação à equipa.',
+    ],
+  },
   {
     version: '2.15.2',
     date: '2026-10-15',

@@ -151,3 +151,23 @@ async def test_support_company_number_goes_in_later_subjects(client, people, api
     r = await client.put(f"{api}/tickets/{tid}/provider-ref", headers=people["tec"]["h"], json={"ref": "#8600"})
     assert r.status_code == 200 and r.json()["provider_ref"] == "8600"
     assert (await client.put(f"{api}/tickets/{tid}/provider-ref", headers=people["prof"]["h"], json={"ref": "1"})).status_code == 403
+
+
+async def test_nothing_is_ever_emailed_to_demo_accounts(client, monkeypatch):
+    from app.config import settings
+    from app.services import email_service
+    sent = []
+
+    class FakeMail:
+        def __init__(self, conf): pass
+        async def send_message(self, message): sent.append(message.recipients)
+
+    monkeypatch.setattr(settings, "mail_server", "smtp.test")
+    monkeypatch.setattr(email_service, "FastMail", FakeMail)
+    demo = "demo_teacher@demo.escola.pt"
+    await email_service.send_ticket_email_now(demo, "status_followup", {"id": 1, "title": "T", "status": "open", "days": 8})
+    await email_service.send_reminder(demo, {"id": 1, "title": "T", "status": "open"})
+    await email_service.send_private_message(demo, {"id": 1, "title": "T", "author": "A", "comment": "c"})
+    await email_service.send_html([demo], "Relatório", "<p>x</p>")
+    await email_service.send_suggestion_notification([demo], {"author_name": "A", "title": "x", "body": "y"})
+    assert sent == []

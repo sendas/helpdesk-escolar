@@ -163,6 +163,10 @@ async def forward_mail(data: ForwardIn, db: AsyncSession = Depends(get_db), user
     bad = [e for e in emails if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", e)]
     if bad:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Endereço inválido: {bad[0]}")
+    from app.services.email_service import is_demo_address
+    emails = [e for e in emails if not is_demo_address(e)]
+    if not emails:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="As contas de demonstração não recebem emails.")
     names = dict((e, n) for e, n in (await db.execute(select(func.lower(User.email), User.display_name).where(func.lower(User.email).in_(emails)))).all())
     await _run(_provider().forward(data.id, [(e, names.get(e, "")) for e in emails], _signed(data.text, user) if data.text.strip() else _signed("", user).strip()))
     logger.info("Caixa de entrada: %s reencaminhou o email %s para %s", user.email, data.id[:40], ", ".join(emails))

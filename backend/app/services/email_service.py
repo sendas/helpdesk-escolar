@@ -101,6 +101,9 @@ _PRIORITY_PT: dict[str, str] = {
 
 
 async def send_html(recipients: list[str], subject: str, html_body: str) -> None:
+    recipients = [r for r in recipients if not is_demo_address(r)]
+    if not recipients:
+        return
     """A ready-made HTML email (e.g. the monthly report). Raises on failure so the caller can report it."""
     if not settings.mail_server:
         raise RuntimeError("Envio de email não configurado no servidor.")
@@ -109,6 +112,7 @@ async def send_html(recipients: list[str], subject: str, html_body: str) -> None
 
 
 async def send_suggestion_notification(recipients: list[str], suggestion_data: dict) -> None:
+    recipients = [r for r in recipients if not is_demo_address(r)]
     if not settings.mail_server or not recipients:
         return
     try:
@@ -159,7 +163,7 @@ async def send_no_access_contact(to_email: str, contact_data: dict) -> None:
 
 async def send_private_message(to_email: str, data: dict) -> None:
     """Private message inside a ticket: sent only to its recipient, never merged into the update digest."""
-    if not settings.mail_server or _is_hidden_demo_action() or to_email.lower().endswith("@demo.escola.pt"):
+    if not settings.mail_server or _is_hidden_demo_action() or is_demo_address(to_email):
         return
     data = _normalize_ticket_data(data)
     try:
@@ -179,7 +183,7 @@ async def send_private_message(to_email: str, data: dict) -> None:
 
 async def send_reminder(to_email: str, data: dict) -> None:
     """Reminder set on an internal note. Sent right away (not merged into the update digest)."""
-    if not settings.mail_server:
+    if not settings.mail_server or is_demo_address(to_email):
         return
     data = _normalize_ticket_data(data)
     created = data.get("note_created_at")
@@ -212,6 +216,14 @@ def _normalize_ticket_data(ticket_data: dict) -> dict:
     return ticket_data
 
 
+DEMO_DOMAIN = "@demo.escola.pt"
+
+
+def is_demo_address(email: str | None) -> bool:
+    """Demo accounts (demo_teacher@demo.escola.pt…) have made-up addresses: nothing is ever sent to them."""
+    return (email or "").strip().lower().endswith(DEMO_DOMAIN)
+
+
 def _is_hidden_demo_action() -> bool:
     from app.api.deps import acting_as_demo
     if not acting_as_demo.get():
@@ -223,7 +235,7 @@ def _is_hidden_demo_action() -> bool:
 async def send_ticket_notification(to_email: str, event: str, ticket_data: dict) -> None:
     if not settings.mail_server or _is_hidden_demo_action():
         return
-    if to_email.strip().lower().endswith("@demo.escola.pt"):
+    if is_demo_address(to_email):
         return
     ticket_data = _normalize_ticket_data(ticket_data)
     ticket_id = ticket_data.get("id")
@@ -243,7 +255,7 @@ async def send_ticket_notification(to_email: str, event: str, ticket_data: dict)
 
 async def send_ticket_email_now(to_email: str, event: str, ticket_data: dict) -> None:
     """Right away, never merged into a digest (emails that carry their own full context, e.g. to the support company)."""
-    if not settings.mail_server or _is_hidden_demo_action():
+    if not settings.mail_server or _is_hidden_demo_action() or is_demo_address(to_email):
         return
     await _send_single(to_email, event, _normalize_ticket_data(ticket_data))
 

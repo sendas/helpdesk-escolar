@@ -61,6 +61,8 @@ async def run_inactivity_check(db: AsyncSession) -> dict:
     )).scalars().all()
 
     for ticket in tickets:
+        if ticket.creator and ticket.creator.auth_provider == "demo":
+            continue
         last_public = await _last_public_comment(db, ticket.id)
         if last_public is None or not _is_team(last_public.author):
             # Waiting for the team, not for the requester: never close, ask the team where things stand
