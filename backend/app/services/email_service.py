@@ -42,6 +42,7 @@ async def send_provider_email(to_email: str, event: str, ticket_data: dict, thre
     opening a new one each time."""
     if not settings.mail_server or _is_hidden_demo_action():
         return
+    ticket_data = await _with_place(ticket_data)
     ticket_data = _normalize_ticket_data(ticket_data)
     try:
         html_body = jinja_env.get_template(f"ticket_{event}.html").render(**ticket_data)
@@ -165,6 +166,7 @@ async def send_private_message(to_email: str, data: dict) -> None:
     """Private message inside a ticket: sent only to its recipient, never merged into the update digest."""
     if not settings.mail_server or _is_hidden_demo_action() or is_demo_address(to_email):
         return
+    data = await _with_place(data)
     data = _normalize_ticket_data(data)
     try:
         html_body = jinja_env.get_template("ticket_private_message.html").render(**data)
@@ -185,6 +187,7 @@ async def send_reminder(to_email: str, data: dict) -> None:
     """Reminder set on an internal note. Sent right away (not merged into the update digest)."""
     if not settings.mail_server or is_demo_address(to_email):
         return
+    data = await _with_place(data)
     data = _normalize_ticket_data(data)
     created = data.get("note_created_at")
     if created:
@@ -224,6 +227,29 @@ def is_demo_address(email: str | None) -> bool:
     return (email or "").strip().lower().endswith(DEMO_DOMAIN)
 
 
+async def _with_place(data: dict) -> dict:
+    """Every email about a ticket says where: the school and the room (looked up once, if the caller did not
+    already pass them)."""
+    tid = data.get("id")
+    if not tid or ("school" in data and "room" in data):
+        return data
+    try:
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+        from app.database import AsyncSessionLocal
+        from app.models.ticket import Ticket
+        async with AsyncSessionLocal() as db:
+            t = (await db.execute(
+                select(Ticket).where(Ticket.id == int(tid)).options(selectinload(Ticket.school), selectinload(Ticket.room))
+            )).scalar_one_or_none()
+    except Exception:
+        logger.warning("Email: não foi possível obter a escola/sala do ticket %s", tid)
+        return data
+    if not t:
+        return data
+    return {"school": t.school.name if t.school else "", "room": t.room.label if t.room else "", **data}
+
+
 def _is_hidden_demo_action() -> bool:
     from app.api.deps import acting_as_demo
     if not acting_as_demo.get():
@@ -237,7 +263,7 @@ async def send_ticket_notification(to_email: str, event: str, ticket_data: dict)
         return
     if is_demo_address(to_email):
         return
-    ticket_data = _normalize_ticket_data(ticket_data)
+    ticket_data = _normalize_ticket_data(await _with_place(ticket_data))
     ticket_id = ticket_data.get("id")
 
     if not ticket_id or _DIGEST_WINDOW_SECONDS <= 0:
@@ -257,7 +283,7 @@ async def send_ticket_email_now(to_email: str, event: str, ticket_data: dict) ->
     """Right away, never merged into a digest (emails that carry their own full context, e.g. to the support company)."""
     if not settings.mail_server or _is_hidden_demo_action() or is_demo_address(to_email):
         return
-    await _send_single(to_email, event, _normalize_ticket_data(ticket_data))
+    await _send_single(to_email, event, _normalize_ticket_data(await _with_place(ticket_data)))
 
 
 async def _debounced_flush(key: tuple[str, int], to_email: str) -> None:
@@ -359,6 +385,8 @@ async def _send_digest(to_email: str, events: list[dict]) -> None:
         "title": latest.get("title"),
         "status": latest.get("status"),
         "ticket_url": latest.get("ticket_url"),
+        "school": latest.get("school"),
+        "room": latest.get("room"),
         "lines": lines,
     }
     try:

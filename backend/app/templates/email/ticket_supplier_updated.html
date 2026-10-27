@@ -4,7 +4,7 @@
   <h2 style="margin:0 0 12px">Pedido #{{ id }} resolvido pela escola — pode ser encerrado</h2>
   <p>Este pedido, que tinha sido encaminhado para {{ provider }}, foi resolvido internamente pela equipa da escola ({{ editor }}).</p>
   <p><strong>Pedimos que o encerrem no vosso sistema. Não é necessária mais nenhuma intervenção.</strong></p>
-  <p><strong>Ticket:</strong> #{{ id }} - {{ title }}<br><strong>Estado:</strong> {{ status }}</p>
+  <p><strong>Ticket:</strong> #{{ id }} - {{ title }}<br><strong>Estado:</strong> {{ status }}{% if school %}<br><strong>Escola:</strong> {{ school }}{% endif %}{% if room %}<br><strong>Sala / espaço:</strong> {{ room }}{% endif %}</p>
   {% include "_conversation.html" %}
   <p style="margin-top:20px;color:#374151;font-size:13px">Obrigado pela colaboração.</p>
 </body>

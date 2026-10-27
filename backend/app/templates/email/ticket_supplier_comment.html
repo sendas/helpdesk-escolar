@@ -2,7 +2,7 @@
 <html lang="pt">
 <body style="font-family:Arial,sans-serif;color:#111827;line-height:1.5;max-width:680px">
   <h2 style="margin:0 0 12px">Nova mensagem no pedido #{{ id }}</h2>
-  <p><strong>Ticket:</strong> #{{ id }} - {{ title }}<br><strong>Estado:</strong> {{ status }}</p>
+  <p><strong>Ticket:</strong> #{{ id }} - {{ title }}<br><strong>Estado:</strong> {{ status }}{% if school %}<br><strong>Escola:</strong> {{ school }}{% endif %}{% if room %}<br><strong>Sala / espaço:</strong> {{ room }}{% endif %}</p>
   <div style="border:1px solid #C7D2FE;border-radius:8px;padding:14px;margin:16px 0;background:#EEF2FF">
     <strong>{{ author }} escreveu:</strong>
     <p style="white-space:pre-wrap;margin:8px 0 0">{{ comment }}</p>

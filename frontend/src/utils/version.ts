@@ -1,10 +1,19 @@
-export const APP_VERSION = '2.15.3'
-export const APP_VERSION_DATE = '2026-10-16'
-export const APP_VERSION_TIME = '11:19'
+export const APP_VERSION = '2.15.4'
+export const APP_VERSION_DATE = '2026-10-27'
+export const APP_VERSION_TIME = '10:16'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.15.4',
+    date: '2026-10-27',
+    time: '10:16',
+    title: 'Escola e sala nos emails',
+    changes: [
+      'Todos os emails sobre um ticket (novo pedido, respostas, mudanças de estado, atribuições, mensagens privadas, lembretes, menções, avisos e emails para a empresa de apoio) indicam a escola e a sala / espaço do pedido.',
+    ],
+  },
   {
     version: '2.15.3',
     date: '2026-10-16',

@@ -7,6 +7,7 @@
   </div>
   <div style="padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 4px 4px;">
     <p><strong>{{ author }}</strong> mencionou-o numa {{ kind }} do ticket <strong>#{{ id }} — {{ title }}</strong>.</p>
+    {% if school or room %}<p style="margin:0 0 12px;color:#475569">{% if school %}<strong>Escola:</strong> {{ school }}{% endif %}{% if school and room %} · {% endif %}{% if room %}<strong>Sala:</strong> {{ room }}{% endif %}</p>{% endif %}
     <div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:6px;padding:14px;white-space:pre-wrap;line-height:1.45">{{ comment }}</div>
     {% if ticket_url %}
     <p style="margin:24px 0 10px">

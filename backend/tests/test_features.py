@@ -362,3 +362,31 @@ async def test_category_can_require_a_room(client, people, api):
     r = await client.patch(f"{api}/categories/{cat['id']}", headers=people["adm"]["h"], json={"room_required": False})
     assert r.status_code == 200 and r.json()["room_required"] is False
     assert (await client.post(f"{api}/tickets", headers=people["prof"]["h"], json=body)).status_code == 201
+
+
+async def test_ticket_emails_say_school_and_room(client, people, api, monkeypatch):
+    from app.config import settings
+    from app.services import email_service
+    sent = []
+
+    class FakeMail:
+        def __init__(self, conf): pass
+        async def send_message(self, message): sent.append((message.subject, message.body))
+
+    cats = (await client.get(f"{api}/categories", headers=people["adm"]["h"])).json()
+    schools = {s["name"]: s for s in (await client.get(f"{api}/schools", headers=people["prof"]["h"])).json()}
+    eq = schools["Escola Eça de Queirós"]
+    room = next(r for r in (await client.get(f"{api}/rooms", params={"school_id": eq["id"]}, headers=people["prof"]["h"])).json() if r["code"] == "EQ36")
+    tid = (await client.post(f"{api}/tickets", headers=people["prof"]["h"], json={
+        "title": "Projetor com imagem esbatida", "description": "x", "category_id": cats[-1]["id"], "school_id": eq["id"],
+        "room_id": room["id"], "confirm_duplicate": True})).json()["id"]
+    monkeypatch.setattr(settings, "mail_server", "smtp.test")
+    monkeypatch.setattr(email_service, "FastMail", FakeMail)
+    monkeypatch.setattr(email_service, "_DIGEST_WINDOW_SECONDS", 0)
+    monkeypatch.setattr(email_service, "_get_conf", lambda: None)
+    await email_service.send_ticket_notification("prof@escola.pt", "commented", {"id": tid, "title": "Projetor", "author": "T", "comment": "Já vamos ver"})
+    await email_service.send_ticket_email_now("tec@escola.pt", "status_request", {"id": tid, "title": "Projetor", "status": "open", "days": 8})
+    await email_service.send_private_message("tec@escola.pt", {"id": tid, "title": "Projetor", "author": "A", "comment": "c"})
+    assert len(sent) == 3
+    for _, body in sent:
+        assert "Escola Eça de Queirós" in body and "Sala 36 · EQ36" in body
