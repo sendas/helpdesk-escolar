@@ -171,3 +171,17 @@ async def test_nothing_is_ever_emailed_to_demo_accounts(client, monkeypatch):
     await email_service.send_html([demo], "Relatório", "<p>x</p>")
     await email_service.send_suggestion_notification([demo], {"author_name": "A", "title": "x", "body": "y"})
     assert sent == []
+
+
+def test_people_are_named_first_and_last():
+    from app.services.names import short_name
+    from app.services.email_service import _normalize_ticket_data
+    assert short_name("Maria do Carmo de J.Valente Fortunato Docente-520 - Biologia e Geologia") == "M. Carmo Fortunato"
+    assert short_name("Pedro Sendas de Moura Pereira Docente-550 - Informática") == "Pedro Pereira"
+    assert short_name("Maria Leonor Marinho Nunes Serra Docente-510 - Física e Química") == "M. Leonor Serra"
+    assert short_name("Maria Serra") == "Maria Serra"
+    assert short_name("Ana Maria Costa") == "Ana Costa"
+    assert short_name("João da Silva-520") == "João Silva"
+    data = _normalize_ticket_data({"id": 1, "author": "Maria do Carmo de J.Valente Fortunato Docente-520 - Biologia",
+                                   "conversation": [{"author": "Pedro Sendas de Moura Pereira Docente-550 - Informática", "body": "x"}]})
+    assert data["author"] == "M. Carmo Fortunato" and data["conversation"][0]["author"] == "Pedro Pereira"

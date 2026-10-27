@@ -27,7 +27,7 @@
         </div>
         <div class="pf-preview-row">
           <span class="pf-preview-label">Em listas e telemóvel</span>
-          <div class="pf-sample"><AvatarCircle :name="shortName(name) || '?'" size="26" /><span class="pf-short">{{ shortName(name) || '—' }}</span><span v-if="groupTag(name)" class="pf-tag">{{ groupTag(name) }}</span></div>
+          <div class="pf-sample"><AvatarCircle :name="shortName(name) || '?'" size="26" /><span class="pf-short">{{ shortName(name) || '—' }}</span></div>
         </div>
       </div>
       <div v-if="auth.user?.name_locked && auth.user?.directory_name" class="pf-note">
@@ -60,7 +60,7 @@ import { api } from '../boot/axios'
 import AvatarCircle from '../components/AvatarCircle.vue'
 import { useAuthStore } from '../stores/auth'
 import { notifyError } from '../utils/feedback'
-import { groupTag, shortName } from '../utils/names'
+import { shortName } from '../utils/names'
 
 const auth = useAuthStore()
 const name = ref('')

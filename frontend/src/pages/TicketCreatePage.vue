@@ -194,7 +194,7 @@
             class="watcher-chip"
             @click="removeWatcher(user.id)"
           >
-            {{ user.display_name }}
+            {{ shortName(user.display_name) }}
             <span class="material-icons">close</span>
           </button>
         </div>
@@ -287,6 +287,7 @@
 </template>
 
 <script setup lang="ts">
+import { shortName } from '../utils/names'
 import { confirmDialog, errorMessage } from '../utils/feedback'
 import { ref, computed, onMounted } from 'vue'
 import { groupRooms } from '../utils/rooms'

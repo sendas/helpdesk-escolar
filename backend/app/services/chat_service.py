@@ -19,12 +19,7 @@ WEEKDAYS = {"1": "segunda", "2": "terça", "3": "quarta", "4": "quinta", "5": "s
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
-def short_name(name: str | None) -> str:
-    """"Maria Leonor Marinho Nunes Serra Docente-510 - Física e Química" → "Maria Serra" (as in the frontend)."""
-    import re
-    base = re.split(r"\s+(?:Docente|Não Docente|Nao Docente|Funcionári[oa])[-\s]", name or "", flags=re.I)[0].split(" - ")[0].strip()
-    parts = base.split()
-    return f"{parts[0]} {parts[-1]}" if len(parts) > 2 else base
+from app.services.names import short_name  # noqa: E402  (same rules as the frontend)
 
 def _iso(dt: datetime | None) -> str | None:
     return dt.isoformat() + "Z" if dt else None

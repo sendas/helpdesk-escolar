@@ -63,7 +63,7 @@
         <select class="hd-select" v-model="bulkAssignee">
           <option value="">Responsável...</option>
           <option value="none">— Não atribuído</option>
-          <option v-for="u in staffUsers" :key="u.id" :value="String(u.id)">{{ u.display_name }}</option>
+          <option v-for="u in staffUsers" :key="u.id" :value="String(u.id)" :title="u.display_name">{{ shortName(u.display_name) }}</option>
         </select>
         <button class="hd-btn hd-btn-outline" :disabled="!bulkAssignee" @click="applyBulkAssignee">Aplicar responsável</button>
         <select class="hd-select" v-model="bulkGroup">
@@ -223,7 +223,7 @@ import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
 import SlaBadge from '../../components/SlaBadge.vue'
 import { timeAgo as formatTimeAgo } from '../../utils/dates'
-import { personLabel, shortName } from '../../utils/names'
+import { shortName } from '../../utils/names'
 import PersonName from '../../components/PersonName.vue'
 import { schoolInitials } from '../../utils/names'
 import ReminderChip from '../../components/ReminderChip.vue'
@@ -263,7 +263,7 @@ const AssigneeSelect = defineComponent({
       onChange: (e: Event) => emit('change', (e.target as HTMLSelectElement).value),
     }, [
       h('option', { value: '' }, '— Nenhum'),
-      ...(props.users as any[]).map(u => h('option', { value: u.id, title: u.display_name }, personLabel(u.display_name))),
+      ...(props.users as any[]).map(u => h('option', { value: u.id, title: u.display_name }, shortName(u.display_name))),
     ])
   },
 })

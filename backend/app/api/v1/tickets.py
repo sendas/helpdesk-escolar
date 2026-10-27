@@ -21,6 +21,7 @@ from app.config import settings
 from app.services.permissions import has_perm
 from app.services import notifications
 from app.services.notification_prefs import wants
+from app.services.names import short_name
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -823,7 +824,7 @@ async def add_comment(
         asyncio.create_task(push_service.send_push_to_users_bg(
             {u.id for u in private_recipients if wants(u, "private", "push")},
             f"Mensagem privada: {ticket.title}",
-            f"{current_user.display_name}: {data.body[:80]}",
+            f"{short_name(current_user.display_name)}: {data.body[:80]}",
             f"/tickets/{ticket.id}",
         ))
         return comment

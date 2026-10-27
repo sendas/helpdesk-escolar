@@ -12,12 +12,23 @@ const GROUP_ABBR: Record<string, string> = {
 }
 const SMALL_WORDS = new Set(['e', 'de', 'da', 'do', 'das', 'dos', 'a', 'o'])
 
-// "Maria Leonor Marinho Nunes Serra Docente-510 - Física e Química" → "Maria Serra"
+// First and last name, without the directory's suffixes ("Docente-510 - Física e Química", "-520"…):
+//   "Pedro Sendas de Moura Pereira Docente-550 - Informática" → "Pedro Pereira"
+// Names starting with Maria use the second name instead (there are many Marias):
+//   "Maria do Carmo de J.Valente Fortunato Docente-520 - Biologia" → "M. Carmo Fortunato"
+// Same rules in the backend: app/services/names.py
 export function shortName(name?: string | null): string {
   if (!name) return ''
   const base = name.split(ROLE_SPLIT)[0].split(' - ')[0].trim()
-  const parts = base.split(/\s+/).filter(Boolean)
-  return parts.length > 2 ? `${parts[0]} ${parts[parts.length - 1]}` : base
+  // Drop group numbers and anything glued to them ("-520", "Docente520")
+  const words = base.split(/\s+/).map((w) => w.replace(/[-–]?\d.*$/, '')).filter(Boolean)
+  if (!words.length) return base
+  const last = [...words].reverse().find((w) => !SMALL_WORDS.has(w.toLowerCase())) ?? words[words.length - 1]
+  if (words[0].toLowerCase() === 'maria' && words.length > 2) {
+    const second = words.slice(1, -1).find((w) => !SMALL_WORDS.has(w.toLowerCase()) && !w.includes('.'))
+    if (second) return `M. ${second} ${last}`
+  }
+  return words.length > 1 ? `${words[0]} ${last}` : words[0]
 }
 
 // "… Docente-510 - Física e Química" → "510 FQ" ('' when the name has no recruitment group)

@@ -25,7 +25,7 @@
         <q-item v-for="t in recentTickets" :key="t.id" clickable :to="`/tickets/${t.id}`">
           <q-item-section>
             <q-item-label>{{ t.title }}</q-item-label>
-            <q-item-label caption>{{ t.creator.display_name }} · {{ t.category.name }}</q-item-label>
+            <q-item-label caption>{{ shortName(t.creator.display_name) }} · {{ t.category.name }}</q-item-label>
           </q-item-section>
           <q-item-section side>
             <StatusBadge :status="t.status" />
@@ -37,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+import { shortName } from '../../utils/names'
 import { ref, computed, onMounted } from 'vue'
 import { getAdminStats, getTickets } from '../../api/tickets'
 import StatusBadge from '../../components/StatusBadge.vue'

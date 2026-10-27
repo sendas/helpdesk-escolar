@@ -30,7 +30,7 @@
         <label>Responsável
           <select v-model="editing.assignee_id" class="hd-select">
             <option :value="null">Automático (regras de encaminhamento)</option>
-            <option v-for="u in technicians" :key="u.id" :value="u.id">{{ u.display_name }}</option>
+            <option v-for="u in technicians" :key="u.id" :value="u.id">{{ shortName(u.display_name) }}</option>
           </select>
         </label>
         <label>Prioridade
@@ -86,6 +86,7 @@
 </template>
 
 <script setup lang="ts">
+import { shortName } from '../../utils/names'
 // Manutenção planeada: recurring tickets (backend app/api/v1/planning.py)
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'

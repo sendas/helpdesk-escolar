@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 from app.models.ticket import Ticket, TicketStatus
 from app.models.user import User
 from app.services import email_service, push_service
+from app.services.names import short_name
 from app.services.notification_prefs import wants
 
 logger = logging.getLogger(__name__)
@@ -151,7 +152,7 @@ async def notify_reply(ticket: Ticket, actor: User, body: str, new_status: Ticke
     category_email = (ticket.category.email_to or "").strip() if ticket.category else ""
     if category_email and category_email.lower() not in sent and category_email.lower() != (actor.email or "").lower():
         await email_service.send_ticket_notification(category_email, "commented", payload)
-    _push(targets, "replies", f"Nova resposta: {ticket.title}", f"{actor.display_name}: {body[:80]}", f"/tickets/{ticket.id}")
+    _push(targets, "replies", f"Nova resposta: {ticket.title}", f"{short_name(actor.display_name)}: {body[:80]}", f"/tickets/{ticket.id}")
 
 
 async def notify_status(ticket: Ticket, actor: User | None, old: TicketStatus | None, new: TicketStatus,
@@ -200,4 +201,4 @@ async def notify_mentions(ticket: Ticket, actor: User, people: list[User], body:
             await email_service.send_ticket_notification(u.email, "mentioned", {
                 "id": ticket.id, "title": ticket.title, "author": actor.display_name, "comment": body, "kind": kind,
             })
-    _push(people, "mentions", f"{actor.display_name} mencionou-o", f"T-{ticket.id}: {body[:80]}", f"/tickets/{ticket.id}")
+    _push(people, "mentions", f"{short_name(actor.display_name)} mencionou-o", f"T-{ticket.id}: {body[:80]}", f"/tickets/{ticket.id}")

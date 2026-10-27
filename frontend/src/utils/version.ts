@@ -1,10 +1,21 @@
-export const APP_VERSION = '2.15.4'
+export const APP_VERSION = '2.16.0'
 export const APP_VERSION_DATE = '2026-10-27'
-export const APP_VERSION_TIME = '10:16'
+export const APP_VERSION_TIME = '13:42'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.16.0',
+    date: '2026-10-27',
+    time: '13:42',
+    title: 'Nomes curtos em toda a aplicação',
+    changes: [
+      'As pessoas passam a ser identificadas pelo primeiro e último nome (ex.: "Pedro Pereira"), na aplicação, nos emails e nas notificações. O nome completo aparece ao passar o rato por cima.',
+      'Nomes começados por Maria usam o segundo nome: "Maria do Carmo de J.Valente Fortunato" aparece como "M. Carmo Fortunato".',
+      'Deixam de aparecer junto dos nomes o grupo de recrutamento e outros acrescentos do diretório ("Docente-520 - Biologia…", "-520", "520 BG").',
+    ],
+  },
   {
     version: '2.15.4',
     date: '2026-10-27',

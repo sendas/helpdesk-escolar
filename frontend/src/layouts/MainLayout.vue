@@ -243,7 +243,7 @@
               <div class="me-head">
                 <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="44" />
                 <div class="me-id">
-                  <div class="me-name">{{ auth.user?.display_name }}</div>
+                  <div class="me-name" :title="auth.user?.display_name">{{ shortName(auth.user?.display_name) }}</div>
                   <div class="me-mail">{{ auth.user?.email }}</div>
                   <div class="me-role">{{ roleLabel }}</div>
                 </div>

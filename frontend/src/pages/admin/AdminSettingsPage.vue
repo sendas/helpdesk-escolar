@@ -266,7 +266,7 @@
         </select>
         <select class="hd-select" v-model="newRoute.assignee_id">
           <option :value="''">Sem responsável</option>
-          <option v-for="u in staffUsers" :key="u.id" :value="String(u.id)">{{ u.display_name }}</option>
+          <option v-for="u in staffUsers" :key="u.id" :value="String(u.id)" :title="u.display_name">{{ shortName(u.display_name) }}</option>
         </select>
         <input class="hd-input" type="number" v-model="newRoute.priority" title="Prioridade" />
         <button class="hd-btn hd-btn-primary" @click="addRoute">Adicionar regra</button>
@@ -502,6 +502,7 @@
 </template>
 
 <script setup lang="ts">
+import { shortName } from '../../utils/names'
 import { confirmDialog, errorMessage, notifyError } from '../../utils/feedback'
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'

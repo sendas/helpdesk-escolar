@@ -208,8 +208,20 @@ async def send_reminder(to_email: str, data: dict) -> None:
         logger.warning("Reminder email failed to %s for ticket %s: %s", to_email, data.get("id"), exc)
 
 
+# People in emails are named the short way ("Pedro Pereira", "M. Carmo Fortunato")
+_PERSON_FIELDS = ("author", "requester", "editor", "assignee", "escalated_by")
+
+
 def _normalize_ticket_data(ticket_data: dict) -> dict:
+    from app.services.names import short_name, short_names
     ticket_data = dict(ticket_data)
+    for key in _PERSON_FIELDS:
+        if ticket_data.get(key) and "@" not in str(ticket_data[key]):
+            ticket_data[key] = short_name(ticket_data[key])
+    if ticket_data.get("recipients"):
+        ticket_data["recipients"] = short_names(ticket_data["recipients"])
+    if ticket_data.get("conversation"):
+        ticket_data["conversation"] = [{**c, "author": short_name(c.get("author"))} for c in ticket_data["conversation"]]
     if ticket_data.get("id") and not ticket_data.get("ticket_url"):
         ticket_data["ticket_url"] = build_ticket_url(ticket_data["id"])
     if "status" in ticket_data:
