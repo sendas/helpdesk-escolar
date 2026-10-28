@@ -15,7 +15,7 @@
         <span v-if="ticket.school" class="trow-school" :title="ticket.school.name + (ticket.room ? ' · ' + ticket.room.label : '')">{{ schoolInitials(ticket.school.name) }}<template v-if="ticket.room"> · {{ ticket.room.code || ticket.room.name }}</template></span>
         <span class="trow-cat">{{ ticket.category?.name || 'Sem categoria' }}</span>
         <span class="trow-sep">·</span>
-        <span class="trow-person"><PersonName :name="ticket.creator?.display_name" /></span>
+        <span class="trow-person"><PersonName :name="ticket.creator?.display_name" :user="ticket.creator" /></span>
         <span class="trow-sep">·</span>
         <span class="trow-time" :title="formatDateTime(ticket.updated_at)">{{ timeAgo(ticket.updated_at) }}</span>
       </div>

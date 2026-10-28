@@ -104,7 +104,7 @@
         <router-link class="hd-sidebar-user-link" to="/notificacoes" title="As minhas notificações" @click="mobileMenuOpen = false">
           <AvatarCircle :name="shortName(auth.user?.display_name) || '?'" size="32" />
           <div class="hd-sidebar-user-text">
-            <div class="hd-sidebar-user-name"><PersonName :name="auth.user?.display_name" /></div>
+            <div class="hd-sidebar-user-name"><PersonName :name="auth.user?.display_name" :user="auth.user" /></div>
             <div class="hd-sidebar-user-role">{{ roleLabel }}</div>
           </div>
         </router-link>

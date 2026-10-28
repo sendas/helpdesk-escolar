@@ -107,7 +107,7 @@
           {{ otherViewers.length === 1 ? shortName(otherViewers[0].name) + ' também está a ver este ticket' : otherViewers.length + ' pessoas também estão a ver este ticket' }}
         </div>
         <div class="ticket-meta">
-          Aberto por <strong class="meta-person"><PersonName :name="ticket.creator.display_name" /></strong> · {{ formatDate(ticket.created_at) }}
+          Aberto por <strong class="meta-person"><PersonName :name="ticket.creator.display_name" :user="ticket.creator" /></strong> · {{ formatDate(ticket.created_at) }}
         </div>
       </div>
 
@@ -119,7 +119,7 @@
             <AvatarCircle :name="shortName(ticket.creator.display_name)" size="36" />
             <div class="hd-msg-body">
               <div class="hd-msg-header">
-                <PersonName class="hd-msg-author" :name="ticket.creator.display_name" />
+                <PersonName class="hd-msg-author" :name="ticket.creator.display_name" :user="ticket.creator" />
                 <span class="hd-msg-time">{{ formatDate(ticket.created_at) }}</span>
               </div>
               <div v-if="!editingContent" class="hd-msg-bubble" v-html="renderText(ticket.description)"></div>
@@ -173,7 +173,7 @@
             <AvatarCircle :name="shortName(c.author.display_name)" size="36" />
             <div class="hd-msg-body">
               <div class="hd-msg-header">
-                <PersonName class="hd-msg-author" :name="c.author.display_name" />
+                <PersonName class="hd-msg-author" :name="c.author.display_name" :user="c.author" />
                 <span v-if="c.is_internal" class="hd-internal-tag">NOTA INTERNA</span>
                 <span v-if="c.remind_at" class="reminder-tag" :class="{ sent: !!c.reminder_sent_at }" :title="c.reminder_sent_at ? 'Lembrete já enviado' : 'Vai receber um lembrete por email e notificação'">
                   <span class="material-icons">{{ c.reminder_sent_at ? 'notifications_off' : 'alarm' }}</span>
@@ -449,7 +449,7 @@
               <div class="hd-detail-label">Solicitante</div>
               <div class="hd-row" style="gap:6px">
                 <AvatarCircle :name="shortName(ticket.creator.display_name)" size="22" />
-                <PersonName style="font-size:13px" :name="ticket.creator.display_name" />
+                <PersonName style="font-size:13px" :name="ticket.creator.display_name" :user="ticket.creator" />
               </div>
             </div>
 
@@ -474,7 +474,7 @@
               <div v-if="ticket.watchers?.length" class="watcher-list" style="width:100%">
                 <div v-for="user in ticket.watchers" :key="user.id" class="watcher-mini">
                   <AvatarCircle :name="shortName(user.display_name)" size="22" />
-                  <PersonName :name="user.display_name" />
+                  <PersonName :name="user.display_name" :user="user" />
                   <button
                     v-if="canEditWatchers"
                     class="watcher-remove-btn"
@@ -499,7 +499,7 @@
                     <button v-for="u in filteredWatcherUsers" :key="u.id" type="button" @mousedown.prevent="addWatcherCandidate(u)">
                       <AvatarCircle :name="shortName(u.display_name)" size="22" />
                       <span>
-                        <strong class="pn-block"><PersonName :name="u.display_name" /></strong>
+                        <strong class="pn-block"><PersonName :name="u.display_name" :user="u" /></strong>
                         <small>{{ u.email }}</small>
                       </span>
                     </button>
@@ -522,7 +522,7 @@
                 <div v-if="assignedTechnicians.length" class="assignee-chip-list">
                   <span v-for="user in assignedTechnicians" :key="user.id" class="assignee-chip">
                     <AvatarCircle :name="shortName(user.display_name)" size="20" />
-                    <PersonName :name="user.display_name" />
+                    <PersonName :name="user.display_name" :user="user" />
                     <button type="button" title="Remover técnico" @click="removeAssignee(user.id)">
                       <span class="material-icons">close</span>
                     </button>
@@ -543,7 +543,7 @@
                     <button v-for="u in filteredAssigneeUsers" :key="u.id" type="button" @mousedown.prevent="addAssignee(u)">
                       <AvatarCircle :name="shortName(u.display_name)" size="22" />
                       <span>
-                        <strong class="pn-block"><PersonName :name="u.display_name" /></strong>
+                        <strong class="pn-block"><PersonName :name="u.display_name" :user="u" /></strong>
                         <small>{{ u.email }}</small>
                       </span>
                     </button>

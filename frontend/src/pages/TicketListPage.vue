@@ -76,7 +76,7 @@
               </td>
               <td><PriorityBadge :priority="t.priority" /></td>
               <td class="cell-person" :title="t.creator?.display_name">
-                <div class="person-box"><PersonName :name="t.creator?.display_name" /></div>
+                <div class="person-box"><PersonName :name="t.creator?.display_name" :user="t.creator" /></div>
               </td>
               <td class="cell-school" :title="t.school?.name"><span v-if="t.school" class="school-initials">{{ schoolInitials(t.school.name) }}</span><template v-else>—</template></td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>
@@ -121,7 +121,7 @@
               <td><span class="hd-status" :class="t.status" :title="statusLabel(t.status)">{{ statusLabel(t.status, true) }}</span></td>
               <td><PriorityBadge :priority="t.priority" /></td>
               <td class="cell-person" :title="t.creator?.display_name">
-                <div class="person-box"><PersonName :name="t.creator?.display_name" /></div>
+                <div class="person-box"><PersonName :name="t.creator?.display_name" :user="t.creator" /></div>
               </td>
               <td class="cell-school" :title="t.school?.name"><span v-if="t.school" class="school-initials">{{ schoolInitials(t.school.name) }}</span><template v-else>—</template></td>
               <td><span class="cat-chip" :title="t.category?.name">{{ t.category?.name }}</span></td>

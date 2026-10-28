@@ -93,7 +93,7 @@
               <span>· {{ timeAgo(t.updated_at) }}</span>
             </div>
             <div class="board-people">
-              <PersonName class="board-requester" :name="t.creator?.display_name" />
+              <PersonName class="board-requester" :name="t.creator?.display_name" :user="t.creator" />
               <span class="board-assignees">
                 <AvatarCircle v-for="a in (t.assignees?.length ? t.assignees : t.assignee ? [t.assignee] : []).slice(0, 3)"
                               :key="a.id" :name="shortName(a.display_name)" size="22" :title="a.display_name" />

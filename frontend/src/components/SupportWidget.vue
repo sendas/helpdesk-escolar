@@ -34,7 +34,7 @@
                 <router-link v-if="conversation?.ticket_id && m.body.includes('T-' + conversation.ticket_id)" :to="`/tickets/${conversation.ticket_id}`" @click="open = false">Abrir ticket</router-link>
               </template>
               <template v-else>
-                <small v-if="m.author?.id !== auth.user?.id"><PersonName :name="m.author?.display_name" :with-tag="false" /></small>
+                <small v-if="m.author?.id !== auth.user?.id"><PersonName :name="m.author?.display_name" :user="m.author" :with-tag="false" /></small>
                 <div class="sw-bubble">{{ m.body }}</div>
                 <time>{{ timeOf(m.created_at) }}</time>
               </template>

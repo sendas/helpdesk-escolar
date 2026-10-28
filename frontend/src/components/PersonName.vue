@@ -4,14 +4,31 @@
 
 <script setup lang="ts">
 // A person is shown by the short form of their name ("Pedro Pereira", "M. Carmo Fortunato" — see utils/names.ts)
-// and, for teachers, their recruitment group ("550 INF", "910 EE"); the full directory name is in the tooltip.
+// and a small tag: the recruitment group for teachers ("550 INF", "910 EE"), or, for people without one, their
+// function when it is not plain "docente" ("Técnico", "Administrador", "Direção"…). Full name in the tooltip.
 import { computed } from 'vue'
 import { groupTag, shortName } from '../utils/names'
 
-const props = withDefaults(defineProps<{ name?: string | null; withTag?: boolean }>(), { name: '', withTag: true })
+const props = withDefaults(defineProps<{
+  name?: string | null
+  withTag?: boolean
+  // The user record, when the caller has it: gives the function for people without a recruitment group
+  user?: { role?: string; role_label?: string; effective_role_key?: string; is_technician?: boolean } | null
+}>(), { name: '', withTag: true, user: null })
+
+const PLAIN_ROLES = new Set(['teacher', 'student', ''])
 const short = computed(() => shortName(props.name))
-const tag = computed(() => groupTag(props.name))
-const tagTitle = computed(() => (props.name ?? '').match(/\d{3}\s*-\s*(.+)$/)?.[1]?.trim() || 'Grupo de recrutamento')
+const group = computed(() => groupTag(props.name))
+const roleTag = computed(() => {
+  const u = props.user
+  if (!u?.role_label) return ''
+  const key = u.effective_role_key ?? u.role ?? ''
+  return PLAIN_ROLES.has(key) && !u.is_technician ? '' : u.role_label
+})
+const tag = computed(() => group.value || roleTag.value)
+const tagTitle = computed(() => group.value
+  ? (props.name ?? '').match(/\d{3}\s*-\s*(.+)$/)?.[1]?.trim() || 'Grupo de recrutamento'
+  : 'Função no helpdesk')
 </script>
 
 <style scoped>

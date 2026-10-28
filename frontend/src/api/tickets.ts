@@ -4,7 +4,7 @@ export interface School { id: number; name: string; short_name: string; address?
 export interface Room { id: number; school_id: number; code?: string | null; name: string; kind: string; label: string; active: boolean }
 export interface RecentRoomTicket { id: number; title: string; status: string; created_at: string; can_open: boolean }
 export interface Category { id: number; name: string; description?: string; email_to?: string; color: string; icon: string; sla_hours: number; warning_enabled?: boolean; warning_text?: string; room_required?: boolean }
-export interface UserBrief { id: number; username: string; email: string; display_name: string; department?: string; role: string }
+export interface UserBrief { id: number; username: string; email: string; display_name: string; department?: string; role: string; role_label?: string; effective_role_key?: string; is_technician?: boolean }
 export interface HelpdeskGroupBrief { id: number; name: string; description?: string; members?: UserBrief[] }
 
 export interface TicketListItem {

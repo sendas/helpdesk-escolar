@@ -14,7 +14,7 @@
       <span v-if="ticket.school" class="tcard-school" :title="ticket.school.name">{{ schoolInitials(ticket.school.name) }}</span>
       <span class="tcard-cat" :title="ticket.category?.name">{{ ticket.category?.name }}</span>
     </div>
-    <div class="tcard-person"><PersonName :name="ticket.creator?.display_name" /></div>
+    <div class="tcard-person"><PersonName :name="ticket.creator?.display_name" :user="ticket.creator" /></div>
   </article>
 </template>
 

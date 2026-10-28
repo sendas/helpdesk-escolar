@@ -123,7 +123,7 @@
                 </td>
                 <td>
                   <div class="user-cell">
-                    <PersonName :name="t.creator.display_name" />
+                    <PersonName :name="t.creator.display_name" :user="t.creator" />
                   </div>
                 </td>
                 <td><PriorityBadge :priority="t.priority" /></td>
@@ -171,7 +171,7 @@
             </div>
             <div class="ticket-card-user">
               <AvatarCircle :name="shortName(t.creator.display_name)" size="26" />
-              <PersonName :name="t.creator.display_name" />
+              <PersonName :name="t.creator.display_name" :user="t.creator" />
             </div>
             <div class="ticket-card-controls">
               <label>Estado<StatusSelect :value="t.status" :options="statusOpts" @change="changeStatus(t, $event)" /></label>

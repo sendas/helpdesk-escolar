@@ -110,7 +110,7 @@
             <div v-if="dayChanged(i)" class="chat-day">{{ dayLabel(m.created_at) }}</div>
             <div v-if="m.is_system" class="chat-system">{{ m.body }}</div>
             <div v-else class="chat-msg" :class="{ me: m.author?.id === auth.user?.id, cont: sameAuthor(i) }">
-              <span v-if="m.author?.id !== auth.user?.id && !sameAuthor(i)" class="chat-msg-author"><PersonName :name="m.author?.display_name" :with-tag="false" /></span>
+              <span v-if="m.author?.id !== auth.user?.id && !sameAuthor(i)" class="chat-msg-author"><PersonName :name="m.author?.display_name" :user="m.author" :with-tag="false" /></span>
               <div class="chat-bubble" v-html="renderBody(m.body)"></div>
               <ReactionBar target-type="chat" :target-id="m.id" :reactions="chatReactions[m.id] ?? []" :align-right="m.author?.id === auth.user?.id" @update="(r) => (chatReactions[m.id] = r)" />
               <time>{{ timeOf(m.created_at) }}<template v-if="m.author?.id === auth.user?.id && m.id === lastMineId && seenByOthers"> · visto</template></time>

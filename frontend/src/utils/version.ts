@@ -1,10 +1,19 @@
-export const APP_VERSION = '2.16.3'
+export const APP_VERSION = '2.16.4'
 export const APP_VERSION_DATE = '2026-10-28'
-export const APP_VERSION_TIME = '22:07'
+export const APP_VERSION_TIME = '22:10'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.16.4',
+    date: '2026-10-28',
+    time: '22:10',
+    title: 'Função junto ao nome de quem não tem grupo',
+    changes: [
+      'Quem não tem grupo de recrutamento no nome mostra a sua função na etiqueta ao lado do nome (ex.: "Frederico Vilante · Técnico", "Administrador", "Direção", "Secretaria", "Não docente"). Os docentes continuam a mostrar o grupo (ex.: "550 INF").',
+    ],
+  },
   {
     version: '2.16.3',
     date: '2026-10-28',
