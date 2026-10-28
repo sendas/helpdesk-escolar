@@ -442,9 +442,29 @@
         <!-- Right: details + timeline -->
         <div class="ticket-side-panel">
           <!-- Details card -->
-          <div class="hd-card" style="padding:20px">
-            <div style="font-weight:600;font-size:14px;margin-bottom:16px">Detalhes</div>
+          <div class="hd-card details-card" style="padding:20px">
+            <div class="details-title">Detalhes</div>
 
+            <!-- Phone: the essentials at a glance; the rest opens with "Ver todos os detalhes" -->
+            <div class="details-summary">
+              <!-- State, priority and school/room are already in the header above: only what is missing here -->
+              <label v-if="auth.isStaff" class="details-summary-line">
+                <span class="material-icons">sync_alt</span>
+                <select class="hd-select details-status" v-model="ticketStatus" @change="onStatusChange" aria-label="Estado">
+                  <option v-for="o in statusOpts" :key="o.v" :value="o.v">{{ o.l }}</option>
+                </select>
+              </label>
+              <div class="details-summary-line">
+                <span class="material-icons">engineering</span>
+                {{ assignedTechnicianNames || 'Ainda sem técnico atribuído' }}
+              </div>
+              <button type="button" class="details-toggle" :aria-expanded="detailsOpen" @click="toggleDetails">
+                {{ detailsOpen ? 'Esconder detalhes' : 'Ver todos os detalhes' }}
+                <span class="material-icons">{{ detailsOpen ? 'expand_less' : 'expand_more' }}</span>
+              </button>
+            </div>
+
+            <div class="details-body" :class="{ open: detailsOpen }">
             <div class="hd-detail-row">
               <div class="hd-detail-label">Solicitante</div>
               <div class="hd-row" style="gap:6px">
@@ -622,13 +642,15 @@
             </div>
             <div v-if="ticket.rating?.comment && !canRate" class="rating-comment">“{{ ticket.rating.comment }}”</div>
 
+            </div>
+
             <div v-if="auth.isStaff && escalationMessage" class="provider-escalation">
               <p :class="{ error: escalationError }">{{ escalationMessage }}</p>
             </div>
           </div>
 
           <!-- Timeline -->
-          <div class="hd-card" style="padding:20px">
+          <div class="hd-card details-extra" :class="{ open: detailsOpen }" style="padding:20px">
             <div style="font-weight:600;font-size:14px;margin-bottom:16px">Histórico</div>
             <div v-if="ticket.events?.length" class="event-list">
               <div v-for="event in ticket.events" :key="event.id" class="event-item">
@@ -946,6 +968,12 @@ const assigneeSearch = ref('')
 const assigneeSearchOpen = ref(false)
 const groupId = ref('')
 const ticketStatus = ref('')
+// Phone: details folded by default (the conversation comes first); the choice is remembered on this device
+const detailsOpen = ref((() => { try { return localStorage.getItem('ticket_details_open') === '1' } catch { return false } })())
+function toggleDetails() {
+  detailsOpen.value = !detailsOpen.value
+  try { localStorage.setItem('ticket_details_open', detailsOpen.value ? '1' : '0') } catch { /* private mode */ }
+}
 const editingCommentId = ref<number | null>(null)
 const editingCommentBody = ref('')
 const sendingCommentId = ref<number | null>(null)
@@ -1031,7 +1059,7 @@ const assignedTechnicians = computed(() => {
 })
 
 const assignedTechnicianNames = computed(() =>
-  assignedTechnicians.value.map((user: any) => user.display_name).join(', ')
+  assignedTechnicians.value.map((user: any) => shortName(user.display_name)).join(', ')
 )
 
 const filteredAssigneeUsers = computed(() => {
@@ -2164,7 +2192,25 @@ function formatSize(size: number) {
   font-size: 12px;
 }
 
+.details-title { font-weight: 600; font-size: 14px; margin-bottom: 16px; }
+.details-summary { display: none; }
+
 @media (max-width: 900px) {
+  .details-card { padding: 14px 16px !important; }
+  .details-title { display: none; }
+  .details-summary { display: flex; flex-direction: column; gap: 8px; }
+  .details-summary-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .details-status { font-size: 13px; padding: 5px 8px; max-width: 220px; }
+  .details-summary-line { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--c-text); min-width: 0; }
+  .details-summary-line .material-icons { font-size: 16px; color: var(--c-muted); flex-shrink: 0; }
+  .details-toggle {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 2px; margin-top: 2px; padding: 4px 0;
+    background: none; border: 0; color: var(--c-primary); font-weight: 700; font-size: 13px; cursor: pointer;
+  }
+  .details-toggle .material-icons { font-size: 18px; }
+  .details-body:not(.open), .details-extra:not(.open) { display: none; }
+  .details-body.open { margin-top: 12px; border-top: 1px solid var(--c-border); padding-top: 4px; }
+
   .ticket-detail-grid {
     grid-template-columns: minmax(0, 1fr);
   }

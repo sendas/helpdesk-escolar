@@ -1,10 +1,20 @@
-export const APP_VERSION = '2.16.4'
+export const APP_VERSION = '2.17.0'
 export const APP_VERSION_DATE = '2026-10-28'
-export const APP_VERSION_TIME = '22:10'
+export const APP_VERSION_TIME = '22:16'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.17.0',
+    date: '2026-10-28',
+    time: '22:16',
+    title: 'Ticket mais arrumado no telemóvel',
+    changes: [
+      'No telemóvel, os detalhes do ticket aparecem num resumo compacto (técnico atribuído e, para a equipa, o estado) e a conversa fica logo à vista. O resto abre com "Ver todos os detalhes"; o telemóvel lembra-se da escolha.',
+      'No computador fica tudo como estava.',
+    ],
+  },
   {
     version: '2.16.4',
     date: '2026-10-28',
