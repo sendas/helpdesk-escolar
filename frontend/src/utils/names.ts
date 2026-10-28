@@ -20,8 +20,12 @@ const SMALL_WORDS = new Set(['e', 'de', 'da', 'do', 'das', 'dos', 'a', 'o'])
 export function shortName(name?: string | null): string {
   if (!name) return ''
   const base = name.split(ROLE_SPLIT)[0].split(' - ')[0].trim()
-  // Drop group numbers and anything glued to them ("-520", "Docente520")
-  const words = base.split(/\s+/).map((w) => w.replace(/[-–]?\d.*$/, '')).filter(Boolean)
+  // Drop directory codes: group numbers ("Silva-520" → "Silva", "910"), codes with numbers ("GR910") and short
+  // all-capital codes ("GR", "EE") — unless the whole name is written in capitals
+  const allCaps = base === base.toUpperCase()
+  const words = base.split(/\s+/)
+    .map((w) => w.replace(/[-–]\d.*$/, ''))
+    .filter((w) => w && !/\d/.test(w) && !(!allCaps && /^\p{Lu}{2,4}$/u.test(w)))
   if (!words.length) return base
   const last = [...words].reverse().find((w) => !SMALL_WORDS.has(w.toLowerCase())) ?? words[words.length - 1]
   if (words[0].toLowerCase() === 'maria' && words.length > 2) {

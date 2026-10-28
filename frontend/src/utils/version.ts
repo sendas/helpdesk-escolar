@@ -1,10 +1,19 @@
-export const APP_VERSION = '2.16.0'
-export const APP_VERSION_DATE = '2026-10-27'
-export const APP_VERSION_TIME = '13:42'
+export const APP_VERSION = '2.16.1'
+export const APP_VERSION_DATE = '2026-10-28'
+export const APP_VERSION_TIME = '21:58'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.16.1',
+    date: '2026-10-28',
+    time: '21:58',
+    title: 'Nomes curtos: códigos do diretório ignorados',
+    changes: [
+      'Corrigido: códigos do diretório como "GR910" ou "GR 910" eram tomados pelo último nome (ex.: "Fernanda GR"). Agora são ignorados e aparece o apelido.',
+    ],
+  },
   {
     version: '2.16.0',
     date: '2026-10-27',

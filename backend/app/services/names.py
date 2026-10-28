@@ -13,7 +13,13 @@ def short_name(name: str | None) -> str:
     if not name:
         return ""
     base = _ROLE_SPLIT.split(name)[0].split(" - ")[0].strip()
-    words = [w for w in (re.sub(r"[-–]?\d.*$", "", w) for w in base.split()) if w]
+    # Directory codes are dropped: group numbers ("Silva-520" → "Silva", "910"), codes with numbers ("GR910") and
+    # short all-capital codes ("GR", "EE") — unless the whole name is written in capitals
+    all_caps = base == base.upper()
+    words = [
+        w for w in (re.sub(r"[-–]\d.*$", "", w) for w in base.split())
+        if w and not re.search(r"\d", w) and not (not all_caps and 2 <= len(w) <= 4 and w.isalpha() and w.isupper())
+    ]
     if not words:
         return base
     last = next((w for w in reversed(words) if w.lower() not in _SMALL), words[-1])
