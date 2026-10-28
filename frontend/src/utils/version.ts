@@ -1,10 +1,20 @@
-export const APP_VERSION = '2.16.1'
+export const APP_VERSION = '2.16.2'
 export const APP_VERSION_DATE = '2026-10-28'
-export const APP_VERSION_TIME = '21:58'
+export const APP_VERSION_TIME = '22:01'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.16.2',
+    date: '2026-10-28',
+    time: '22:01',
+    title: 'Grupo de recrutamento junto ao nome',
+    changes: [
+      'O grupo de recrutamento volta a aparecer numa pequena etiqueta ao lado do nome (ex.: "Pedro Pereira 550 INF", "Fernanda Lopes 910 EE"); ao passar o rato aparece a disciplina por extenso (Informática, Educação Especial…).',
+      'Também reconhecido no formato "GR910 - Educação Especial".',
+    ],
+  },
   {
     version: '2.16.1',
     date: '2026-10-28',

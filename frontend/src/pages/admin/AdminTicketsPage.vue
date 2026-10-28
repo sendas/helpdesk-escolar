@@ -223,7 +223,7 @@ import AvatarCircle from '../../components/AvatarCircle.vue'
 import PriorityBadge from '../../components/PriorityBadge.vue'
 import SlaBadge from '../../components/SlaBadge.vue'
 import { timeAgo as formatTimeAgo } from '../../utils/dates'
-import { shortName } from '../../utils/names'
+import { personLabel, shortName } from '../../utils/names'
 import PersonName from '../../components/PersonName.vue'
 import { schoolInitials } from '../../utils/names'
 import ReminderChip from '../../components/ReminderChip.vue'
@@ -263,7 +263,7 @@ const AssigneeSelect = defineComponent({
       onChange: (e: Event) => emit('change', (e.target as HTMLSelectElement).value),
     }, [
       h('option', { value: '' }, '— Nenhum'),
-      ...(props.users as any[]).map(u => h('option', { value: u.id, title: u.display_name }, shortName(u.display_name))),
+      ...(props.users as any[]).map(u => h('option', { value: u.id, title: u.display_name }, personLabel(u.display_name))),
     ])
   },
 })

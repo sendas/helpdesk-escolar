@@ -37,7 +37,7 @@ export function shortName(name?: string | null): string {
 
 // "… Docente-510 - Física e Química" → "510 FQ" ('' when the name has no recruitment group)
 export function groupTag(name?: string | null): string {
-  const m = (name ?? '').match(/Docente[-\s]*(\d{3})(?:\s*-\s*(.+))?$/i)
+  const m = (name ?? '').match(/(?:Docente|GR)[-\s]*(\d{3})(?:\s*-\s*(.+))?$/i)
   if (!m) return ''
   const [, code, subject] = m
   let abbr = GROUP_ABBR[code] ?? ''
