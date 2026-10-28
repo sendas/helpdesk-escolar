@@ -185,6 +185,14 @@ def test_people_are_named_first_and_last():
     assert short_name("Fernanda Maria Lopes GR910 - Educação Especial") == "Fernanda Lopes"
     assert short_name("Fernanda Lopes GR 910") == "Fernanda Lopes"
     assert short_name("PEDRO SENDAS PEREIRA") == "PEDRO PEREIRA"
+    # Formats found in the directory
+    assert short_name("Fernanda Maria Oliveira Sant GR330") == "Fernanda Sant"
+    assert short_name("Fernanda Maria Caetano dos Santos Docente-GR100") == "Fernanda Santos"
+    assert short_name("Fernanda Maria Pinto Ribeiro Seixo Não Docente") == "Fernanda Seixo"
+    assert short_name("Pedro Manuel Simões Ribeiro Nobre Docente") == "Pedro Nobre"
+    assert short_name("Pedro Alexandre Moreira G500") == "Pedro Moreira"
+    assert short_name("Pedro Manuel Reis Cristovão Docente-620 - Educação  Física") == "Pedro Cristovão"
+    assert short_name("Pedro Sendas - 550 - Informática") == "Pedro Sendas"
     data = _normalize_ticket_data({"id": 1, "author": "Maria do Carmo de J.Valente Fortunato Docente-520 - Biologia",
                                    "conversation": [{"author": "Pedro Sendas de Moura Pereira Docente-550 - Informática", "body": "x"}]})
     assert data["author"] == "M. Carmo Fortunato" and data["conversation"][0]["author"] == "Pedro Pereira"

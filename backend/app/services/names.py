@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 
-_ROLE_SPLIT = re.compile(r"\s+(?:Docente|Não Docente|Nao Docente|Funcionári[oa])[-\s]", re.IGNORECASE)
+_ROLE_SPLIT = re.compile(r"\s+(?:N[ãa]o Docente|Docente|Funcionári[oa])(?:[-\s]|$)", re.IGNORECASE)
 _SMALL = {"e", "de", "da", "do", "das", "dos", "a", "o"}
 
 

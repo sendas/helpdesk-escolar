@@ -1,10 +1,20 @@
-export const APP_VERSION = '2.16.2'
+export const APP_VERSION = '2.16.3'
 export const APP_VERSION_DATE = '2026-10-28'
-export const APP_VERSION_TIME = '22:01'
+export const APP_VERSION_TIME = '22:07'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.16.3',
+    date: '2026-10-28',
+    time: '22:07',
+    title: 'Nomes: mais formatos do diretório',
+    changes: [
+      'Corrigidos nomes que terminam em "Docente" ou "Não Docente" (apareciam como "Pedro Docente"); agora aparece o apelido.',
+      'O grupo de recrutamento também é reconhecido nos formatos "Docente-GR100", "G500" e "Nome - 550 - Informática".',
+    ],
+  },
   {
     version: '2.16.2',
     date: '2026-10-28',
