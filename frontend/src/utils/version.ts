@@ -1,10 +1,19 @@
-export const APP_VERSION = '2.17.0'
-export const APP_VERSION_DATE = '2026-10-28'
-export const APP_VERSION_TIME = '22:16'
+export const APP_VERSION = '2.17.1'
+export const APP_VERSION_DATE = '2026-11-06'
+export const APP_VERSION_TIME = '10:11'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.17.1',
+    date: '2026-11-06',
+    time: '10:11',
+    title: 'Respostas por email nunca se perdem',
+    changes: [
+      'Corrigido: uma resposta por email a um ticket não aparecia no helpdesk se alguém abrisse o email na caixa do helpdesk (Outlook, telemóvel ou Caixa de entrada da app) antes de ele ser importado. Agora são vistos os emails dos últimos 7 dias, lidos ou não, e cada resposta entra uma única vez.',
+    ],
+  },
   {
     version: '2.17.0',
     date: '2026-10-28',

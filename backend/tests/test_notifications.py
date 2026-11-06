@@ -196,3 +196,44 @@ def test_people_are_named_first_and_last():
     data = _normalize_ticket_data({"id": 1, "author": "Maria do Carmo de J.Valente Fortunato Docente-520 - Biologia",
                                    "conversation": [{"author": "Pedro Sendas de Moura Pereira Docente-550 - Informática", "body": "x"}]})
     assert data["author"] == "M. Carmo Fortunato" and data["conversation"][0]["author"] == "Pedro Pereira"
+
+
+async def test_email_replies_are_found_even_if_already_read(client, people, api, monkeypatch):
+    """Someone opening the helpdesk mailbox first must not make the reply get lost."""
+    from app.config import settings
+    from app.database import AsyncSessionLocal
+    from app.services import email_ingest
+    tid = await _new_ticket(client, people, api, "Credenciais DT")
+    seen_params = []
+    raw = {"id": "g1", "subject": f"RE: [Ticket #{tid}] Credenciais DT — Nova resposta", "isRead": True,
+           "from": {"emailAddress": {"address": "prof@escola.pt"}},
+           "body": {"contentType": "text", "content": "Já está tratado! Muito obrigada."},
+           "internetMessageId": f"<reply-{tid}@escola.pt>"}
+
+    class Resp:
+        status_code = 200
+        text = ""
+        def json(self): return {"value": [raw]}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, url, headers=None, params=None):
+            seen_params.append(params)
+            return Resp()
+        async def patch(self, *a, **k): return Resp()
+
+    for k, v in {"mail_reply_enabled": True, "mail_reply_provider": "graph", "graph_mail_user": "helpdesk@escola.pt",
+                 "azure_tenant_id": "t", "azure_client_id": "c", "azure_client_secret": "s"}.items():
+        monkeypatch.setattr(settings, k, v)
+    monkeypatch.setattr(email_ingest, "_get_graph_token", lambda: "token")
+    monkeypatch.setattr(email_ingest.httpx, "AsyncClient", FakeClient)
+    async with AsyncSessionLocal() as db:
+        r1 = await email_ingest.sync_inbound_replies(db)
+    async with AsyncSessionLocal() as db:
+        r2 = await email_ingest.sync_inbound_replies(db)
+    assert "isRead" not in seen_params[0].get("$filter", "") and "receivedDateTime ge" in seen_params[0]["$filter"]
+    assert r1["processed"] == 1 and r2["processed"] == 0   # imported once, never twice
+    bodies = [c["body"] for c in (await client.get(f"{api}/tickets/{tid}", headers=people["tec"]["h"])).json()["comments"]]
+    assert bodies.count("Já está tratado! Muito obrigada.") == 1

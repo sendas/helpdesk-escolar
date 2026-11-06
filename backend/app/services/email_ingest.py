@@ -5,7 +5,7 @@ import email
 import imaplib
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.header import decode_header, make_header
 from email.message import Message
 from email.utils import parseaddr
@@ -43,7 +43,13 @@ _SUBJECT_STATUS_MAP: dict[str, str] = {
 logger = logging.getLogger(__name__)
 
 
-async def sync_inbound_replies(db: AsyncSession, limit: int = 25, force: bool = False) -> dict:
+# Replies are looked for among the emails of the last days, read or not: someone opening the helpdesk mailbox
+# (Outlook, the phone, the app's Caixa de entrada) before the next round marks them as read, and they used to be lost.
+# Emails already imported are recognised by their Message-ID and skipped.
+RECENT_DAYS = 7
+
+
+async def sync_inbound_replies(db: AsyncSession, limit: int = 100, force: bool = False) -> dict:
     if not settings.mail_reply_enabled:
         logger.info("Mail reply sync disabled: MAIL_REPLY_ENABLED is false")
         return {"processed": 0, "skipped": 0, "provider": _reply_provider()}
@@ -64,7 +70,8 @@ async def sync_inbound_replies(db: AsyncSession, limit: int = 25, force: bool = 
     result = await _import_messages(db, messages)
     # Only now, with the replies saved, are the messages marked as read: if the import failed they are tried again
     # on the next round (Message-IDs already imported are skipped)
-    handled = [m for m in messages if not m.get("failed")]
+    # Only the replies imported now: an email someone has not seen yet, and the helpdesk did not use, stays unread
+    handled = [m for m in messages if m.get("processed")]
     if provider == "graph":
         await _mark_graph_messages_read([m["graph_id"] for m in handled if m.get("graph_id")])
     elif not force:
@@ -98,7 +105,8 @@ async def _fetch_graph_unread_messages(limit: int, force: bool = False) -> list[
         "$select": select_fields,
     }
     if not force:
-        params["$filter"] = "isRead eq false"
+        since = (datetime.utcnow() - timedelta(days=RECENT_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        params["$filter"] = f"receivedDateTime ge {since}"
     base_url = f"https://graph.microsoft.com/v1.0/users/{mailbox}/mailFolders/{folder}/messages"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -118,7 +126,7 @@ async def _fetch_graph_unread_messages(limit: int, force: bool = False) -> list[
 
         data = resp.json()
         raw_messages = data.get("value") or []
-        logger.info("Graph mail search found %s unread message(s)", len(raw_messages))
+        logger.info("Graph mail search found %s recent message(s)", len(raw_messages))
 
         results: list[dict] = []
         for raw in raw_messages:
@@ -127,7 +135,7 @@ async def _fetch_graph_unread_messages(limit: int, force: bool = False) -> list[
                 item["graph_id"] = raw["id"]
                 results.append(item)
             else:
-                logger.info("Graph mail message ignored: subject does not contain ticket marker")
+                logger.debug("Graph mail message ignored: subject does not contain ticket marker")
         return results
 
 
@@ -250,7 +258,7 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
         return False
     exists = await db.execute(select(ProcessedEmail).where(ProcessedEmail.message_id == msg["message_id"]))
     if exists.scalar_one_or_none():
-        logger.info("Mail reply skipped: duplicate Message-ID %s", msg["message_id"])
+        logger.debug("Mail reply skipped: duplicate Message-ID %s", msg["message_id"])
         return False
 
     ticket = (
@@ -297,6 +305,7 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
                            message=f"Número do pedido na empresa de apoio: #{ref}"))
     if not linked and not (is_provider and status_action):
         logger.info("Mail reply skipped: %s is not part of ticket #%s", sender, ticket.id)
+        db.add(ProcessedEmail(message_id=msg["message_id"], ticket_id=ticket.id, sender_email=msg["sender_email"]))
         return False
 
     # Closing/resolving by email: only the requester, the support team or the configured support company
@@ -309,6 +318,7 @@ async def _import_message(db: AsyncSession, msg: dict) -> bool:
 
     if not status_action and not msg.get("body"):
         logger.info("Mail reply skipped: empty body for ticket #%s from %s", msg["ticket_id"], sender)
+        db.add(ProcessedEmail(message_id=msg["message_id"], ticket_id=ticket.id, sender_email=msg["sender_email"]))
         return False
 
     # Add comment from registered user
@@ -361,7 +371,7 @@ def _fetch_unseen_messages(limit: int, force: bool = False) -> list[dict]:
         return []
 
     client_cls = imaplib.IMAP4_SSL if settings.imap_ssl else imaplib.IMAP4
-    search_criteria = "ALL" if force else "UNSEEN"
+    search_criteria = "ALL" if force else f'SINCE {(datetime.utcnow() - timedelta(days=RECENT_DAYS)).strftime("%d-%b-%Y")}'
     logger.info(
         "Connecting to IMAP server %s:%s ssl=%s user=%s folder=%s criteria=%s",
         settings.imap_server,
