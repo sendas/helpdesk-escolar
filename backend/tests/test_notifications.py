@@ -193,6 +193,9 @@ def test_people_are_named_first_and_last():
     assert short_name("Pedro Alexandre Moreira G500") == "Pedro Moreira"
     assert short_name("Pedro Manuel Reis Cristovão Docente-620 - Educação  Física") == "Pedro Cristovão"
     assert short_name("Pedro Sendas - 550 - Informática") == "Pedro Sendas"
+    assert short_name("Rute Maria Silva Mota Grupo 300") == "Rute Mota"
+    assert short_name("Rute Maria Silva Mota Grupo-300 - Português") == "Rute Mota"
+    assert short_name("Rute Mota Grupo") == "Rute Mota"
     data = _normalize_ticket_data({"id": 1, "author": "Maria do Carmo de J.Valente Fortunato Docente-520 - Biologia",
                                    "conversation": [{"author": "Pedro Sendas de Moura Pereira Docente-550 - Informática", "body": "x"}]})
     assert data["author"] == "M. Carmo Fortunato" and data["conversation"][0]["author"] == "Pedro Pereira"

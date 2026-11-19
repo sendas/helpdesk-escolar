@@ -1,7 +1,7 @@
 // Display names come from the directory as e.g. "Maria Leonor Marinho Nunes Serra Docente-510 - Física e Química".
 
-// "… Docente-520 - Biologia", "… Docente-GR100", "… Não Docente" (also at the very end of the name)
-const ROLE_SPLIT = /\s+(?:N[ãa]o Docente|Docente|Funcionári[oa])(?:[-\s]|$)/i
+// "… Docente-520 - Biologia", "… Docente-GR100", "… Grupo 300", "… Não Docente" (also at the very end of the name)
+const ROLE_SPLIT = /\s+(?:N[ãa]o Docente|Docente|Funcionári[oa]|Grupo)(?:[-\s]|$)/i
 
 // Usual abbreviations of the recruitment groups (grupos de recrutamento)
 const GROUP_ABBR: Record<string, string> = {
@@ -39,7 +39,7 @@ export function shortName(name?: string | null): string {
 // "… Docente-510 - Física e Química" → "510 FQ" ('' when the name has no recruitment group)
 export function groupTag(name?: string | null): string {
   // "Docente-550 - Informática", "Docente-GR100", "GR330", "G500", "Pedro Sendas - 550 - Informática"
-  const m = (name ?? '').match(/(?:Docente|GR?|\s-)[-\s]*(\d{3})(?:\s*-\s*(.+))?$/i)
+  const m = (name ?? '').match(/(?:Docente|Grupo|GR?|\s-)[-\s]*(\d{3})(?:\s*-\s*(.+))?$/i)
   if (!m) return ''
   const [, code, subject] = m
   let abbr = GROUP_ABBR[code] ?? ''

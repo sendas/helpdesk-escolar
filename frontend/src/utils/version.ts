@@ -1,10 +1,19 @@
-export const APP_VERSION = '2.17.1'
-export const APP_VERSION_DATE = '2026-11-06'
-export const APP_VERSION_TIME = '10:11'
+export const APP_VERSION = '2.17.2'
+export const APP_VERSION_DATE = '2026-11-19'
+export const APP_VERSION_TIME = '09:53'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.17.2',
+    date: '2026-11-19',
+    time: '09:53',
+    title: 'Nomes com "Grupo"',
+    changes: [
+      'Corrigido: nomes do diretório terminados em "Grupo 300" (ou semelhante) apareciam como "Rute Grupo". Agora aparece o apelido ("Rute Mota") e o grupo na etiqueta ao lado ("300 PORT").',
+    ],
+  },
   {
     version: '2.17.1',
     date: '2026-11-06',
