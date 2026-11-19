@@ -439,3 +439,42 @@ async def test_access_requests_are_answered_in_the_helpdesk(client, people, api,
     assert d["messages"][-1]["body"] == "Já consegui entrar, obrigada!"
     d = (await client.patch(f"{api}/access-requests/{req['id']}", headers=people["tec"]["h"], json={"status": "closed"})).json()
     assert d["status"] == "closed"
+
+
+async def test_earlier_access_requests_are_imported_from_the_alert_emails(client, people, api, monkeypatch):
+    from app.config import settings
+    from app.services import email_ingest, email_service
+    from app.api.v1 import access_requests
+    html = email_service.jinja_env.get_template("no_access_contact.html").render(
+        profile="Aluno", is_student=True, name="Rayannah Sibindy Ibrahimo", student_number="a32399", year="11.º", class_name="E2",
+        email="ibrahimorayannah@gmail.com", phone="912662260", school="Secundária Eça de Queirós",
+        message="Boa tarde, não consigo aceder ao e-mail institucional nem ao Teams. Podem ajudar?")
+    parsed = access_requests.parse_alert_email(html)
+    assert parsed == {"profile": "aluno", "name": "Rayannah Sibindy Ibrahimo", "email": "ibrahimorayannah@gmail.com", "phone": "912662260",
+                      "student_number": "a32399", "year": "11.º", "class_name": "E2", "school": "Secundária Eça de Queirós",
+                      "recruitment_group": "", "message": "Boa tarde, não consigo aceder ao e-mail institucional nem ao Teams. Podem ajudar?"}
+
+    class Resp:
+        status_code = 200
+        def json(self):
+            return {"value": [{"subject": "[Helpdesk] Sem acesso ao mail institucional — Rayannah Sibindy Ibrahimo (aluno a32399, 11.º E2)",
+                               "body": {"content": html}, "receivedDateTime": "2026-11-17T15:31:00Z", "internetMessageId": "<alert-1@queiroz.pt>"}]}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, *a, **k): return Resp()
+
+    monkeypatch.setattr(settings, "mail_reply_provider", "graph")
+    monkeypatch.setattr(settings, "azure_client_id", "c")
+    monkeypatch.setattr(settings, "graph_mail_user", "helpdesk@escola.pt")
+    monkeypatch.setattr(email_ingest, "_get_graph_token", lambda: "token")
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
+    r = await client.post(f"{api}/access-requests/import-previous", headers=people["tec"]["h"], json={"days": 365})
+    assert r.status_code == 200 and r.json()["added"] == 1
+    r = await client.post(f"{api}/access-requests/import-previous", headers=people["tec"]["h"], json={"days": 365})
+    assert r.json()["added"] == 0   # only once
+    items = (await client.get(f"{api}/access-requests", params={"state": "all", "q": "a32399"}, headers=people["tec"]["h"])).json()["items"]
+    assert len([i for i in items if i["name"] == "Rayannah Sibindy Ibrahimo"]) >= 1

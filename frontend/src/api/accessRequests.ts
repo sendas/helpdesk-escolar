@@ -25,6 +25,11 @@ export async function setAccessRequestStatus(id: number, status: 'new' | 'answer
   const { data } = await api.patch<AccessRequest>(`/api/v1/access-requests/${id}`, { status })
   return data
 }
+// The requests that arrived before this section existed, read back from the alert emails
+export async function importPreviousAccessRequests(days = 120) {
+  const { data } = await api.post<{ added: number; mailboxes: string[] }>('/api/v1/access-requests/import-previous', { days })
+  return data
+}
 export async function accessRequestsWaiting() {
   const { data } = await api.get<{ new: number }>('/api/v1/access-requests/count')
   return data.new

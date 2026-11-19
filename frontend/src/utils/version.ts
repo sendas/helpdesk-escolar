@@ -1,10 +1,19 @@
-export const APP_VERSION = '2.18.0'
+export const APP_VERSION = '2.18.1'
 export const APP_VERSION_DATE = '2026-11-19'
-export const APP_VERSION_TIME = '10:01'
+export const APP_VERSION_TIME = '10:06'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.18.1',
+    date: '2026-11-19',
+    time: '10:06',
+    title: 'Importar pedidos sem acesso anteriores',
+    changes: [
+      'Em Pedidos sem acesso, o botão "Importar pedidos anteriores" cria na secção os pedidos que chegaram antes de ela existir, a partir dos emails de aviso dos últimos 4 meses (cada um só uma vez).',
+    ],
+  },
   {
     version: '2.18.0',
     date: '2026-11-19',

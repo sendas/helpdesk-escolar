@@ -144,3 +144,97 @@ async def add_inbound_reply(db: AsyncSession, request_id: int, sender: str, body
     r.status = "new"
     r.updated_at = datetime.utcnow()
     return True
+
+
+# ── Importing the requests that arrived before this section existed ────────────────────────────────────────────
+# They only exist as the alert emails ("[Helpdesk] Sem acesso ao mail institucional — …", template
+# no_access_contact.html): read back from the mailbox they were sent to, through Microsoft Graph.
+import html as _html
+import re as _re
+
+_ALERT_SUBJECT = "Sem acesso ao mail institucional"
+_LABELS = {"Perfil": "profile", "Nome": "name", "N.º do cartão": "student_number", "Ano / turma": "year_class",
+           "Email": "email", "Telefone": "phone", "Grupo de recrutamento": "recruitment_group", "Escola": "school"}
+_PROFILE_KEYS = {"aluno": "aluno", "docente": "docente", "não docente": "nao_docente", "nao docente": "nao_docente"}
+
+
+def _text(fragment: str) -> str:
+    t = _re.sub(r"(?is)<br\s*/?>", "\n", fragment)
+    t = _re.sub(r"(?s)<[^>]+>", "", t)
+    return _html.unescape(t).replace("\xa0", " ").strip()
+
+
+def parse_alert_email(body_html: str) -> dict | None:
+    """The fields of an alert email, or None if it is not one."""
+    fields: dict[str, str] = {}
+    for label, value in _re.findall(r"(?is)<td[^>]*>\s*(?:<[^>]+>\s*)*([^<]{2,40}?)\s*(?:</[^>]+>\s*)*</td>\s*<td[^>]*>(.*?)</td>", body_html):
+        key = _LABELS.get(_text(label))
+        if key:
+            fields[key] = _text(value)
+    m = _re.search(r"(?is)Mensagem\s*</div>\s*<div[^>]*>(.*?)</div>", body_html)
+    if not fields.get("name") or not m:
+        return None
+    email = fields.get("email", "")
+    email = "" if not _re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email) else email.lower()
+    phone = "" if fields.get("phone", "—").strip() in ("—", "-") else fields["phone"]
+    year, class_name = "", ""
+    if fields.get("year_class"):
+        parts = fields["year_class"].split()
+        year, class_name = (" ".join(parts[:-1]), parts[-1]) if len(parts) > 1 else (parts[0], "")
+    clean = lambda v: "" if (v or "").strip() in ("—", "-") else (v or "").strip()  # noqa: E731
+    return {
+        "profile": _PROFILE_KEYS.get(fields.get("profile", "").lower(), "docente"), "name": fields["name"], "email": email,
+        "phone": phone, "student_number": clean(fields.get("student_number")).lower(), "year": year, "class_name": class_name.upper(),
+        "school": clean(fields.get("school")), "recruitment_group": clean(fields.get("recruitment_group")), "message": _text(m.group(1)),
+    }
+
+
+class ImportIn(BaseModel):
+    days: int = Field(90, ge=1, le=365)
+
+
+@router.post("/import-previous")
+async def import_previous(data: ImportIn, db: AsyncSession = Depends(get_db), _: User = Depends(require_perm(PERM))):
+    import asyncio
+    import httpx
+    from app.api.v1.settings import _read_settings
+    from app.config import settings as cfg
+    from app.services.email_ingest import _get_graph_token
+    if (cfg.mail_reply_provider or "").strip().lower() != "graph" or not cfg.azure_client_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Só é possível importar com a leitura de emails pelo Microsoft Graph.")
+    mailboxes = list(dict.fromkeys(m.strip().lower() for m in [
+        _read_settings().get("no_access_contact_email") or "", cfg.graph_mail_user or "", cfg.mail_from or ""] if m and "@" in m))
+    token = await asyncio.to_thread(_get_graph_token)
+    if not token:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Não foi possível ligar ao Microsoft 365.")
+    since = datetime.utcnow() - timedelta(days=data.days)
+    known = set((await db.execute(select(AccessRequest.source_message_id).where(AccessRequest.source_message_id.is_not(None)))).scalars())
+    added, read_ok, errors = 0, 0, []
+    async with httpx.AsyncClient(timeout=30) as client:
+        for box in mailboxes:
+            url = f"https://graph.microsoft.com/v1.0/users/{box}/messages"
+            params = {"$search": f'"subject:{_ALERT_SUBJECT}"', "$top": "100", "$select": "subject,body,receivedDateTime,internetMessageId"}
+            try:
+                resp = await client.get(url, params=params, headers={"Authorization": f"Bearer {token}", "Prefer": 'outlook.body-content-type="html"'})
+            except Exception:
+                errors.append(box)
+                continue
+            if resp.status_code != 200:
+                errors.append(box)
+                continue
+            read_ok += 1
+            for raw in resp.json().get("value") or []:
+                mid = (raw.get("internetMessageId") or "").strip()
+                received = datetime.fromisoformat((raw.get("receivedDateTime") or "").replace("Z", "+00:00")).replace(tzinfo=None) if raw.get("receivedDateTime") else None
+                if not mid or mid in known or (received and received < since) or _ALERT_SUBJECT not in (raw.get("subject") or ""):
+                    continue
+                fields = parse_alert_email(((raw.get("body") or {}).get("content")) or "")
+                if not fields:
+                    continue
+                db.add(AccessRequest(**fields, source_message_id=mid, created_at=received or datetime.utcnow(), updated_at=received or datetime.utcnow()))
+                known.add(mid)
+                added += 1
+    if not read_ok:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Não foi possível ler a caixa de email ({', '.join(errors) or 'sem caixa configurada'}).")
+    await db.commit()
+    return {"added": added, "mailboxes": mailboxes}

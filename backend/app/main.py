@@ -139,6 +139,12 @@ async def _add_missing_columns(conn) -> None:
     if "mention_ids" not in {row[1] for row in rows_c2}:
         await conn.execute(text("ALTER TABLE comments ADD COLUMN mention_ids VARCHAR(500)"))
 
+    # 7k. Pedidos sem acesso imported from earlier alert emails
+    cols_ar = {row[1] for row in await conn.execute(text("PRAGMA table_info(access_requests)"))}
+    if cols_ar and "source_message_id" not in cols_ar:
+        await conn.execute(text("ALTER TABLE access_requests ADD COLUMN source_message_id VARCHAR(500)"))
+        await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_access_requests_source ON access_requests (source_message_id)"))
+
     # 7j. Room of the ticket (chosen from the school's list of spaces)
     cols_t3 = {row[1] for row in await conn.execute(text("PRAGMA table_info(tickets)"))}
     if "room_id" not in cols_t3:

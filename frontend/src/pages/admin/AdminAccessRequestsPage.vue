@@ -8,6 +8,10 @@
         </button>
       </div>
       <input v-model="search" class="hd-input ar-search" placeholder="Pesquisar nome, email, n.º de aluno…" @input="onSearch" />
+      <button class="ar-import" type="button" :disabled="importing" title="Cria aqui os pedidos que chegaram antes desta secção existir, a partir dos emails de aviso" @click="importPrevious">
+        <span class="material-icons">{{ importing ? 'hourglass_empty' : 'move_to_inbox' }}</span>
+        {{ importing ? 'A importar…' : 'Importar pedidos anteriores (emails de aviso)' }}
+      </button>
       <div v-if="loading" class="ar-empty">A carregar…</div>
       <div v-else-if="!items.length" class="ar-empty">
         <span class="material-icons">mark_email_read</span>
@@ -92,8 +96,8 @@
 // Email answers go to the person; their replies come back into the same request (marker "[Acesso #N]").
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getAccessRequest, listAccessRequests, replyAccessRequest, setAccessRequestStatus, type AccessRequest } from '../../api/accessRequests'
-import { notifyError, notifySuccess } from '../../utils/feedback'
+import { getAccessRequest, importPreviousAccessRequests, listAccessRequests, replyAccessRequest, setAccessRequestStatus, type AccessRequest } from '../../api/accessRequests'
+import { confirmDialog, notifyError, notifySuccess } from '../../utils/feedback'
 import { shortName } from '../../utils/names'
 
 const route = useRoute()
@@ -117,6 +121,23 @@ const kind = ref<'email' | 'phone' | 'note'>('email')
 const body = ref('')
 const closeAfter = ref(false)
 const sending = ref(false)
+const importing = ref(false)
+
+async function importPrevious() {
+  const ok = await confirmDialog('Procurar os emails de aviso "Sem acesso ao mail institucional" dos últimos 4 meses e criar aqui os pedidos que ainda não existem? Ficam como "Por responder": feche os que já tratou por email.', { ok: 'Importar' })
+  if (!ok) return
+  importing.value = true
+  try {
+    const r = await importPreviousAccessRequests(120)
+    notifySuccess(r.added ? `${r.added} pedido${r.added === 1 ? '' : 's'} importado${r.added === 1 ? '' : 's'}.` : 'Não havia pedidos novos para importar.')
+    state.value = 'all'
+    await load()
+  } catch (e) {
+    notifyError(e, 'Não foi possível importar.')
+  } finally {
+    importing.value = false
+  }
+}
 
 const tabs = computed(() => [
   { key: 'open', label: 'Em aberto', count: (counts.value.new ?? 0) + (counts.value.answered ?? 0) },
@@ -219,6 +240,9 @@ onMounted(async () => {
 .ar-tab.active { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
 .ar-count { font-size: 11px; opacity: .85; }
 .ar-search { margin-bottom: 4px; }
+.ar-import { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; background: none; border: 0; color: var(--c-primary); font-size: 12.5px; font-weight: 700; cursor: pointer; padding: 2px 0 6px; }
+.ar-import .material-icons { font-size: 16px; }
+.ar-import:disabled { opacity: .6; cursor: wait; }
 .ar-empty { color: var(--c-muted); font-size: 13px; padding: 30px 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .ar-empty .material-icons { font-size: 32px; }
 .ar-item { text-align: left; border: 1px solid var(--c-border); border-radius: 10px; background: var(--c-surface); color: var(--c-text); padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }

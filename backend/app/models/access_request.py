@@ -26,6 +26,8 @@ class AccessRequest(Base):
     # new: waiting for the team · answered: waiting for the person · closed
     status: Mapped[str] = mapped_column(String(20), default="new", index=True)
     handled_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # Imported from an earlier alert email ("Importar pedidos anteriores"): its Message-ID, to import it only once
+    source_message_id: Mapped[str | None] = mapped_column(String(500), nullable=True, unique=True)
 
     handled_by: Mapped["User"] = relationship("User", lazy="selectin")
     messages: Mapped[list["AccessRequestMessage"]] = relationship(
