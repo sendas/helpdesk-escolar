@@ -206,18 +206,15 @@ async def demo_login(data: DemoLoginRequest, request: Request, db: AsyncSession 
 
 
 @router.post("/no-access-contact")
-async def no_access_contact(data: NoAccessContactRequest, request: Request):
+async def no_access_contact(data: NoAccessContactRequest, request: Request, db: AsyncSession = Depends(get_db)):
     from app.api.v1.settings import _read_settings
+    from app.models.access_request import AccessRequest
 
     contact_key = f"contact:{rate_limit.client_ip(request)}"
     rate_limit.check(contact_key, 5, 3600, "Já enviou várias mensagens. Aguarde um pouco antes de enviar outra.")
     rate_limit.hit(contact_key)
     app_settings = _read_settings()
     to_email = (app_settings.get("no_access_contact_email") or "").strip()
-    if not to_email:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email de contacto não configurado. Peça a um administrador para o definir nas Configurações.")
-    if not settings.mail_server:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envio de email não configurado no servidor.")
 
     contact_email = data.email.strip()
     profile = data.profile if data.profile in {"docente", "nao_docente", "aluno"} else "docente"
@@ -232,9 +229,22 @@ async def no_access_contact(data: NoAccessContactRequest, request: Request):
     elif not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", contact_email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Indique um email válido para podermos responder.")
 
+    # Kept in the helpdesk ("Pedidos sem acesso"), where the team answers it; the email is only the alert
+    req = AccessRequest(
+        profile=profile, name=data.name.strip(), email=contact_email, phone=data.phone.strip(),
+        student_number=data.student_number.strip().lower(), year=data.year.strip(), class_name=data.class_name.strip().upper(),
+        school=data.school.strip(), recruitment_group=data.recruitment_group.strip(), message=data.message.strip(),
+    )
+    db.add(req)
+    await db.commit()
+    await db.refresh(req)
+    if not to_email or not settings.mail_server:
+        return {"sent": True}
     await email_service.send_no_access_contact(
         to_email,
         {
+            "request_id": req.id,
+            "request_url": f"{settings.frontend_url.rstrip('/')}/admin/sem-acesso?pedido={req.id}",
             "profile": {"docente": "Docente", "nao_docente": "Não docente", "aluno": "Aluno"}[profile],
             "is_student": profile == "aluno",
             "student_number": data.student_number.strip().lower(),

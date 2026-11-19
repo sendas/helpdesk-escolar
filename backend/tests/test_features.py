@@ -390,3 +390,52 @@ async def test_ticket_emails_say_school_and_room(client, people, api, monkeypatc
     assert len(sent) == 3
     for _, body in sent:
         assert "Escola Eça de Queirós" in body and "Sala 36 · EQ36" in body
+
+
+async def test_access_requests_are_answered_in_the_helpdesk(client, people, api, monkeypatch):
+    from app.config import settings
+    from app.database import AsyncSessionLocal
+    from app.services import email_ingest, email_service
+    sent = []
+
+    async def fake_reply(to, data):
+        sent.append((to, data))
+        return True
+
+    monkeypatch.setattr(email_service, "send_access_reply", fake_reply)
+    monkeypatch.setattr(settings, "mail_server", "")   # the alert email is not needed for the request to be kept
+    r = await client.post(f"{api}/auth/no-access-contact", json={
+        "profile": "aluno", "name": "Rayannah Sibindy Ibrahimo", "email": "ibrahimorayannah@gmail.com", "student_number": "a32399",
+        "year": "11.º", "class_name": "e2", "school": "Secundária Eça de Queirós", "phone": "912000000",
+        "message": "Não consigo aceder ao e-mail institucional nem ao Teams."})
+    assert r.status_code == 200
+    lst = (await client.get(f"{api}/access-requests", headers=people["tec"]["h"])).json()
+    req = next(i for i in lst["items"] if i["student_number"] == "a32399")
+    assert req["status"] == "new" and req["class_name"] == "E2" and lst["counts"]["new"] >= 1
+    assert (await client.get(f"{api}/access-requests", headers=people["prof"]["h"])).status_code == 403
+    assert (await client.get(f"{api}/access-requests/count", headers=people["tec"]["h"])).json()["new"] >= 1
+
+    # Answer by email: goes to the person, the request waits for them
+    d = (await client.post(f"{api}/access-requests/{req['id']}/reply", headers=people["tec"]["h"],
+                           json={"body": "A sua palavra-passe foi reposta: abc123. Mude-a no primeiro acesso."})).json()
+    assert d["status"] == "answered" and sent[0][0] == "ibrahimorayannah@gmail.com" and sent[0][1]["id"] == req["id"]
+    # An internal note does not email anyone
+    await client.post(f"{api}/access-requests/{req['id']}/reply", headers=people["tec"]["h"], json={"body": "Liguei à mãe.", "kind": "note"})
+    assert len(sent) == 1
+
+    # The person answers the email: back into the same request, which waits for the team again (once only)
+    msg = email_ingest._parse_graph_message({
+        "subject": f"RE: [Acesso #{req['id']}] Acesso ao mail institucional",
+        "from": {"emailAddress": {"address": "IbrahimoRayannah@gmail.com"}},
+        "body": {"contentType": "text", "content": "Já consegui entrar, obrigada!"}, "internetMessageId": "<x1@gmail.com>"})
+    stranger = {**msg, "sender_email": "outro@gmail.com", "message_id": "<x2@gmail.com>"}
+    async with AsyncSessionLocal() as db:
+        await email_ingest._import_messages(db, [msg, stranger])
+    async with AsyncSessionLocal() as db:
+        await email_ingest._import_messages(db, [msg])
+    d = (await client.get(f"{api}/access-requests/{req['id']}", headers=people["tec"]["h"])).json()
+    assert d["status"] == "new"
+    assert [m["kind"] for m in d["messages"]] == ["email", "note", "inbound"]
+    assert d["messages"][-1]["body"] == "Já consegui entrar, obrigada!"
+    d = (await client.patch(f"{api}/access-requests/{req['id']}", headers=people["tec"]["h"], json={"status": "closed"})).json()
+    assert d["status"] == "closed"

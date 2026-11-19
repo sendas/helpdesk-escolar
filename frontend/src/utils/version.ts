@@ -1,10 +1,22 @@
-export const APP_VERSION = '2.17.2'
+export const APP_VERSION = '2.18.0'
 export const APP_VERSION_DATE = '2026-11-19'
-export const APP_VERSION_TIME = '09:53'
+export const APP_VERSION_TIME = '10:01'
 
 export const APP_CREDIT = 'Um projeto desenvolvido por Pedro Sendas Pereira, professor de informática do Agrupamento de Escolas Eça de Queirós.'
 
 export const RELEASE_NOTES = [
+  {
+    version: '2.18.0',
+    date: '2026-11-19',
+    time: '10:01',
+    title: 'Pedidos sem acesso ao mail institucional',
+    changes: [
+      'Os pedidos do formulário "Não tenho acesso ao mail institucional" ficam guardados no helpdesk, em Administração → Pedidos sem acesso, com o número de pedidos por responder no menu.',
+      'Cada pedido mostra os dados da pessoa (perfil, n.º de aluno, ano e turma, escola, email, telefone) e permite responder por email, registar um telefonema ou deixar uma nota interna, e fechar o pedido.',
+      'As respostas por email da pessoa voltam para o mesmo pedido, que passa outra vez a "Por responder".',
+      'O email de aviso continua a chegar, agora com o botão "Responder no helpdesk".',
+    ],
+  },
   {
     version: '2.17.2',
     date: '2026-11-19',

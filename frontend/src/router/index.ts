@@ -38,6 +38,7 @@ const routes = [
           { path: 'tickets', meta: { perm: ['tickets.view_all', 'tickets.manage'] }, component: () => import('../pages/admin/AdminTicketsPage.vue') },
           { path: 'quadro', meta: { perm: ['tickets.view_all', 'tickets.manage'] }, component: () => import('../pages/admin/AdminBoardPage.vue') },
           { path: 'caixa-entrada', meta: { perm: 'mailbox.read' }, component: () => import('../pages/admin/AdminMailboxPage.vue') },
+          { path: 'sem-acesso', meta: { perm: 'access_requests.manage' }, component: () => import('../pages/admin/AdminAccessRequestsPage.vue') },
           { path: 'manutencao', meta: { perm: 'tickets.manage' }, component: () => import('../pages/admin/AdminPlanningPage.vue') },
           { path: 'users', meta: { perm: ['tickets.manage', 'users.manage'] }, component: () => import('../pages/admin/AdminUsersPage.vue') },
           { path: 'categories', meta: { perm: 'settings.manage' }, component: () => import('../pages/admin/AdminCategoriesPage.vue') },

@@ -162,6 +162,28 @@ async def send_no_access_contact(to_email: str, contact_data: dict) -> None:
         logger.warning("No-access contact email failed to %s: %s", to_email, exc)
 
 
+ACCESS_SUBJECT = "[Acesso #{id}] Acesso ao mail institucional"
+
+
+async def send_access_reply(to_email: str, data: dict) -> bool:
+    """The team's answer to a "Não tenho acesso ao mail institucional" request. Replies come back to the helpdesk
+    mailbox and, thanks to the "[Acesso #N]" marker, into the same request."""
+    if not settings.mail_server or is_demo_address(to_email):
+        return False
+    try:
+        html_body = jinja_env.get_template("access_request_reply.html").render(**data)
+        message = MessageSchema(
+            subject=ACCESS_SUBJECT.format(id=data["id"]), recipients=[to_email], body=html_body,
+            subtype=MessageType.html, headers={"Reply-To": settings.mail_from},
+        )
+        await FastMail(_get_conf()).send_message(message)
+        logger.info("Access request reply sent to %s (#%s)", to_email, data["id"])
+        return True
+    except Exception as exc:
+        logger.warning("Access request reply failed to %s (#%s): %s", to_email, data.get("id"), exc)
+        return False
+
+
 async def send_private_message(to_email: str, data: dict) -> None:
     """Private message inside a ticket: sent only to its recipient, never merged into the update digest."""
     if not settings.mail_server or _is_hidden_demo_action() or is_demo_address(to_email):

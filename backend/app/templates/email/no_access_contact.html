@@ -23,8 +23,15 @@
       <div style="font-weight:bold;margin-bottom:8px;color:#1f2937">Mensagem</div>
       <div style="white-space:pre-wrap;line-height:1.45;color:#334155">{{ message }}</div>
     </div>
+    {% if request_url %}
+    <p style="margin:22px 0 10px">
+      <a href="{{ request_url }}" style="background:#B91C1C;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;display:inline-block;font-weight:bold">Responder no helpdesk</a>
+    </p>
+    {% endif %}
     <p style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#334155;font-size:0.9em;line-height:1.45;margin:18px 0 0;padding:12px 14px">
-      {% if email %}Pode responder diretamente a este email — a resposta segue para {{ email }}.{% else %}A pessoa não indicou email: contacte-a pelo telefone ou através da escola.{% endif %}
+      {% if request_url %}Responda em Administração → Pedidos sem acesso{% if request_id %} (pedido #{{ request_id }}){% endif %}: a resposta fica registada e as respostas da pessoa voltam para o mesmo pedido.
+      {% elif email %}Pode responder diretamente a este email — a resposta segue para {{ email }}.{% endif %}
+      {% if not email %} A pessoa não indicou email: contacte-a pelo telefone ou através da escola.{% endif %}
     </p>
   </div>
 </body>

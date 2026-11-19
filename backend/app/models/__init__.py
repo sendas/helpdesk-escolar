@@ -12,5 +12,6 @@ from app.models.reaction import Reaction
 from app.models.chat import ChatConversation, ChatMember, ChatMessage, SupportAgentStatus
 from app.models.planning import TicketRating, ScheduledTicket
 from app.models.room import Room
+from app.models.access_request import AccessRequest, AccessRequestMessage
 
-__all__ = ["School", "User", "UserRole", "Category", "Ticket", "Comment", "TicketEvent", "TicketView", "TicketReminder", "TicketRoutingRule", "Attachment", "ProcessedEmail", "TicketStatus", "TicketPriority", "ticket_watchers", "ticket_assignees", "HelpdeskGroup", "helpdesk_group_members", "KnowledgeArticle", "PushSubscription", "AccessLog", "Suggestion", "Role", "Reaction", "ChatConversation", "ChatMember", "ChatMessage", "SupportAgentStatus", "TicketRating", "ScheduledTicket", "Room"]
+__all__ = ["School", "User", "UserRole", "Category", "Ticket", "Comment", "TicketEvent", "TicketView", "TicketReminder", "TicketRoutingRule", "Attachment", "ProcessedEmail", "TicketStatus", "TicketPriority", "ticket_watchers", "ticket_assignees", "HelpdeskGroup", "helpdesk_group_members", "KnowledgeArticle", "PushSubscription", "AccessLog", "Suggestion", "Role", "Reaction", "ChatConversation", "ChatMember", "ChatMessage", "SupportAgentStatus", "TicketRating", "ScheduledTicket", "Room", "AccessRequest", "AccessRequestMessage"]

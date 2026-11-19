@@ -27,6 +27,8 @@ TICKET_RE = re.compile(r"\[Ticket\s+#(\d+)\]", re.IGNORECASE)
 # Matches "O Seu Ticket de Apoio ao Cliente [Ticket #XX]" in the body
 BODY_TICKET_RE = re.compile(r"O\s+Seu\s+Ticket\s+de\s+Apoio\s+ao\s+Cliente\s*[\r\n\s]*\[Ticket\s*#(\d+)\]", re.IGNORECASE)
 # Subject keywords that trigger automatic ticket status change
+# Replies to an answer to a "Não tenho acesso ao mail institucional" request (api/v1/access_requests.py)
+ACCESS_RE = re.compile(r"\[Acesso\s+#(\d+)\]", re.IGNORECASE)
 # Replies to a private message keep the "[Privada]" marker in the subject
 PRIVATE_SUBJECT_RE = re.compile(r"\[Privada\]", re.IGNORECASE)
 # The support company's own ticket number in the subject, e.g. "… (#8591)" or "[#8591]" (never our "[Ticket #12]")
@@ -187,7 +189,12 @@ def _parse_graph_message(msg: dict) -> dict | None:
     # Try ticket ID from subject first, then from body pattern
     match = TICKET_RE.search(subject) or BODY_TICKET_RE.search(body_content)
     if not match:
-        return None
+        access = ACCESS_RE.search(subject)
+        if not access:
+            return None
+        body = _clean_reply_body(body_content)
+        return {"access_request_id": int(access.group(1)), "sender_email": sender_email, "body": body,
+                "message_id": (msg.get("internetMessageId") or msg.get("id") or f"{sender_email}:{subject}:{hash(body)}").strip()}
 
     status_action = _detect_status_action(subject)
     body = _clean_reply_body(body_content)
@@ -221,6 +228,17 @@ async def _import_messages(db: AsyncSession, messages: list[dict]) -> dict:
     skipped = 0
 
     for msg in messages:
+        if msg.get("access_request_id"):
+            from app.api.v1.access_requests import add_inbound_reply
+            try:
+                msg["processed"] = await add_inbound_reply(db, msg["access_request_id"], msg["sender_email"], msg["body"], msg["message_id"])
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                msg["failed"] = True
+                logger.exception("Access request reply import failed (#%s)", msg.get("access_request_id"))
+            processed += 1 if msg.get("processed") else 0
+            continue
         try:
             processed_one = await _import_message(db, msg)
             await db.commit()
@@ -237,6 +255,8 @@ async def _import_messages(db: AsyncSession, messages: list[dict]) -> dict:
             skipped += 1
 
     for msg in messages:
+        if msg.get("access_request_id"):
+            continue
         if msg.get("processed"):
             from app.services.realtime_hooks import notify_ticket
             await notify_ticket(msg["ticket_id"])
@@ -452,7 +472,13 @@ def _parse_reply(msg: Message) -> dict | None:
     # Try ticket ID from subject first, then from body pattern
     match = TICKET_RE.search(subject) or BODY_TICKET_RE.search(body_raw)
     if not match:
-        return None
+        access = ACCESS_RE.search(subject)
+        if not access:
+            return None
+        sender = parseaddr(msg.get("From", ""))[1].strip().lower()
+        body = _clean_reply_body(body_raw)
+        return {"access_request_id": int(access.group(1)), "sender_email": sender, "body": body,
+                "message_id": (msg.get("Message-ID") or f"{sender}:{subject}:{hash(body)}").strip()}
 
     status_action = _detect_status_action(subject)
     sender_email = parseaddr(msg.get("From", ""))[1].strip().lower()

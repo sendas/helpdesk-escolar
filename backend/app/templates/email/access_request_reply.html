@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Acesso ao mail institucional</title></head>
+<body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+  <div style="background: #1F75BC; color: white; padding: 20px; border-radius: 4px 4px 0 0;">
+    <h2 style="margin:0">Acesso ao mail institucional</h2>
+  </div>
+  <div style="padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 4px 4px;">
+    <p>Olá {{ first_name }},</p>
+    <div style="white-space:pre-wrap;line-height:1.55;color:#1f2937">{{ body }}</div>
+    {% if author %}<p style="margin-top:18px;color:#334155">{{ author }}<br>Centro de Apoio Digital — {{ org_name }}</p>{% endif %}
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;margin:22px 0 0;padding:12px 14px;font-size:0.9em;color:#475569">
+      <div style="font-weight:bold;margin-bottom:6px">O seu pedido (#{{ id }}), de {{ created }}</div>
+      <div style="white-space:pre-wrap">{{ original }}</div>
+    </div>
+    <p style="color:#666;font-size:0.85em;margin-top:18px">Pode responder a este email: a resposta chega à equipa de apoio.</p>
+  </div>
+</body>
+</html>

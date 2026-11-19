@@ -71,6 +71,10 @@
           <router-link v-if="auth.can('mailbox.read')" class="hd-nav-item" :class="{ active: $route.path === '/admin/caixa-entrada' }" to="/admin/caixa-entrada" @click="mobileMenuOpen = false">
             <span class="material-icons">inbox</span> Caixa de entrada
           </router-link>
+          <router-link v-if="auth.can('access_requests.manage')" class="hd-nav-item" :class="{ active: $route.path === '/admin/sem-acesso' }" to="/admin/sem-acesso" @click="mobileMenuOpen = false">
+            <span class="material-icons">contact_mail</span> Pedidos sem acesso
+            <span v-if="accessWaiting" class="hd-nav-badge warn" title="Pedidos por responder">{{ accessWaiting }}</span>
+          </router-link>
           <router-link v-if="auth.isStaff" class="hd-nav-item" :class="{ active: $route.path === '/admin/manutencao' }" to="/admin/manutencao" @click="mobileMenuOpen = false">
             <span class="material-icons">event_repeat</span> Manutenção planeada
           </router-link>
@@ -290,6 +294,7 @@
 </template>
 
 <script setup lang="ts">
+import { accessRequestsWaiting } from '../api/accessRequests'
 import { ref, reactive, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -318,6 +323,8 @@ const push = reactive(usePushNotifications())
 const search = ref('')
 const openCount = ref(0)
 const adminOpenCount = ref(0)
+// "Não tenho acesso ao mail institucional" requests waiting for an answer
+const accessWaiting = ref(0)
 const showNotifications = ref(false)
 const mobileMenuOpen = ref(false)
 const settings = ref<{ org_name: string; logo_url: string; favicon_url: string; knowledge_enabled: boolean; dark_style?: string
@@ -357,6 +364,7 @@ const titleMap: Record<string, string> = {
   '/admin/tickets': 'Gestão de tickets',
   '/admin/quadro': 'Quadro de tickets',
   '/admin/caixa-entrada': 'Caixa de entrada do helpdesk',
+  '/admin/sem-acesso': 'Pedidos sem acesso ao mail institucional',
   '/admin/manutencao': 'Manutenção planeada',
   '/admin/users': 'Utilizadores e permissões',
   '/admin/stats': 'Estatísticas',
@@ -402,6 +410,7 @@ async function refreshCounts() {
       const d2 = await getTickets({ page: 1, size: 1, admin: true, status: 'open' })
       adminOpenCount.value = d2.total
     }
+    if (auth.can('access_requests.manage')) accessWaiting.value = await accessRequestsWaiting()
   } catch { /* ignore */ }
 }
 
